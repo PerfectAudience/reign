@@ -1,6 +1,5 @@
 package org.kompany.overlord;
 
-import org.kompany.overlord.path.PathScheme;
 
 /**
  * Common interface for framework plug-ins.<br/>
