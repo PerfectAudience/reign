@@ -4,7 +4,7 @@
   <groupId>org.kompany</groupId>
   <artifactId>overlord</artifactId>
   <packaging>jar</packaging>
-  <name>Overlord framework</name>
+  <name>Overlord</name>
   <version>0.0.1-SNAPSHOT</version>
 
     <properties>
@@ -13,23 +13,6 @@
         <zookeeper.version>3.3.4</zookeeper.version>
     </properties>
 
-    <distributionManagement>
-        <repository>
-            <id>central</id>
-            <name>Artifactory TM</name>
-            <url>http://artifactory.tubemogul.com/libs-releases</url>
-        </repository>
-        <snapshotRepository>
-            <id>snapshots</id>
-            <name>Artifactory TM</name>
-            <url>http://artifactory.tubemogul.com/libs-snapshots</url>
-        </snapshotRepository>
-    </distributionManagement>
-    <scm>
-        <connection>scm:svn:https://svn.tubemogul.com/svn/repos/rtb/sa/trunk</connection>
-        <developerConnection>scm:svn:https://svn.tubemogul.com/svn/repos/rtb/sa/trunk</developerConnection>
-        <url>https://svn.tubemogul.com/svn/repos/rtb/sa/trunk</url>
-    </scm>
   <dependencies>
 
     <!-- getopt for args parsing -->
