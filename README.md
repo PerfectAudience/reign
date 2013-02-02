@@ -2,18 +2,30 @@ Overlord
 ========
 A suite of lightweight services for distributed systems coordination and messaging based on Zookeeper and Netty.
 
+
 Features
 --------
+Overlord features a pluggable programming API which allows additional functionality to be easily.
+
 Out of the box, Overlord provides the following:
-* Service discovery and capacity monitoring
-* Distributed locking
+* Service discovery - monitor for nodes coming up and going down in services.
+* Service data publishing - services can publish information for consumption by other services.
+* Distributed locking - support for read/write locks, exclusive locks, and semaphores.
+* Reliable Zookeeper client wrapper that handles common Zookeeper errors and re-connects as necessary.
+
+
+Easy to use
+-----------
+
+
+
 
 Design
 ------
 
-Part of Overlord's value is in how data is kept in Zookeeper.  By creating a standard layout of information, Overlord allows for an ecosystem that allows non-java services and/or monitoring to easily plug in.
+Part of Overlord's value is in how data is kept in Zookeeper.  By creating a standard layout of information, Overlord sets up the possibility of an ecosystem that allows non-Java services/applications to easily connect and coordinate via Zookeeper.
 
-The default layout in Zookeeper is described below.  Custom layouts may be created as necessary by implementing your own PathScheme class.:
+The default layout in Zookeeper is described below.  Custom layouts may be created as necessary by implementing your own `PathScheme` class.:
 
 ###Base paths:
 
