@@ -37,7 +37,7 @@ The default layout in Zookeeper is described below.  Custom layouts may be creat
 ###`_TREE_` is defined as follows:
 
 * `/presence` - service nodes check-in under this path
-* `/conf` - service configuration is found under this path
+* `/conf` - configuration data for services, etc. are found under this path
 * `/data` - data published by services for consumption by other nodes connected to ZK via Overlord is found here
 * `/lock` - data describing distributed locks lives here
 
