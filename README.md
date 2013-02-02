@@ -1,7 +1,12 @@
 Overlord
 ========
-
 A suite of lightweight services for distributed systems coordination and messaging based on Zookeeper and Netty.
+
+Features
+--------
+Out of the box, Overlord provides the following:
+* Service discovery and capacity monitoring
+* Distributed locking
 
 Design
 ------
@@ -13,11 +18,11 @@ The default layout in Zookeeper is described below.  Custom layouts may be creat
 ###Base paths:
 
 * `/overlord` - the root directory
-* `/overlord/internal/_TREE_`
-* `/overlord/user/_TREE_`
+* `/overlord/internal/_TREE_` - internal to framework
+* `/overlord/user/_TREE_` - user-created service data, configuration, locks, etc.
 
 
-###_TREE_ is defined as follows:
+###`_TREE_` is defined as follows:
 
 * `/presence` - service nodes check-in under this path
 * `/conf` - service configuration is found under this path
