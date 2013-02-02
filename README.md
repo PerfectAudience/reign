@@ -14,14 +14,14 @@ Out of the box, Overlord provides the following:
 * Reliable Zookeeper client wrapper that handles common Zookeeper errors and re-connects as necessary.
 
 
-Easy to use
+Easy to Use
 -----------
 
 
 
 
-Design
-------
+Design Notes
+------------
 
 Part of Overlord's value is in how data is kept in Zookeeper.  By creating a standard layout of information, Overlord sets up the possibility of an ecosystem that allows non-Java services/applications to easily connect and coordinate via Zookeeper.
 
