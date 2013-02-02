@@ -1,0 +1,47 @@
+#!/bin/bash
+
+[ -z "$JAVA_HOME" ] && JAVA_HOME=/usr/lib/jvm/java-6-sun/jre
+
+JAVA_OPTS="$JAVA_OPTS \
+    -Djava.net.preferIPv4Stack=true \
+    -server \
+    -verbose:gc \
+    -Xmx1g \
+    -Xms512m \
+    -XX:NewRatio=8 \
+    -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC \
+    -XX:+UseStringCache \
+    -XX:+OptimizeStringConcat \
+    -XX:HeapDumpPath=./logs \
+    -XX:-HeapDumpOnOutOfMemoryError \
+    -XX:+ScavengeBeforeFullGC \
+    -XX:+UseFastAccessorMethods \
+    -XX:+UseGCOverheadLimit \
+    -XX:ParallelGCThreads=2 \
+    -XX:MaxGCPauseMillis=5 \
+"
+
+DAEMON=`which DAEMON`
+
+[ ! -z "$DAEMON" ] && P=$(dirname $DAEMON | sed -e 's/fastlog$//')
+[ -z "$P" ] && P=$(dirname $0)
+
+cd $P/../
+PWD=$P/../target
+
+export CLASSPATH="$PWD/*:$PWD/../lib:$PWD/../conf"
+
+if [ -d $PWD/lib ]; then
+    for f in $(ls $PWD/../lib/*.jar); do
+        CLASSPATH="$CLASSPATH:$f"
+    done
+fi
+
+if [ -d $PWD/dependency ]; then
+    for f in $(ls $PWD/dependency/); do
+        CLASSPATH="$CLASSPATH:$PWD/dependency/$f"
+    done
+fi
+
+echo $JAVA_HOME/bin/java $JAVA_OPTS -cp $CLASSPATH com.tubemogul.sa.tools.ServiceConfUtil $*
+$JAVA_HOME/bin/java $JAVA_OPTS -cp $CLASSPATH com.tubemogul.sa.tools.ServiceConfUtil $*
