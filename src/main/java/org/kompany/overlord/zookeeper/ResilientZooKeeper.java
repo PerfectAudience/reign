@@ -22,6 +22,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
+import org.kompany.overlord.ZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class ResilientZooKeeper implements Watcher {
+public class ResilientZooKeeper implements ZkClient, Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(ResilientZooKeeper.class);
 
@@ -935,8 +936,8 @@ public class ResilientZooKeeper implements Watcher {
 
     @Override
     public void process(WatchedEvent event) {
-        /***** process event *****/
-        // log if >INFO
+        /***** log event *****/
+        // log if >DEBUG
         if (logger.isDebugEnabled()) {
             logger.debug("***** Received ZooKeeper Event:\n"
                     + ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));

@@ -3,7 +3,7 @@ package org.kompany.overlord.presence;
 import java.util.Map;
 
 /**
- * Used to serialize NodeInfo.
+ * Used to serialize NodeInfo. Should be re-usable.
  * 
  * @author ypai
  * 

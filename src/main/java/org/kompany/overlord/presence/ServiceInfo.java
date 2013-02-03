@@ -9,9 +9,19 @@ import java.util.List;
  */
 public class ServiceInfo {
 
+    private String clusterId;
+
     private String serviceId;
 
     private List<String> nodeIdList;
+
+    public String getClusterId() {
+        return clusterId;
+    }
+
+    public void setClusterId(String clusterId) {
+        this.clusterId = clusterId;
+    }
 
     public String getServiceId() {
         return serviceId;

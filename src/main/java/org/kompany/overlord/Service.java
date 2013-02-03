@@ -1,6 +1,5 @@
 package org.kompany.overlord;
 
-
 /**
  * Common interface for framework plug-ins.<br/>
  * <br/>
@@ -15,17 +14,7 @@ package org.kompany.overlord;
  * @author ypai
  * 
  */
-public interface Plugin extends Runnable {
-
-    public static final long EXECUTION_INTERVAL_CONTINUOUS = 0;
-
-    /**
-     * 
-     * @return 0 if this plug-in is meant to run continuously (framework will
-     *         allocate a thread for it); otherwise, the plug-in will share a
-     *         thread pool with other plug-ins.
-     */
-    public long getExecutionIntervalMillis();
+public interface Service {
 
     /**
      * 
