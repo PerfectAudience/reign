@@ -7,6 +7,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ public class Overlord {
 
     private ExecutorService executorService;
 
-    private boolean started;
+    private volatile boolean started = false;
 
     private int pluginThreadPoolSizeMin = 3;
 
@@ -76,9 +77,22 @@ public class Overlord {
      * @return whether or not the service was initialized correctly.
      */
     public void addPlugin(Plugin plugin) {
+        if (plugin.getExecutionIntervalMillis() < 0) {
+            logger.warn(
+                    "Invalid value for plugin.executionIntervalMillis:  skipping plugin:  plugin.executionIntervalMillis={}",
+                    plugin.getExecutionIntervalMillis());
+        }
+
+        // set with path scheme
         plugin.setPathScheme(pathScheme);
         plugin.setZkClient(zkClient);
         plugin.init();
+
+        // add to zkClient's list of watchers if Watcher interface is
+        // implemented
+        if (plugin instanceof Watcher) {
+            zkClient.register((Watcher) plugin);
+        }
 
         pluginList.add(new PluginWrapper(plugin));
     }
@@ -95,8 +109,9 @@ public class Overlord {
     }
 
     public synchronized void start() {
-        if (started)
+        if (started) {
             return;
+        }
         started = true;
 
         /** init executor **/
@@ -119,7 +134,7 @@ public class Overlord {
         // get number of continuously running plug-ins
         int continuouslyRunningPlugins = 0;
         for (PluginWrapper pluginWrapper : pluginList) {
-            if (pluginWrapper.getPlugin().getExecutionIntervalMillis() <= 0) {
+            if (pluginWrapper.getPlugin().getExecutionIntervalMillis() == Plugin.EXECUTION_INTERVAL_CONTINUOUS) {
                 continuouslyRunningPlugins++;
             }
         }

@@ -1,6 +1,5 @@
 package org.kompany.overlord;
 
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
 /**
@@ -9,7 +8,7 @@ import org.apache.zookeeper.Watcher;
  * @author ypai
  * 
  */
-public interface ZkClient extends Watcher {
+public interface ZkClient {
 
-    public void process(WatchedEvent event);
+    public void register(Watcher watcher);
 }
