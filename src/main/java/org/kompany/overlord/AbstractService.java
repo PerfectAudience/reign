@@ -1,5 +1,7 @@
 package org.kompany.overlord;
 
+import org.kompany.overlord.util.PathCache;
+
 /**
  * 
  * @author ypai
@@ -9,6 +11,17 @@ public abstract class AbstractService implements Service {
 
     private PathScheme pathScheme;
     private ZkClient zkClient;
+
+    private PathCache pathCache;
+
+    public PathCache getPathCache() {
+        return pathCache;
+    }
+
+    @Override
+    public void setPathCache(PathCache pathCache) {
+        this.pathCache = pathCache;
+    }
 
     public PathScheme getPathScheme() {
         return pathScheme;

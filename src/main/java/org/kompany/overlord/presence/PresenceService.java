@@ -1,6 +1,5 @@
 package org.kompany.overlord.presence;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -15,13 +14,11 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractActiveService;
 import org.kompany.overlord.PathType;
-import org.kompany.overlord.util.PathCache;
+import org.kompany.overlord.Sovereign;
+import org.kompany.overlord.util.PathCache.PathCacheEntry;
 import org.kompany.overlord.util.ZkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,16 +34,9 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
     public static final int DEFAULT_HEARTBEAT_INTERVAL_MILLIS = 5000;
 
-    public static final List<ACL> DEFAULT_ACL_LIST = new ArrayList<ACL>();
-    static {
-        DEFAULT_ACL_LIST.add(new ACL(ZooDefs.Perms.ALL, new Id("world", "anyone")));
-    }
-
     private int pathCacheSize = 250;
 
     private int concurrencyLevel = 8;
-
-    private PathCache pathCache;
 
     private NodeAttributeSerializer nodeAttributeSerializer = new JsonNodeAttributeSerializer();
 
@@ -63,7 +53,7 @@ public class PresenceService extends AbstractActiveService implements Watcher {
             Stat stat = new Stat();
             children = getZkClient().getChildren(path, true, stat);
 
-            pathCache.put(path, stat, null, children);
+            getPathCache().put(path, stat, null, children);
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
@@ -86,18 +76,25 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
         List<String> children = null;
         try {
-            Stat stat = new Stat();
-            children = getZkClient().getChildren(path, true, stat);
+            PathCacheEntry pathCacheEntry = getPathCache().get(path);
+            if (pathCacheEntry != null) {
+                // found in cache
+                children = pathCacheEntry.getChildren();
+            } else {
+                // not in cache, so populate from ZK
+                Stat stat = new Stat();
+                children = getZkClient().getChildren(path, true, stat);
 
-            pathCache.put(path, stat, null, children);
+                // update cache
+                getPathCache().put(path, stat, null, children);
+            }
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
-                logger.warn(
-                        "lookup():  error trying to fetch service info:  " + e + ":  node does not exist:  path={}",
-                        path);
+                logger.debug("lookup():  error trying to fetch service info:  {}:  node does not exist:  path={}",
+                        e.getMessage(), path);
             } else {
-                logger.warn("lookup():  error trying to fetch service info:  " + e, e);
+                logger.error("lookup():  error trying to fetch service info:  " + e, e);
             }
             return null;
         } catch (InterruptedException e) {
@@ -125,17 +122,25 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
         byte[] bytes = null;
         try {
-            Stat stat = new Stat();
-            bytes = getZkClient().getData(path, true, stat);
+            PathCacheEntry pathCacheEntry = getPathCache().get(path);
+            if (pathCacheEntry != null) {
+                // found in cache
+                bytes = pathCacheEntry.getBytes();
+            } else {
+                // not in cache, so populate from ZK
+                Stat stat = new Stat();
+                bytes = getZkClient().getData(path, true, stat);
 
-            pathCache.put(path, stat, bytes, null);
+                // update cache
+                getPathCache().put(path, stat, bytes, null);
+            }
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
-                logger.warn("lookup():  error trying to fetch node info:  " + e + ":  node does not exist:  path={}",
-                        path);
+                logger.debug("lookup():  error trying to fetch node info:  {}:  node does not exist:  path={}",
+                        e.getMessage(), path);
             } else {
-                logger.warn("lookup():  error trying to fetch node info:  " + e, e);
+                logger.error("lookup():  error trying to fetch node info:  " + e, e);
             }
             return null;
         } catch (InterruptedException e) {
@@ -210,7 +215,7 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         Announcement announcement = announcementMap.get(nodePath);
         if (announcement == null) {
             Announcement newAnnouncement = new Announcement();
-            newAnnouncement.setAclList(DEFAULT_ACL_LIST);
+            newAnnouncement.setAclList(Sovereign.DEFAULT_ACL_LIST);
 
             announcement = announcementMap.putIfAbsent(nodePath, newAnnouncement);
             if (announcement == null) {
@@ -249,7 +254,7 @@ public class PresenceService extends AbstractActiveService implements Watcher {
                     logger.warn("hide():  error trying to remove node:  " + e, e);
                 }
             } else {
-                // TODO: do announcement
+                // do announcement
                 try {
                     Map<String, Object> attributeMap = announcement.getNodeInfo().getAttributeMap();
                     byte[] leafData = null;
@@ -271,7 +276,6 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
     @Override
     public void init() {
-        pathCache = new PathCache(pathCacheSize, concurrencyLevel, getZkClient());
 
         if (this.getHeartbeatIntervalMillis() < 1000) {
             this.setHeartbeatIntervalMillis(DEFAULT_HEARTBEAT_INTERVAL_MILLIS);
@@ -286,7 +290,7 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
     @Override
     public void process(WatchedEvent event) {
-        // log if >DEBUG
+        // log if DEBUG
         if (logger.isDebugEnabled()) {
             logger.debug("***** Received ZooKeeper Event:\n"
                     + ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));

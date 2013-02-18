@@ -1,7 +1,9 @@
 package org.kompany.overlord;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -9,6 +11,10 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Id;
+import org.kompany.overlord.util.PathCache;
 import org.kompany.overlord.zookeeper.ResilientZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +31,11 @@ public class Sovereign {
 
     private static final Logger logger = LoggerFactory.getLogger(Sovereign.class);
 
+    public static final List<ACL> DEFAULT_ACL_LIST = new ArrayList<ACL>();
+    static {
+        DEFAULT_ACL_LIST.add(new ACL(ZooDefs.Perms.ALL, new Id("world", "anyone")));
+    }
+
     private ZkClient zkClient;
 
     private Map<String, ServiceWrapper> serviceMap = new HashMap<String, ServiceWrapper>();
@@ -32,6 +43,8 @@ public class Sovereign {
     private Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
 
     private PathScheme pathScheme = new DefaultPathScheme("/sovereign/user", "/sovereign/internal");
+
+    private PathCache pathCache;
 
     private ScheduledExecutorService executorService;
 
@@ -47,12 +60,18 @@ public class Sovereign {
     }
 
     public Sovereign(String zkConnectString, int sessionTimeoutMillis) {
+        this(zkConnectString, sessionTimeoutMillis, 1024, 8);
+    }
+
+    public Sovereign(String zkConnectString, int sessionTimeoutMillis, int pathCacheSize, int pathCacheConcurrencyLevel) {
         this();
         try {
             zkClient = new ResilientZooKeeper(zkConnectString, sessionTimeoutMillis);
         } catch (IOException e) {
             throw new IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
         }
+
+        this.pathCache = new PathCache(pathCacheSize, pathCacheConcurrencyLevel, getZkClient());
     }
 
     public ZkClient getZkClient() {
@@ -75,6 +94,17 @@ public class Sovereign {
             throw new IllegalStateException("Cannot set pathScheme once started!");
         }
         this.pathScheme = pathScheme;
+    }
+
+    public PathCache getPathCache() {
+        return pathCache;
+    }
+
+    public void setPathCache(PathCache pathCache) {
+        if (started) {
+            throw new IllegalStateException("Cannot set pathCache once started!");
+        }
+        this.pathCache = pathCache;
     }
 
     public int getThreadPoolSize() {
@@ -102,16 +132,12 @@ public class Sovereign {
     }
 
     void register(String serviceName, Service service) {
-        if (started) {
-            throw new IllegalStateException("Cannot register services once started!");
-        }
-        if (zkClient == null) {
-            throw new IllegalStateException("Cannot register services before ZooKeeper client has been populated!");
-        }
+        throwExceptionIfNotOkayToRegister();
 
         // set with path scheme
         service.setPathScheme(pathScheme);
         service.setZkClient(zkClient);
+        service.setPathCache(pathCache);
         service.init();
 
         // add to zkClient's list of watchers if Watcher interface is
@@ -125,15 +151,20 @@ public class Sovereign {
     }
 
     public synchronized void registerServices(Map<String, Service> serviceMap) {
-        if (started) {
-            throw new IllegalStateException("Cannot register services once started!");
-        }
-        if (zkClient == null) {
-            throw new IllegalStateException("Cannot register services before ZooKeeper client has been populated!");
-        }
+        throwExceptionIfNotOkayToRegister();
 
         for (String serviceName : serviceMap.keySet()) {
             register(serviceName, serviceMap.get(serviceName));
+        }
+    }
+
+    void throwExceptionIfNotOkayToRegister() {
+        if (started) {
+            throw new IllegalStateException("Cannot register services once started!");
+        }
+        if (zkClient == null || pathCache == null) {
+            throw new IllegalStateException(
+                    "Cannot register services before zkClient and pathCache has been populated!");
         }
     }
 

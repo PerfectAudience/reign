@@ -1,5 +1,7 @@
 package org.kompany.overlord;
 
+import org.kompany.overlord.util.PathCache;
+
 /**
  * Common interface for framework service plug-ins.<br/>
  * <br/>
@@ -15,6 +17,8 @@ package org.kompany.overlord;
  * 
  */
 public interface Service {
+
+    public void setPathCache(PathCache pathCache);
 
     /**
      * 
