@@ -19,6 +19,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
@@ -950,6 +951,13 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
         }
 
+        /***** pass event on to registered Watchers *****/
+        if (event.getType() != EventType.None) {
+            for (Watcher watcher : watcherSet) {
+                watcher.process(event);
+            }
+        }
+
         /***** process events *****/
         switch (event.getType()) {
         case NodeChildrenChanged:
@@ -980,11 +988,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             break;
         default:
             logger.warn("Unhandled event type:  eventType=" + event.getType() + "; eventState=" + event.getState());
-        }
-
-        /***** pass event on to registered Watchers *****/
-        for (Watcher watcher : watcherSet) {
-            watcher.process(event);
         }
 
     }// process

@@ -7,7 +7,6 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.ACL;
 import org.kompany.overlord.PathScheme;
 import org.kompany.overlord.ZkClient;
-import org.kompany.overlord.presence.PresenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class ZkUtil {
-    private static final Logger logger = LoggerFactory.getLogger(PresenceService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ZkUtil.class);
 
     /**
      * Creates path, including parent nodes if necessary.

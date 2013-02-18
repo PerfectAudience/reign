@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.EventType;
@@ -25,9 +26,13 @@ public class PathCache implements Watcher {
 
     private ConcurrentMap<String, PathCacheEntry> cache;
 
+    private ZkClient zkClient;
+
     public PathCache(int maxSize, int concurrencyLevel, ZkClient zkClient) {
         cache = new ConcurrentLinkedHashMap.Builder<String, PathCacheEntry>().maximumWeightedCapacity(10000)
                 .initialCapacity(maxSize).concurrencyLevel(concurrencyLevel).build();
+
+        this.zkClient = zkClient;
 
         zkClient.register(this);
     }
@@ -78,17 +83,22 @@ public class PathCache implements Watcher {
         }
 
         /** process events **/
+        String path = event.getPath();
         PathCacheEntry removed = null;
+        boolean updateRequired = false;
         switch (event.getType()) {
         case NodeChildrenChanged:
-            removed = cache.remove(event.getPath());
+            updateRequired = true;
             break;
         case NodeCreated:
+            // don't do anything until it is in the cache through other usages
+            break;
         case NodeDataChanged:
-            removed = cache.remove(event.getPath());
+            updateRequired = true;
             break;
         case NodeDeleted:
-            removed = cache.remove(event.getPath());
+            logger.info("Change detected:  removing cache entry:  path={}", path);
+            removed = cache.remove(path);
             break;
         case None:
         default:
@@ -96,8 +106,43 @@ public class PathCache implements Watcher {
         }
 
         /** refresh removed data **/
-        if (removed != null && event.getType() != EventType.NodeDeleted) {
-            // TODO: refresh data from Zookeeper
+        if (updateRequired) {
+            // repopulate from ZK
+            try {
+                byte[] bytes = null;
+                List<String> children = null;
+
+                // see what we have in cache
+                PathCacheEntry cacheEntry = this.get(path);
+                if (cacheEntry != null) {
+                    bytes = cacheEntry.getBytes();
+                    children = cacheEntry.getChildren();
+                }
+
+                // load data from ZK
+                Stat stat = new Stat();
+
+                if (event.getType() == EventType.NodeDataChanged) {
+                    logger.info("Change detected:  updating path data:  path={}", path);
+                    bytes = zkClient.getData(path, true, stat);
+                }
+
+                if (event.getType() == EventType.NodeChildrenChanged) {
+                    logger.info("Change detected:  updating path children:  path={}", path);
+                    children = zkClient.getChildren(path, false, stat);
+                }
+
+                // update cache
+                this.put(path, stat, bytes, children);
+
+            } catch (KeeperException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
         }
     }
 

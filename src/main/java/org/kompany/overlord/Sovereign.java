@@ -71,7 +71,7 @@ public class Sovereign {
             throw new IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
         }
 
-        this.pathCache = new PathCache(pathCacheSize, pathCacheConcurrencyLevel, getZkClient());
+        this.pathCache = new PathCache(pathCacheSize, pathCacheConcurrencyLevel, zkClient);
     }
 
     public ZkClient getZkClient() {
