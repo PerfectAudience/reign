@@ -7,14 +7,13 @@ package org.kompany.overlord;
  */
 public interface PathScheme {
 
-    /**
-     * 
-     * @param basePath
-     *            absolute path
-     */
-    public void setBasePath(String basePath);
-
     public String getBasePath();
+
+    public String getInternalBasePath();
+
+    public String getInternalAbsolutePath(PathType pathType);
+
+    public String getInternalAbsolutePath(PathType pathType, String relativePath);
 
     public String getAbsolutePath(PathType pathType);
 

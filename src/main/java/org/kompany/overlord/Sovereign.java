@@ -1,8 +1,8 @@
 package org.kompany.overlord;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Entry point into framework functionality.
  * 
+ * Should be set up in a single thread.
+ * 
  * @author ypai
  * 
  */
@@ -25,11 +27,11 @@ public class Sovereign {
 
     private ZkClient zkClient;
 
-    private Map<String, ServiceWrapper> serviceMap = new ConcurrentHashMap<String, ServiceWrapper>();
+    private Map<String, ServiceWrapper> serviceMap = new HashMap<String, ServiceWrapper>();
 
-    private Map<String, Future<?>> futureMap = new ConcurrentHashMap<String, Future<?>>();
+    private Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
 
-    private PathScheme pathScheme = new DefaultPathScheme();
+    private PathScheme pathScheme = new DefaultPathScheme("/sovereign/user", "/sovereign/internal");
 
     private ScheduledExecutorService executorService;
 
@@ -99,7 +101,7 @@ public class Sovereign {
         return serviceWrapper.getService();
     }
 
-    public synchronized void register(String serviceName, Service service) {
+    void register(String serviceName, Service service) {
         if (started) {
             throw new IllegalStateException("Cannot register services once started!");
         }
@@ -123,6 +125,13 @@ public class Sovereign {
     }
 
     public synchronized void registerServices(Map<String, Service> serviceMap) {
+        if (started) {
+            throw new IllegalStateException("Cannot register services once started!");
+        }
+        if (zkClient == null) {
+            throw new IllegalStateException("Cannot register services before ZooKeeper client has been populated!");
+        }
+
         for (String serviceName : serviceMap.keySet()) {
             register(serviceName, serviceMap.get(serviceName));
         }

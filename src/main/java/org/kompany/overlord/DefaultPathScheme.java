@@ -12,11 +12,41 @@ public class DefaultPathScheme implements PathScheme {
 
     private static final Pattern PATTERN_PATH_TOKENIZER = Pattern.compile("/");
 
-    private String basePath = "/sovereign";
+    private String basePath;
 
-    @Override
+    private String internalBasePath;
+
+    public DefaultPathScheme() {
+
+    }
+
+    public DefaultPathScheme(String basePath, String internalBasePath) {
+        this();
+        this.basePath = basePath;
+        this.internalBasePath = internalBasePath;
+    }
+
     public void setBasePath(String basePath) {
         this.basePath = basePath;
+    }
+
+    public void setInternalBasePath(String basePath) {
+        this.internalBasePath = internalBasePath;
+    }
+
+    @Override
+    public String getInternalBasePath() {
+        return internalBasePath;
+    }
+
+    @Override
+    public String getInternalAbsolutePath(PathType pathType) {
+        return internalBasePath + "/" + pathType;
+    }
+
+    @Override
+    public String getInternalAbsolutePath(PathType pathType, String relativePath) {
+        return internalBasePath + "/" + pathType + "/" + relativePath;
     }
 
     @Override

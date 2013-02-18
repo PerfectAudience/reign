@@ -37,18 +37,18 @@ public class BasicUsage {
         // this is how you would normally get a service
         presenceService = (PresenceService) sovereign.getService("presence");
 
-        // basic node announcement
+        // basic service node announcement
         presenceService.announce("examples", "service1", "node1");
 
-        // node with some additional info
+        // service node accouncement with some additional info
         Map<String, Object> nodeAttributes = new HashMap<String, Object>();
         nodeAttributes.put("port", 1234);
         presenceService.announce("examples", "service2", "node1", nodeAttributes);
 
-        Thread.sleep(10000);
+        // sleep to allow initialization and announcements to happen
+        Thread.sleep(20000);
 
         sovereign.stop();
 
-        System.out.println("***** END *****");
     }
 }
