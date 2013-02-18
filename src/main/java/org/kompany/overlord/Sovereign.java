@@ -1,13 +1,14 @@
 package org.kompany.overlord;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.Watcher;
+import org.kompany.overlord.zookeeper.ResilientZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,16 +26,22 @@ public class Sovereign {
 
     private Map<String, ServiceWrapper> serviceMap = new HashMap<String, ServiceWrapper>();
 
-    private PathScheme pathScheme;
+    private PathScheme pathScheme = new DefaultPathScheme();
 
-    private ExecutorService executorService;
+    private ScheduledExecutorService executorService;
 
     private volatile boolean started = false;
     private volatile boolean shutdown = false;
 
-    private int threadPoolSizeMin = 3;
+    private int threadPoolSize = 3;
 
-    private int threadPoolSizeMax = 6;
+    public Sovereign(String zkConnectString, int sessionTimeoutMillis) {
+        try {
+            zkClient = new ResilientZooKeeper(zkConnectString, sessionTimeoutMillis);
+        } catch (IOException e) {
+            throw new IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
+        }
+    }
 
     public ZkClient getZkClient() {
         return zkClient;
@@ -52,20 +59,12 @@ public class Sovereign {
         this.pathScheme = pathScheme;
     }
 
-    public int getThreadPoolSizeMin() {
-        return threadPoolSizeMin;
+    public int getThreadPoolSize() {
+        return threadPoolSize;
     }
 
-    public void setThreadPoolSizeMin(int threadPoolSizeMin) {
-        this.threadPoolSizeMin = threadPoolSizeMin;
-    }
-
-    public int getThreadPoolSizeMax() {
-        return threadPoolSizeMax;
-    }
-
-    public void setThreadPoolSizeMax(int threadPoolSizeMax) {
-        this.threadPoolSizeMax = threadPoolSizeMax;
+    public void setThreadPoolSize(int threadPoolSize) {
+        this.threadPoolSize = threadPoolSize;
     }
 
     public boolean isStarted() {
@@ -89,6 +88,9 @@ public class Sovereign {
         if (started) {
             throw new IllegalStateException("Cannot register services once started!");
         }
+        if (zkClient == null) {
+            throw new IllegalStateException("Cannot register services before ZooKeeper client has been populated!");
+        }
 
         // set with path scheme
         service.setPathScheme(pathScheme);
@@ -98,6 +100,7 @@ public class Sovereign {
         // add to zkClient's list of watchers if Watcher interface is
         // implemented
         if (service instanceof Watcher) {
+            logger.debug("zkClient={}", zkClient);
             zkClient.register((Watcher) service);
         }
 
@@ -105,10 +108,6 @@ public class Sovereign {
     }
 
     public synchronized void registerServices(Map<String, Service> serviceMap) {
-        if (started) {
-            throw new IllegalStateException("Cannot register services once started!");
-        }
-
         for (String serviceName : serviceMap.keySet()) {
             register(serviceName, serviceMap.get(serviceName));
         }
@@ -123,12 +122,24 @@ public class Sovereign {
         /** init executor **/
         this.executorService = this.createExecutorService();
 
+        /** start services running **/
+        for (ServiceWrapper serviceWrapper : serviceMap.values()) {
+            logger.debug("Checking service:  {}", serviceWrapper.getService().getClass().getName());
+
+            // execute if not a continuously running service and not shutdown
+            if (!isShutdown() && serviceWrapper.isSubmittable()) {
+                logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
+                executorService.scheduleWithFixedDelay(serviceWrapper, 0, serviceWrapper.getIntervalMillis(),
+                        TimeUnit.MILLISECONDS);
+            }// if
+        }// for
+
         /** start main thread **/
-        Thread mainThread = this.createMainThread();
-        mainThread.start();
+        // Thread mainThread = this.createMainThread();
+        // mainThread.start();
     }
 
-    public synchronized void destroy() {
+    public synchronized void stop() {
         if (shutdown) {
             return;
         }
@@ -141,7 +152,12 @@ public class Sovereign {
         }
     }
 
-    private ExecutorService createExecutorService() {
+    /**
+     * Creates and appropriately sizes executor service for services configured.
+     * 
+     * @return
+     */
+    private ScheduledExecutorService createExecutorService() {
         // get number of continuously running services
         int continuouslyRunningCount = 0;
         for (ServiceWrapper serviceWrapper : serviceMap.values()) {
@@ -149,37 +165,21 @@ public class Sovereign {
                 continuouslyRunningCount++;
             }
         }
-        return new ThreadPoolExecutor(continuouslyRunningCount + this.getThreadPoolSizeMin(), continuouslyRunningCount
-                + this.getThreadPoolSizeMax(), 10, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>()) {
-
-            protected void beforeExecute(Thread t, Runnable r) {
-                ((ServiceWrapper) r).setRunning(true);
-                ((ServiceWrapper) r).setLastStartedTimestampMillis(System.currentTimeMillis());
-            }
-
-            protected void afterExecute(Runnable r, Throwable t) {
-                ((ServiceWrapper) r).setRunning(false);
-                ((ServiceWrapper) r).setLastCompletedTimestampMillis(System.currentTimeMillis());
-            }
-        };
+        return new ScheduledThreadPoolExecutor(continuouslyRunningCount + this.getThreadPoolSize());
     }
 
+    /**
+     * Creates the thread that submits the services for regular execution.
+     * 
+     * @return
+     */
     private Thread createMainThread() {
-        final ExecutorService finalExecutorService = this.executorService;
+        final ScheduledExecutorService finalExecutorService = this.executorService;
         Thread mainThread = new Thread() {
+            @Override
             public void run() {
                 while (true) {
-                    for (ServiceWrapper serviceWrapper : serviceMap.values()) {
-                        long currentTimestampMillis = System.currentTimeMillis();
-
-                        // execute if not a continuously running service and not
-                        // shutdown
-                        if (!isShutdown()) {
-                            if (serviceWrapper.isSubmittable(currentTimestampMillis)) {
-                                finalExecutorService.submit(serviceWrapper);
-                            }
-                        }// if
-                    }// for
+                    // TODO: perform any framework maintenance?
 
                     try {
                         Thread.sleep(500);
@@ -195,47 +195,17 @@ public class Sovereign {
     }
 
     /**
-     * Wrapper providing additional properties that allow us to track service
-     * execution metadata.
+     * Wrapper providing additional properties that allow us to track service execution metadata.
      * 
      * @author ypai
      * 
      */
     private static class ServiceWrapper implements Runnable {
         private Service service;
-        private volatile long lastStartedTimestampMillis;
-        private volatile long lastCompletedTimestampMillis;
-        private volatile boolean running;
+        private boolean running = false;
 
         public ServiceWrapper(Service service) {
             this.service = service;
-        }
-
-        public long getLastStartedTimestampMillis() {
-            return lastStartedTimestampMillis;
-        }
-
-        public void setLastStartedTimestampMillis(long lastStartedTimestampMillis) {
-            this.lastStartedTimestampMillis = lastStartedTimestampMillis;
-        }
-
-        public long getLastCompletedTimestampMillis() {
-            return lastCompletedTimestampMillis;
-        }
-
-        public void setLastCompletedTimestampMillis(long lastCompletedTimestampMillis) {
-            this.lastCompletedTimestampMillis = lastCompletedTimestampMillis;
-        }
-
-        public boolean isSubmittable(long currentTimestampMillis) {
-            return isActiveService()
-                    && !running
-                    && currentTimestampMillis - lastStartedTimestampMillis > ((ActiveService) this.service)
-                            .getExecutionIntervalMillis();
-        }
-
-        public void setRunning(boolean running) {
-            this.running = running;
         }
 
         public Service getService() {
@@ -246,13 +216,30 @@ public class Sovereign {
             return service instanceof ActiveService;
         }
 
-        public boolean isAlwaysActive() {
+        public boolean isSubmittable() {
+            return isActiveService() && !isRunning();
+        }
+
+        public synchronized boolean isAlwaysActive() {
             return ((ActiveService) this.service).getExecutionIntervalMillis() < 1;
         }
 
+        public synchronized boolean isRunning() {
+            return running;
+        }
+
+        public long getIntervalMillis() {
+            return ((ActiveService) service).getExecutionIntervalMillis();
+        }
+
         @Override
-        public void run() {
+        public synchronized void run() {
+            this.running = true;
+
+            logger.debug("Calling {}.perform()", service.getClass().getName());
             ((ActiveService) this.service).perform();
+
+            this.running = false;
         }
 
     }

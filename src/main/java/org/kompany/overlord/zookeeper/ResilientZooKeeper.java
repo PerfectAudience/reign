@@ -27,8 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Replacement for the ZooKeeper class that offers retry and re-connects when
- * there are session failures.
+ * Replacement for the ZooKeeper class that offers retry and re-connects when there are session failures.
  * 
  * Also allows registration of additional Watcher(s).
  * 
@@ -49,7 +48,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
     private String connectString;
 
-    private int sessionTimeout;
+    private int sessionTimeoutMillis;
 
     private static long ASSUME_ERROR_TIMEOUT_MS = 60000;
 
@@ -62,15 +61,15 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     /** object to synchronize on for connection/re-connection attempts */
     private ReentrantLock connectionLock = new ReentrantLock();
 
-    public ResilientZooKeeper(String connectString, int sessionTimeout, Watcher watcher, long sessionId,
-            byte[] sessionPasswd) throws IOException {
-        this.sessionTimeout = sessionTimeout;
-        this.zooKeeper = new ZooKeeper(connectString, sessionTimeout, watcher, sessionId, sessionPasswd);
+    public ResilientZooKeeper(String connectString, int sessionTimeoutMillis, long sessionId, byte[] sessionPasswd)
+            throws IOException {
+        this.sessionTimeoutMillis = sessionTimeoutMillis;
+        this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this, sessionId, sessionPasswd);
     }
 
-    public ResilientZooKeeper(String connectString, int sessionTimeout, Watcher watcher) throws IOException {
-        this.sessionTimeout = sessionTimeout;
-        this.zooKeeper = new ZooKeeper(connectString, sessionTimeout, watcher);
+    public ResilientZooKeeper(String connectString, int sessionTimeoutMillis) throws IOException {
+        this.sessionTimeoutMillis = sessionTimeoutMillis;
+        this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this);
     }
 
     public BackoffStrategy getDefaultBackoffStrategy() {
@@ -82,11 +81,11 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     }
 
     public int getSessionTimeout() {
-        return sessionTimeout;
+        return sessionTimeoutMillis;
     }
 
     public void setSessionTimeout(int sessionTimeout) {
-        this.sessionTimeout = sessionTimeout;
+        this.sessionTimeoutMillis = sessionTimeout;
     }
 
     public String getConnectString() {
@@ -258,6 +257,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         this.zooKeeper.getChildren(path, watch, cb, ctx);
     }
 
+    @Override
     public List<String> getChildren(final String path, final boolean watch, final Stat stat) throws KeeperException,
             InterruptedException {
 
@@ -350,6 +350,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         return zooKeeper.getSessionPasswd();
     }
 
+    @Override
     public void register(Watcher watcher) {
         this.watcherSet.add(watcher);
     }
@@ -655,6 +656,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws InterruptedException
      * @throws KeeperException
      */
+    @Override
     public void delete(final String path, final int version) throws InterruptedException, KeeperException {
 
         VoidZooKeeperAction zkAction = new VoidZooKeeperAction(defaultBackoffStrategy) {
@@ -750,6 +752,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws KeeperException
      * @throws InterruptedException
      */
+    @Override
     public byte[] getData(final String path, final boolean watch, final Stat stat) throws KeeperException,
             InterruptedException {
 
@@ -843,8 +846,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      */
     protected boolean connect(BackoffStrategy backoffStrategy, boolean force) {
         /**
-         * explicitly set connected flag to false so we will close current
-         * connection and attempt reconnect
+         * explicitly set connected flag to false so we will close current connection and attempt reconnect
          **/
         if (force) {
             this.connected = false;
@@ -924,8 +926,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             }// while
 
             /**
-             * return current value of connected: in effect tells us whether
-             * reconnection was successful
+             * return current value of connected: in effect tells us whether reconnection was successful
              **/
             return this.connected;
         } finally {

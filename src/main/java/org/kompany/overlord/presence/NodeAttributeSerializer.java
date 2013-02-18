@@ -10,7 +10,7 @@ import java.util.Map;
  */
 public interface NodeAttributeSerializer {
 
-    public byte[] serialize(Map<String, Object> map) throws Throwable;
+    public byte[] serialize(Map<String, Object> map) throws Exception;
 
-    public Map<String, Object> deserialize(byte[] bytes) throws Throwable;
+    public Map<String, Object> deserialize(byte[] bytes) throws Exception;
 }

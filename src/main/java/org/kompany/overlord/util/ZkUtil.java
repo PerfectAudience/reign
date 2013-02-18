@@ -11,6 +11,12 @@ import org.kompany.overlord.presence.PresenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Convenience functions to make operating with Zookeeper easier.
+ * 
+ * @author ypai
+ * 
+ */
 public class ZkUtil {
     private static final Logger logger = LoggerFactory.getLogger(PresenceService.class);
 

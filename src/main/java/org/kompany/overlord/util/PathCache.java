@@ -28,6 +28,8 @@ public class PathCache implements Watcher {
     public PathCache(int maxSize, int concurrencyLevel, ZkClient zkClient) {
         cache = new ConcurrentLinkedHashMap.Builder<String, PathCacheEntry>().maximumWeightedCapacity(10000)
                 .initialCapacity(maxSize).concurrencyLevel(concurrencyLevel).build();
+
+        zkClient.register(this);
     }
 
     /**

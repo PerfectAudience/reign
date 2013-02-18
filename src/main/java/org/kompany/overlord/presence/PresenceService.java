@@ -1,19 +1,28 @@
 package org.kompany.overlord.presence;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractActiveService;
 import org.kompany.overlord.PathType;
 import org.kompany.overlord.util.PathCache;
+import org.kompany.overlord.util.ZkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,20 +35,29 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(PresenceService.class);
 
+    public static final int DEFAULT_HEARTBEAT_INTERVAL_MILLIS = 5000;
+
+    public static final List<ACL> DEFAULT_ACL_LIST = new ArrayList<ACL>();
+    static {
+        DEFAULT_ACL_LIST.add(new ACL(ZooDefs.Perms.ALL, new Id("world", "anyone")));
+    }
+
     private int pathCacheSize = 250;
 
     private int concurrencyLevel = 8;
 
     private PathCache pathCache;
 
-    private NodeAttributeSerializer nodeAttributeSerializer;
+    private NodeAttributeSerializer nodeAttributeSerializer = new JsonNodeAttributeSerializer();
+
+    private ConcurrentMap<String, Announcement> announcementMap = new ConcurrentHashMap<String, Announcement>();
+
+    private ZkUtil zkUtil = new ZkUtil();
 
     public List<String> getAvailableServices(String clusterId) {
-        /** validate args **/
-        validatePathFragment(clusterId);
-
         /** get node data from zk **/
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId);
+        String clusterPath = getPathScheme().buildRelativePath(clusterId);
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterPath);
         List<String> children = null;
         try {
             Stat stat = new Stat();
@@ -63,12 +81,9 @@ public class PresenceService extends AbstractActiveService implements Watcher {
     }
 
     public ServiceInfo lookup(String clusterId, String serviceId, NodeAttributeSerializer nodeAttributeSerializer) {
-        /** validate args **/
-        validatePathFragment(clusterId);
-        validatePathFragment(serviceId);
-
         /** get node data from zk **/
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId);
+        String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
         List<String> children = null;
         try {
             Stat stat = new Stat();
@@ -105,13 +120,9 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
     public NodeInfo lookup(String clusterId, String serviceId, String nodeId,
             NodeAttributeSerializer nodeAttributeSerializer) {
-        /** validate args **/
-        validatePathFragment(clusterId);
-        validatePathFragment(serviceId);
-        validatePathFragment(nodeId);
-
         /** get node data from zk **/
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId);
+        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
         byte[] bytes = null;
         try {
             Stat stat = new Stat();
@@ -144,44 +155,124 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         return result;
     }
 
+    public void announce(String clusterId, String serviceId, String nodeId) {
+        announce(clusterId, serviceId, nodeId, null, null);
+    }
+
+    public void announce(String clusterId, String serviceId, String nodeId, Map<String, Object> attributeMap) {
+        announce(clusterId, serviceId, nodeId, attributeMap, null);
+    }
+
+    /**
+     * This method only has to be called once per service node and/or when node data changes. Announcements happen
+     * asynchronously.
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param nodeId
+     * @param attributeMap
+     * @param nodeAttributeSerializer
+     */
     public void announce(String clusterId, String serviceId, String nodeId, Map<String, Object> attributeMap,
             NodeAttributeSerializer nodeAttributeSerializer) {
-        // TODO: implement
+        // defaults
+        if (nodeAttributeSerializer == null) {
+            nodeAttributeSerializer = this.getNodeAttributeSerializer();
+        }
+
+        // get announcement using path to node
+        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        Announcement announcement = this.getAnnouncement(nodePath);
+        announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
+
+        // update announcement
+        NodeInfo nodeInfo = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);
+        announcement.setNodeInfo(nodeInfo);
+
+        // mark as visible
+        announcement.setHidden(false);
     }
 
     public void hide(String clusterId, String serviceId, String nodeId) {
-        /** validate args **/
-        validatePathFragment(clusterId);
-        validatePathFragment(serviceId);
-        validatePathFragment(nodeId);
+        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        Announcement announcement = this.getAnnouncement(nodePath);
+        announcement.setHidden(true);
+    }
 
-        /** get node data from zk **/
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId);
-        try {
-            getZkClient().delete(path, -1);
-        } catch (KeeperException e) {
-            if (e.code() == Code.NONODE) {
-                logger.warn("hide():  error trying to remove node:  " + e + ":  node does not exist:  path={}", path);
-            } else {
-                logger.warn("hide():  error trying to remove node:  " + e, e);
+    public void unhide(String clusterId, String serviceId, String nodeId) {
+        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        Announcement announcement = this.getAnnouncement(nodePath);
+        announcement.setHidden(false);
+    }
+
+    Announcement getAnnouncement(String nodePath) {
+        // create announcement if necessary
+        Announcement announcement = announcementMap.get(nodePath);
+        if (announcement == null) {
+            Announcement newAnnouncement = new Announcement();
+            newAnnouncement.setAclList(DEFAULT_ACL_LIST);
+
+            announcement = announcementMap.putIfAbsent(nodePath, newAnnouncement);
+            if (announcement == null) {
+                announcement = newAnnouncement;
             }
-        } catch (InterruptedException e) {
-            logger.warn("hide():  error trying to remove node:  " + e, e);
         }
+        return announcement;
     }
 
     @Override
     public void perform() {
-        /** announce occasionally **/
+        /** perform revealing and hiding announcements regularly **/
+        logger.debug("Processing announcements:  announcementMap.size={}", announcementMap.size());
+        Set<String> nodePathSet = announcementMap.keySet();
+        for (String nodePath : nodePathSet) {
+            Announcement announcement = announcementMap.get(nodePath);
 
-        /**
-         * check for "zombie" presence nodes that have not been touched recently
-         **/
+            // skip if announcement no longer exists
+            if (announcement == null) {
+                continue;
+            }
+
+            // announce or hide node
+            String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+            if (announcement.isHidden()) {
+                // delete
+                try {
+                    getZkClient().delete(path, -1);
+                } catch (KeeperException e) {
+                    if (e.code() == Code.NONODE) {
+                        logger.debug("Node does not exist:  path={}", path);
+                    } else {
+                        logger.warn("Error trying to remove node:  " + e + ":  path=" + path, e);
+                    }
+                } catch (InterruptedException e) {
+                    logger.warn("hide():  error trying to remove node:  " + e, e);
+                }
+            } else {
+                // TODO: do announcement
+                try {
+                    byte[] leafData = announcement.getNodeAttributeSerializer().serialize(
+                            announcement.getNodeInfo().getAttributeMap());
+                    String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
+                            announcement.getAclList(), CreateMode.EPHEMERAL, -1);
+
+                    logger.debug("Announced:  path={}", pathUpdated);
+                } catch (Exception e) {
+                    logger.error("Error while announcing:  " + e + ":  path=" + path, e);
+                }
+            }// if
+        }// for
+
+        // TODO: zombie node check?
     }
 
     @Override
     public void init() {
         pathCache = new PathCache(pathCacheSize, concurrencyLevel, getZkClient());
+
+        if (this.getHeartbeatIntervalMillis() < 1000) {
+            this.setHeartbeatIntervalMillis(DEFAULT_HEARTBEAT_INTERVAL_MILLIS);
+        }
     }
 
     @Override
@@ -198,9 +289,6 @@ public class PresenceService extends AbstractActiveService implements Watcher {
                     + ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
-
-        // let cache process event
-        pathCache.process(event);
 
     }
 
@@ -240,10 +328,4 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         this.setExecutionIntervalMillis(heartbeatIntervalMillis);
     }
 
-    void validatePathFragment(String pathFragment) {
-        if (pathFragment.indexOf('/') != -1) {
-            throw new IllegalArgumentException(
-                    "validatePathFragment():  '/' character is not allowed in path:  pathFragment=" + pathFragment);
-        }
-    }
 }

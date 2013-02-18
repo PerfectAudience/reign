@@ -1,7 +1,7 @@
 package org.kompany.overlord;
 
 /**
- * Common interface for framework plug-ins.<br/>
+ * Common interface for framework service plug-ins.<br/>
  * <br/>
  * Life cycle for a service:<br/>
  * <ol>
