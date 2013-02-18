@@ -84,7 +84,6 @@ public class PathCache implements Watcher {
 
         /** process events **/
         String path = event.getPath();
-        PathCacheEntry removed = null;
         boolean updateRequired = false;
         switch (event.getType()) {
         case NodeChildrenChanged:
@@ -97,8 +96,10 @@ public class PathCache implements Watcher {
             updateRequired = true;
             break;
         case NodeDeleted:
-            logger.info("Change detected:  removing cache entry:  path={}", path);
-            removed = cache.remove(path);
+            PathCacheEntry removed = cache.remove(path);
+            if (removed != null) {
+                logger.info("Change detected:  removed cache entry:  path={}", path);
+            }
             break;
         case None:
         default:

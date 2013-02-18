@@ -885,12 +885,12 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
                     long waitStartTimestamp = System.currentTimeMillis();
 
                     if (logger.isInfoEnabled()) {
-                        logger.info("Waiting for establishment of ZooKeeper session:  connectString="
-                                + getConnectString());
+                        logger.info("Waiting for establishment of ZooKeeper session:  connectString={}",
+                                getConnectString());
                     }
 
                     // wait to be notified that the connection was established
-                    synchronized (this.connectionLock) {
+                    synchronized (this) {
                         this.wait(ASSUME_ERROR_TIMEOUT_MS + 10000);
                     }
 
@@ -967,20 +967,25 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         case None:
             Event.KeeperState eventState = event.getState();
             if (eventState == Event.KeeperState.SyncConnected) {
-                synchronized (this.connectionLock) {
+                logger.info("SyncConnected:  notifying all waiters...");
+                synchronized (this) {
                     // notify waiting threads that connection has been
                     // established
                     this.notifyAll();
                 }
+                logger.info("SyncConnected:  notified all waiters");
             } else if (eventState == Event.KeeperState.Disconnected || eventState == Event.KeeperState.Expired) {
                 // disconnected; close ZK connection and reconnect
                 if (!this.shutdown) {
+                    logger.info("Attempting reconnection...");
                     connect(defaultBackoffStrategy, true);
                 } else {
                     // should not get here but notify waiting threads
-                    synchronized (this.connectionLock) {
+                    logger.info("Disconnected:  notifying all waiters...");
+                    synchronized (this) {
                         this.notifyAll();
                     }
+                    logger.info("Disconnected:  notified all waiters");
                 }
             } else {
                 logger.warn("Unhandled state:  eventType=" + event.getType() + "; eventState=" + eventState);
