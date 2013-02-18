@@ -1,8 +1,8 @@
 package org.kompany.overlord;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -25,9 +25,9 @@ public class Sovereign {
 
     private ZkClient zkClient;
 
-    private Map<String, ServiceWrapper> serviceMap = new HashMap<String, ServiceWrapper>();
+    private Map<String, ServiceWrapper> serviceMap = new ConcurrentHashMap<String, ServiceWrapper>();
 
-    private Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
+    private Map<String, Future<?>> futureMap = new ConcurrentHashMap<String, Future<?>>();
 
     private PathScheme pathScheme = new DefaultPathScheme();
 
@@ -58,6 +58,9 @@ public class Sovereign {
     }
 
     public void setZkClient(ZkClient zkClient) {
+        if (started) {
+            throw new IllegalStateException("Cannot set zkClient once started!");
+        }
         this.zkClient = zkClient;
     }
 
@@ -66,6 +69,9 @@ public class Sovereign {
     }
 
     public void setPathScheme(PathScheme pathScheme) {
+        if (started) {
+            throw new IllegalStateException("Cannot set pathScheme once started!");
+        }
         this.pathScheme = pathScheme;
     }
 
@@ -74,16 +80,19 @@ public class Sovereign {
     }
 
     public void setThreadPoolSize(int threadPoolSize) {
+        if (started) {
+            throw new IllegalStateException("Cannot set threadPoolSize once started!");
+        }
         this.threadPoolSize = threadPoolSize;
     }
 
-    public boolean isStarted() {
-        return started;
-    }
-
-    public boolean isShutdown() {
-        return shutdown;
-    }
+    // public boolean isStarted() {
+    // return started;
+    // }
+    //
+    // public boolean isShutdown() {
+    // return shutdown;
+    // }
 
     public Service getService(String serviceName) {
         ServiceWrapper serviceWrapper = this.serviceMap.get(serviceName);
@@ -133,7 +142,6 @@ public class Sovereign {
             @Override
             public void run() {
                 Sovereign.this.stop();
-
             }
         });
 
@@ -148,7 +156,7 @@ public class Sovereign {
             logger.debug("Checking service:  {}", serviceWrapper.getService().getClass().getName());
 
             // execute if not a continuously running service and not shutdown
-            if (!isShutdown() && serviceWrapper.isSubmittable()) {
+            if (!this.shutdown && serviceWrapper.isSubmittable()) {
                 logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
                 Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, 0,
                         serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
@@ -172,13 +180,13 @@ public class Sovereign {
 
         logger.info("SHUTDOWN:  begin");
 
-        // cancel all futures
+        /** cancel all futures **/
         logger.info("SHUTDOWN:  cancelling scheduled service tasks");
         for (Future<?> future : futureMap.values()) {
             future.cancel(false);
         }
 
-        // stop admin thread
+        /** stop admin thread **/
         logger.info("SHUTDOWN:  shutting down admin thread");
         try {
             if (adminThread != null) {
@@ -188,17 +196,17 @@ public class Sovereign {
             logger.warn("Interrupted during shutdown:  " + e, e);
         }
 
-        // stop executor
+        /** stop executor **/
         logger.info("SHUTDOWN:  shutting down executor");
         executorService.shutdown();
 
-        // clean up services
+        /** clean up services **/
         logger.info("SHUTDOWN:  cleaning up services");
         for (ServiceWrapper serviceWrapper : serviceMap.values()) {
             serviceWrapper.getService().destroy();
         }
 
-        // clean up zk client
+        /** clean up zk client **/
         logger.info("SHUTDOWN:  closing Zookeeper client");
         this.zkClient.close();
 
