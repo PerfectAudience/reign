@@ -63,11 +63,13 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
     public ResilientZooKeeper(String connectString, int sessionTimeoutMillis, long sessionId, byte[] sessionPasswd)
             throws IOException {
+        this.connectString = connectString;
         this.sessionTimeoutMillis = sessionTimeoutMillis;
         this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this, sessionId, sessionPasswd);
     }
 
     public ResilientZooKeeper(String connectString, int sessionTimeoutMillis) throws IOException {
+        this.connectString = connectString;
         this.sessionTimeoutMillis = sessionTimeoutMillis;
         this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this);
     }
@@ -101,7 +103,8 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         this.zooKeeper.addAuthInfo(scheme, auth);
     }
 
-    public void close() throws InterruptedException {
+    @Override
+    public void close() {
         this.connectionLock.lock();
         try {
             this.shutdown = true;
@@ -453,6 +456,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws InterruptedException
      */
 
+    @Override
     public String create(final String path, final byte[] data, final List<ACL> acl, final CreateMode createMode)
             throws KeeperException, InterruptedException {
 
@@ -702,6 +706,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws KeeperException
      * @throws InterruptedException
      */
+    @Override
     public Stat setData(final String path, final byte[] data, final int version) throws KeeperException,
             InterruptedException {
 

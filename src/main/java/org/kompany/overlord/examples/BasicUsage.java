@@ -34,6 +34,9 @@ public class BasicUsage {
         sovereign.start();
 
         /** use presence service to announce that service nodes are up **/
+        // this is how you would normally get a service
+        presenceService = (PresenceService) sovereign.getService("presence");
+
         // basic node announcement
         presenceService.announce("examples", "test-service1", "node1");
 
@@ -42,7 +45,10 @@ public class BasicUsage {
         nodeAttributes.put("port", 1234);
         presenceService.announce("examples", "test-service2", "node1", nodeAttributes);
 
-        Thread.sleep(5000);
+        Thread.sleep(10000);
 
+        sovereign.stop();
+
+        System.out.println("***** END *****");
     }
 }

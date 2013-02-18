@@ -251,8 +251,11 @@ public class PresenceService extends AbstractActiveService implements Watcher {
             } else {
                 // TODO: do announcement
                 try {
-                    byte[] leafData = announcement.getNodeAttributeSerializer().serialize(
-                            announcement.getNodeInfo().getAttributeMap());
+                    Map<String, Object> attributeMap = announcement.getNodeInfo().getAttributeMap();
+                    byte[] leafData = null;
+                    if (attributeMap.size() > 0) {
+                        leafData = announcement.getNodeAttributeSerializer().serialize(attributeMap);
+                    }
                     String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
                             announcement.getAclList(), CreateMode.EPHEMERAL, -1);
 

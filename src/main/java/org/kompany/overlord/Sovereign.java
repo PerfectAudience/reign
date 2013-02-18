@@ -3,6 +3,7 @@ package org.kompany.overlord;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -26,6 +27,8 @@ public class Sovereign {
 
     private Map<String, ServiceWrapper> serviceMap = new HashMap<String, ServiceWrapper>();
 
+    private Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
+
     private PathScheme pathScheme = new DefaultPathScheme();
 
     private ScheduledExecutorService executorService;
@@ -35,7 +38,14 @@ public class Sovereign {
 
     private int threadPoolSize = 3;
 
+    private Thread adminThread = null;
+
+    public Sovereign() {
+
+    }
+
     public Sovereign(String zkConnectString, int sessionTimeoutMillis) {
+        this();
         try {
             zkClient = new ResilientZooKeeper(zkConnectString, sessionTimeoutMillis);
         } catch (IOException e) {
@@ -76,10 +86,6 @@ public class Sovereign {
     }
 
     public Service getService(String serviceName) {
-        if (started) {
-            throw new IllegalStateException("Cannot use a service before starting!");
-        }
-
         ServiceWrapper serviceWrapper = this.serviceMap.get(serviceName);
         return serviceWrapper.getService();
     }
@@ -104,7 +110,7 @@ public class Sovereign {
             zkClient.register((Watcher) service);
         }
 
-        serviceMap.put(service.getClass().getSimpleName(), new ServiceWrapper(service));
+        serviceMap.put(serviceName, new ServiceWrapper(service));
     }
 
     public synchronized void registerServices(Map<String, Service> serviceMap) {
@@ -119,24 +125,43 @@ public class Sovereign {
         }
         started = true;
 
+        logger.info("START:  begin");
+
+        /** create graceful shutdown hook **/
+        logger.info("START:  add shutdown hook");
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                Sovereign.this.stop();
+
+            }
+        });
+
         /** init executor **/
+        logger.info("START:  initializing executor");
         this.executorService = this.createExecutorService();
 
         /** start services running **/
-        for (ServiceWrapper serviceWrapper : serviceMap.values()) {
+        logger.info("START:  schedule service tasks");
+        for (String serviceName : serviceMap.keySet()) {
+            ServiceWrapper serviceWrapper = serviceMap.get(serviceName);
             logger.debug("Checking service:  {}", serviceWrapper.getService().getClass().getName());
 
             // execute if not a continuously running service and not shutdown
             if (!isShutdown() && serviceWrapper.isSubmittable()) {
                 logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
-                executorService.scheduleWithFixedDelay(serviceWrapper, 0, serviceWrapper.getIntervalMillis(),
-                        TimeUnit.MILLISECONDS);
+                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, 0,
+                        serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
+                futureMap.put(serviceName, future);
             }// if
         }// for
 
         /** start main thread **/
-        // Thread mainThread = this.createMainThread();
-        // mainThread.start();
+        logger.info("START:  start admin thread");
+        adminThread = this.createAdminThread();
+        adminThread.start();
+
+        logger.info("START:  done");
     }
 
     public synchronized void stop() {
@@ -145,11 +170,39 @@ public class Sovereign {
         }
         shutdown = true;
 
+        logger.info("SHUTDOWN:  begin");
+
+        // cancel all futures
+        logger.info("SHUTDOWN:  cancelling scheduled service tasks");
+        for (Future<?> future : futureMap.values()) {
+            future.cancel(false);
+        }
+
+        // stop admin thread
+        logger.info("SHUTDOWN:  shutting down admin thread");
+        try {
+            if (adminThread != null) {
+                adminThread.join();
+            }
+        } catch (InterruptedException e) {
+            logger.warn("Interrupted during shutdown:  " + e, e);
+        }
+
+        // stop executor
+        logger.info("SHUTDOWN:  shutting down executor");
         executorService.shutdown();
 
+        // clean up services
+        logger.info("SHUTDOWN:  cleaning up services");
         for (ServiceWrapper serviceWrapper : serviceMap.values()) {
             serviceWrapper.getService().destroy();
         }
+
+        // clean up zk client
+        logger.info("SHUTDOWN:  closing Zookeeper client");
+        this.zkClient.close();
+
+        logger.info("SHUTDOWN:  done");
     }
 
     /**
@@ -173,25 +226,25 @@ public class Sovereign {
      * 
      * @return
      */
-    private Thread createMainThread() {
+    private Thread createAdminThread() {
         final ScheduledExecutorService finalExecutorService = this.executorService;
-        Thread mainThread = new Thread() {
+        Thread adminThread = new Thread() {
             @Override
             public void run() {
-                while (true) {
+                while (!shutdown) {
                     // TODO: perform any framework maintenance?
 
                     try {
-                        Thread.sleep(500);
+                        Thread.sleep(1000);
                     } catch (InterruptedException e) {
                         logger.warn("Interrupted while in mainThread:  " + e, e);
                     }
                 }// while
             }// run()
         };
-        mainThread.setName(this.getClass().getSimpleName() + "." + "main");
-        mainThread.setDaemon(true);
-        return mainThread;
+        adminThread.setName(this.getClass().getSimpleName() + "." + "admin");
+        adminThread.setDaemon(true);
+        return adminThread;
     }
 
     /**

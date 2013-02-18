@@ -35,7 +35,7 @@ public class ZkUtil {
             throws KeeperException {
 
         /***** if there is leaf data, try updating first to save on calls to ZK *****/
-        if (leafData != null && !createMode.isSequential()) {
+        if (!createMode.isSequential()) {
             try {
                 zkClient.setData(path, leafData, leafDataVersion);
                 return path;
@@ -44,6 +44,8 @@ public class ZkUtil {
                     if (logger.isDebugEnabled()) {
                         logger.debug("updatePath():  path does not exist for data update:  " + e + ":  path=" + path);
                     }
+                } else {
+                    logger.debug("updatePath():  " + e, e);
                 }
             } catch (InterruptedException e) {
                 logger.warn("Interrupted in updatePath():  " + e, e);

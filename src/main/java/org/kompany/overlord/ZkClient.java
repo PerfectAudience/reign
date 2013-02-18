@@ -18,6 +18,8 @@ public interface ZkClient {
 
     public void register(Watcher watcher);
 
+    public void close();
+
     public List<String> getChildren(final String path, final boolean watch, final Stat stat) throws KeeperException,
             InterruptedException;
 
