@@ -33,8 +33,14 @@ public class BasicUsage {
         /** start sovereign **/
         sovereign.start();
 
+        /** use presence service to announce that service nodes are up **/
+        // basic node announcement
         presenceService.announce("examples", "test-service1", "node1");
-        presenceService.announce("examples", "test-service2", "node1");
+
+        // node with some additional info
+        Map<String, Object> nodeAttributes = new HashMap<String, Object>();
+        nodeAttributes.put("port", 1234);
+        presenceService.announce("examples", "test-service2", "node1", nodeAttributes);
 
         Thread.sleep(5000);
 
