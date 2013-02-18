@@ -10,6 +10,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
@@ -27,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class Sovereign {
+public class Sovereign implements Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(Sovereign.class);
 
@@ -55,8 +58,10 @@ public class Sovereign {
 
     private Thread adminThread = null;
 
-    public Sovereign() {
+    /** List to ensure Watcher(s) are called in a specific order */
+    private List<Watcher> watcherList = new ArrayList<Watcher>();
 
+    public Sovereign() {
     }
 
     public Sovereign(String zkConnectString, int sessionTimeoutMillis) {
@@ -72,6 +77,20 @@ public class Sovereign {
         }
 
         this.pathCache = new PathCache(pathCacheSize, pathCacheConcurrencyLevel, zkClient);
+    }
+
+    @Override
+    public void process(WatchedEvent event) {
+        // log if DEBUG
+        if (logger.isDebugEnabled()) {
+            logger.debug("***** Received ZooKeeper Event:  {}",
+                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+
+        }
+
+        for (Watcher watcher : watcherList) {
+            watcher.process(event);
+        }
     }
 
     public ZkClient getZkClient() {
@@ -134,6 +153,8 @@ public class Sovereign {
     void register(String serviceName, Service service) {
         throwExceptionIfNotOkayToRegister();
 
+        logger.info("Registering service:  serviceName={}", serviceName);
+
         // set with path scheme
         service.setPathScheme(pathScheme);
         service.setZkClient(zkClient);
@@ -143,8 +164,8 @@ public class Sovereign {
         // add to zkClient's list of watchers if Watcher interface is
         // implemented
         if (service instanceof Watcher) {
-            logger.debug("zkClient={}", zkClient);
-            zkClient.register((Watcher) service);
+            logger.info("Adding as ZooKeeper watcher:  serviceName={}", serviceName);
+            watcherList.add((Watcher) service);
         }
 
         serviceMap.put(serviceName, new ServiceWrapper(service));
@@ -185,6 +206,13 @@ public class Sovereign {
             }
         });
 
+        /** watcher set-up **/
+        // register self as watcher
+        this.zkClient.register(this);
+
+        // pathCache should be first in list
+        this.watcherList.add(0, pathCache);
+
         /** init executor **/
         logger.info("START:  initializing executor");
         this.executorService = this.createExecutorService();
@@ -198,8 +226,8 @@ public class Sovereign {
             // execute if not a continuously running service and not shutdown
             if (!this.shutdown && serviceWrapper.isSubmittable()) {
                 logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
-                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, 0,
-                        serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
+                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper,
+                        serviceWrapper.getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
                 futureMap.put(serviceName, future);
             }// if
         }// for
@@ -275,7 +303,6 @@ public class Sovereign {
      * @return
      */
     private Thread createAdminThread() {
-        final ScheduledExecutorService finalExecutorService = this.executorService;
         Thread adminThread = new Thread() {
             @Override
             public void run() {

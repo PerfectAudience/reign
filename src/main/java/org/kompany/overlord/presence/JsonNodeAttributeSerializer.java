@@ -22,14 +22,14 @@ public class JsonNodeAttributeSerializer implements NodeAttributeSerializer {
     }
 
     @Override
-    public byte[] serialize(Map<String, Object> map) throws Exception {
+    public byte[] serialize(Map<String, String> map) throws Exception {
         return OBJECT_MAPPER.writeValueAsString(map).getBytes("UTF-8");
 
     }
 
     @Override
     public Map<String, Object> deserialize(byte[] bytes) throws Exception {
-        return OBJECT_MAPPER.readValue(bytes, 0, bytes.length, new TypeReference<Map<String, Object>>() {
+        return OBJECT_MAPPER.readValue(bytes, 0, bytes.length, new TypeReference<Map<String, String>>() {
         });
     }
 

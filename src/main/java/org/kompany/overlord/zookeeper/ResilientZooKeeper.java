@@ -944,10 +944,10 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     @Override
     public void process(WatchedEvent event) {
         /***** log event *****/
-        // log if >DEBUG
+        // log if DEBUG
         if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:\n"
-                    + ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+            logger.debug("***** Received ZooKeeper Event:  {}",
+                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
 
@@ -964,6 +964,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         case NodeCreated:
         case NodeDataChanged:
         case NodeDeleted:
+            break;
         case None:
             Event.KeeperState eventState = event.getState();
             if (eventState == Event.KeeperState.SyncConnected) {

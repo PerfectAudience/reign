@@ -15,6 +15,7 @@ public class Announcement {
     private volatile NodeInfo nodeInfo;
     private volatile List<ACL> aclList;
     private volatile NodeAttributeSerializer nodeAttributeSerializer;
+    private volatile long lastUpdated;
 
     public NodeInfo getNodeInfo() {
         return nodeInfo;
@@ -46,6 +47,14 @@ public class Announcement {
 
     public void setNodeAttributeSerializer(NodeAttributeSerializer nodeAttributeSerializer) {
         this.nodeAttributeSerializer = nodeAttributeSerializer;
+    }
+
+    public long getLastUpdated() {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(long lastUpdated) {
+        this.lastUpdated = lastUpdated;
     }
 
 }

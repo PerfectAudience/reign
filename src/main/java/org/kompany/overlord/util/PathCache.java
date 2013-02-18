@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 
 /**
+ * A thread-safe LRU cache of ZooKeeper path data, will auto-update on watched node changes.
  * 
  * @author ypai
  * 
@@ -34,7 +35,7 @@ public class PathCache implements Watcher {
 
         this.zkClient = zkClient;
 
-        zkClient.register(this);
+        // zkClient.register(this);
     }
 
     /**
@@ -75,10 +76,10 @@ public class PathCache implements Watcher {
 
     @Override
     public void process(WatchedEvent event) {
-        // log if >DEBUG
+        // log if DEBUG
         if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:\n"
-                    + ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+            logger.debug("***** Received ZooKeeper Event:  {}",
+                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
 
