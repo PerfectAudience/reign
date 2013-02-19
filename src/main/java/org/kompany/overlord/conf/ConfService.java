@@ -1,6 +1,8 @@
 package org.kompany.overlord.conf;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -25,6 +27,8 @@ public class ConfService extends AbstractService implements Watcher {
 
     private ZkUtil zkUtil = new ZkUtil();
 
+    private ConcurrentMap<String, ConfObserverWrapper> observerMap = new ConcurrentHashMap<String, ConfObserverWrapper>();
+
     /**
      * 
      * @param relativePath
@@ -32,7 +36,20 @@ public class ConfService extends AbstractService implements Watcher {
      * @return
      */
     public <T> T getConf(String relativePath, ConfSerializer<T> confSerializer) {
-        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF, relativePath), confSerializer);
+        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF, relativePath), confSerializer, null);
+
+    }
+
+    /**
+     * 
+     * @param relativePath
+     * @param confSerializer
+     * @param observer
+     * @return
+     */
+    public <T> T getConf(String relativePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer) {
+        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF, relativePath), confSerializer,
+                observer);
 
     }
 
@@ -64,8 +81,10 @@ public class ConfService extends AbstractService implements Watcher {
      * @param confSerializer
      * @return
      */
-    <T> T getConfAbsolutePath(String absolutePath, ConfSerializer<T> confSerializer) {
+    <T> T getConfAbsolutePath(String absolutePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer) {
+        boolean error = false;
         byte[] bytes = null;
+        T result = null;
         try {
             PathCacheEntry pathCacheEntry = getPathCache().get(absolutePath);
             if (pathCacheEntry != null) {
@@ -80,21 +99,38 @@ public class ConfService extends AbstractService implements Watcher {
                 getPathCache().put(absolutePath, stat, bytes, null);
             }
 
-            return bytes != null ? confSerializer.deserialize(bytes) : null;
+            result = bytes != null ? confSerializer.deserialize(bytes) : null;
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
+                // set up watch on that node
+                try {
+                    getZkClient().exists(absolutePath, true);
+                } catch (Exception e1) {
+                    logger.error("getConfAbsolutePath():  error trying to watch node:  " + e1 + ":  path="
+                            + absolutePath, e1);
+                }
+
                 logger.debug(
                         "getConfAbsolutePath():  error trying to fetch node info:  {}:  node does not exist:  path={}",
                         e.getMessage(), absolutePath);
             } else {
                 logger.error("getConfAbsolutePath():  error trying to fetch node info:  " + e, e);
             }
-            return null;
+            error = true;
         } catch (Exception e) {
             logger.error("getConfAbsolutePath():  error trying to fetch node info:  " + e, e);
-            return null;
+            error = true;
         }
+
+        /** add observer if given **/
+        if (observer != null) {
+            this.observerMap.put(absolutePath, new ConfObserverWrapper<T>(absolutePath, observer, confSerializer,
+                    result));
+
+        }
+
+        return error ? null : result;
 
     }
 
@@ -127,6 +163,35 @@ public class ConfService extends AbstractService implements Watcher {
                     ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
+
+        // check observer map
+        String path = event.getPath();
+        ConfObserverWrapper observerWrapper = observerMap.get(path);
+        if (observerWrapper != null) {
+            switch (event.getType()) {
+            case NodeChildrenChanged:
+
+                break;
+            case NodeCreated:
+                observerWrapper.getObserver().handle(
+                        getConfAbsolutePath(path, observerWrapper.getConfSerializer(), observerWrapper.getObserver()));
+                break;
+            case NodeDataChanged:
+                Object newValue = getConfAbsolutePath(path, observerWrapper.getConfSerializer(),
+                        observerWrapper.getObserver());
+                if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
+                    observerWrapper.getObserver().handle(newValue);
+                }
+                break;
+            case NodeDeleted:
+                observerWrapper.getObserver().unavailable();
+                break;
+            case None:
+                break;
+            default:
+                logger.warn("Unhandled event type:  eventType=" + event.getType() + "; eventState=" + event.getState());
+            }
+        }
     }
 
     @Override
@@ -138,6 +203,41 @@ public class ConfService extends AbstractService implements Watcher {
     @Override
     public void destroy() {
         // TODO Auto-generated method stub
+
+    }
+
+    private static class ConfObserverWrapper<T> {
+        private ConfObserver<T> observer;
+
+        private String path;
+
+        private ConfSerializer<T> confSerializer;
+
+        private T currentValue;
+
+        public ConfObserverWrapper(String path, ConfObserver<T> observer, ConfSerializer<T> confSerializer,
+                T currentValue) {
+            this.path = path;
+            this.observer = observer;
+            this.confSerializer = confSerializer;
+            this.currentValue = currentValue;
+        }
+
+        public ConfObserver<T> getObserver() {
+            return observer;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public ConfSerializer<T> getConfSerializer() {
+            return confSerializer;
+        }
+
+        public T getCurrentValue() {
+            return currentValue;
+        }
 
     }
 

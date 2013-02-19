@@ -4,7 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Properties;
 
-public class PropertiesConfSerializer implements ConfSerializer<Properties> {
+public class PropertiesConfSerializer<T extends Properties> implements ConfSerializer<T> {
 
     private boolean storeAsXml = false;
 
@@ -21,7 +21,7 @@ public class PropertiesConfSerializer implements ConfSerializer<Properties> {
     }
 
     @Override
-    public byte[] serialize(Properties conf) throws Exception {
+    public byte[] serialize(T conf) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream(128);
         if (storeAsXml) {
             conf.storeToXML(out, null);
@@ -33,9 +33,9 @@ public class PropertiesConfSerializer implements ConfSerializer<Properties> {
     }
 
     @Override
-    public Properties deserialize(byte[] bytes) throws Exception {
+    public T deserialize(byte[] bytes) throws Exception {
         ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-        Properties conf = new Properties();
+        T conf = (T) new PropertiesConf();
         if (storeAsXml) {
             conf.loadFromXML(in);
         } else {

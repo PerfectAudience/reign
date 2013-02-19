@@ -6,6 +6,8 @@ import java.util.Properties;
 
 import org.kompany.overlord.Service;
 import org.kompany.overlord.Sovereign;
+import org.kompany.overlord.conf.ConfObserver;
+import org.kompany.overlord.conf.PropertiesConf;
 import org.kompany.overlord.conf.ConfService;
 import org.kompany.overlord.conf.PropertiesConfSerializer;
 import org.slf4j.Logger;
@@ -44,16 +46,32 @@ public class ConfServiceExample {
         // this is how you would normally get a service
         confService = (ConfService) sovereign.getService("conf");
 
+        // load a configuration with observer
+        ConfObserver<PropertiesConf> confObserver = new ConfObserver<PropertiesConf>() {
+
+            @Override
+            public void handle(PropertiesConf info) {
+                logger.info("Observer:  conf={}", info);
+
+            }
+
+            @Override
+            public void unavailable() {
+                logger.info("Observer:  conf deleted");
+
+            }
+
+        };
+        Properties loadedConf = confService.getConf("examples/config1.properties",
+                new PropertiesConfSerializer<PropertiesConf>(false), confObserver);
+        logger.debug("loadedConf={}", loadedConf);
+
         // save a configuration
         Properties conf = new Properties();
         conf.setProperty("capacity.min", "111");
         conf.setProperty("capacity.max", "999");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples/config1", conf, new PropertiesConfSerializer(false));
-
-        // load a configuration
-        Properties loadedConf = confService.getConf("examples/config1", new PropertiesConfSerializer(false));
-        logger.debug("loadedConf={}", loadedConf);
+        confService.putConf("examples/config1.properties", conf, new PropertiesConfSerializer<Properties>(false));
 
         // sleep to allow initialization and announcements to happen
         Thread.sleep(20000);

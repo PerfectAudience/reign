@@ -64,7 +64,7 @@ public class NodeInfo {
             return false;
         }
 
-        // compare child list sizes
+        // compare map sizes
         NodeInfo ni = (NodeInfo) obj;
         if (this.attributeMap.size() != ni.getAttributeMap().size()) {
             return false;
