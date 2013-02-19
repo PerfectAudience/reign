@@ -7,8 +7,8 @@ import java.util.Properties;
 import org.kompany.overlord.Service;
 import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.conf.ConfObserver;
-import org.kompany.overlord.conf.PropertiesConf;
 import org.kompany.overlord.conf.ConfService;
+import org.kompany.overlord.conf.PropertiesConf;
 import org.kompany.overlord.conf.PropertiesConfSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +50,8 @@ public class ConfServiceExample {
         ConfObserver<PropertiesConf> confObserver = new ConfObserver<PropertiesConf>() {
 
             @Override
-            public void handle(PropertiesConf info) {
-                logger.info("Observer:  conf={}", info);
+            public void handle(PropertiesConf conf) {
+                logger.info("Observer:  conf={}", conf);
 
             }
 
@@ -73,7 +73,7 @@ public class ConfServiceExample {
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
         confService.putConf("examples/config1.properties", conf, new PropertiesConfSerializer<Properties>(false));
 
-        // sleep to allow initialization and announcements to happen
+        // sleep
         Thread.sleep(20000);
 
         sovereign.stop();
