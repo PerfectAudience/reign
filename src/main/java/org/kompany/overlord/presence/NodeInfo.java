@@ -3,6 +3,9 @@ package org.kompany.overlord.presence;
 import java.util.Collections;
 import java.util.Map;
 
+import org.kompany.overlord.CanonicalNodeId;
+import org.kompany.overlord.CanonicalServiceId;
+
 /**
  * 
  * @author ypai
@@ -10,11 +13,11 @@ import java.util.Map;
  */
 public class NodeInfo {
 
-    private String clusterId;
+    private final String clusterId;
 
-    private String serviceId;
+    private final String serviceId;
 
-    private String nodeId;
+    private final String nodeId;
 
     private Map<String, String> attributeMap;
 
@@ -32,6 +35,14 @@ public class NodeInfo {
         } else {
             this.attributeMap = Collections.EMPTY_MAP;
         }
+    }
+
+    public CanonicalServiceId getCanonicalServiceId() {
+        return new CanonicalServiceId(clusterId, serviceId);
+    }
+
+    public CanonicalNodeId getCanonicalNodeId() {
+        return new CanonicalNodeId(clusterId, serviceId, nodeId);
     }
 
     public String getClusterId() {

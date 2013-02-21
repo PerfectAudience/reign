@@ -19,10 +19,10 @@ public enum PathType {
             return "data";
         }
     },
-    LOCK {
+    COORD {
         @Override
         public String toString() {
-            return "lock";
+            return "coord";
         }
     },
     PRESENCE {

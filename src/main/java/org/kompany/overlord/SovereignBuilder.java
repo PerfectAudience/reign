@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.kompany.overlord.conf.ConfService;
+import org.kompany.overlord.coord.CoordinationService;
 import org.kompany.overlord.presence.PresenceService;
 
 /**
@@ -20,7 +21,7 @@ public class SovereignBuilder {
     private int pathCacheSize = 1024;
     private int pathCacheConcurrencyLevel = 8;
 
-    private Map<String, Service> serviceMap = new HashMap<String, Service>();
+    private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
     public SovereignBuilder allCoreServices() {
         PresenceService presenceService = new PresenceService();
@@ -28,6 +29,9 @@ public class SovereignBuilder {
 
         ConfService confService = new ConfService();
         serviceMap.put("conf", confService);
+
+        CoordinationService coordService = new CoordinationService();
+        serviceMap.put("coord", coordService);
 
         return this;
     }

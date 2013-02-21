@@ -55,7 +55,7 @@ public class Sovereign implements Watcher {
         }
     };
 
-    private Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
+    private final Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
 
     private PathScheme pathScheme = new DefaultPathScheme("/sovereign/user", "/sovereign/internal");
 
@@ -71,7 +71,7 @@ public class Sovereign implements Watcher {
     private Thread adminThread = null;
 
     /** List to ensure Watcher(s) are called in a specific order */
-    private List<Watcher> watcherList = new ArrayList<Watcher>();
+    private final List<Watcher> watcherList = new ArrayList<Watcher>();
 
     public Sovereign() {
     }
@@ -212,7 +212,6 @@ public class Sovereign implements Watcher {
         if (started) {
             return;
         }
-        started = true;
 
         logger.info("START:  begin");
 
@@ -256,6 +255,7 @@ public class Sovereign implements Watcher {
         adminThread = this.createAdminThread();
         adminThread.start();
 
+        started = true;
         logger.info("START:  done");
     }
 
@@ -348,7 +348,7 @@ public class Sovereign implements Watcher {
      * 
      */
     private static class ServiceWrapper implements Runnable {
-        private Service service;
+        private final Service service;
         private boolean running = false;
 
         public ServiceWrapper(Service service) {

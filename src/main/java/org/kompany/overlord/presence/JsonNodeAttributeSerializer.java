@@ -17,7 +17,7 @@ public class JsonNodeAttributeSerializer implements NodeAttributeSerializer {
      */
     private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     static {
-        OBJECT_MAPPER.getDeserializationConfig().set(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        OBJECT_MAPPER.getDeserializationConfig().without(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     }
 
@@ -28,7 +28,7 @@ public class JsonNodeAttributeSerializer implements NodeAttributeSerializer {
     }
 
     @Override
-    public Map<String, Object> deserialize(byte[] bytes) throws Exception {
+    public Map<String, String> deserialize(byte[] bytes) throws Exception {
         return OBJECT_MAPPER.readValue(bytes, 0, bytes.length, new TypeReference<Map<String, String>>() {
         });
     }

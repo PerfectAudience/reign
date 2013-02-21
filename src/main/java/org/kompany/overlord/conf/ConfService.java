@@ -26,9 +26,9 @@ public class ConfService extends AbstractService implements Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfService.class);
 
-    private ZkUtil zkUtil = new ZkUtil();
+    private final ZkUtil zkUtil = new ZkUtil();
 
-    private ServiceObserverManager<ConfObserverWrapper> observerManager = new ServiceObserverManager<ConfObserverWrapper>();
+    private final ServiceObserverManager<ConfObserverWrapper> observerManager = new ServiceObserverManager<ConfObserverWrapper>();
 
     /**
      * 
@@ -108,7 +108,7 @@ public class ConfService extends AbstractService implements Watcher {
      * @param confSerializer
      * @return
      */
-    <T> T getConfAbsolutePath(String absolutePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer,
+    public <T> T getConfAbsolutePath(String absolutePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer,
             boolean useCache) {
         boolean error = false;
         byte[] bytes = null;
@@ -169,7 +169,7 @@ public class ConfService extends AbstractService implements Watcher {
      * @param confSerializer
      * @param aclList
      */
-    <T> void putConfAbsolutePath(String absolutePath, T conf, ConfSerializer<T> confSerializer, List<ACL> aclList) {
+    public <T> void putConfAbsolutePath(String absolutePath, T conf, ConfSerializer<T> confSerializer, List<ACL> aclList) {
         try {
             // write to ZK
             byte[] leafData = confSerializer.serialize(conf);
@@ -242,7 +242,7 @@ public class ConfService extends AbstractService implements Watcher {
 
         // private String path;
 
-        private ConfSerializer<T> confSerializer;
+        private final ConfSerializer<T> confSerializer;
 
         private volatile T currentValue;
 

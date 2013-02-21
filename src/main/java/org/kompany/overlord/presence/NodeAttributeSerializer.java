@@ -12,5 +12,5 @@ public interface NodeAttributeSerializer {
 
     public byte[] serialize(Map<String, String> map) throws Exception;
 
-    public Map<String, Object> deserialize(byte[] bytes) throws Exception;
+    public Map<String, String> deserialize(byte[] bytes) throws Exception;
 }
