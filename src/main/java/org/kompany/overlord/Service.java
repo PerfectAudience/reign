@@ -18,6 +18,8 @@ import org.kompany.overlord.util.PathCache;
  */
 public interface Service {
 
+    public void setServiceDirectory(ServiceDirectory serviceDirectory);
+
     public void setPathCache(PathCache pathCache);
 
     /**

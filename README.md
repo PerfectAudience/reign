@@ -5,7 +5,6 @@ A suite of lightweight services for distributed systems coordination and messagi
 
 Features
 --------
-Sovereign features a pluggable programming API which allows additional functionality to be easily.
 
 Out of the box, Sovereign provides the following:
 * Service presence - monitor for nodes coming up and going down in services.
@@ -21,7 +20,10 @@ Example applications:
 * Application decisioning based on service state - services can publish diagnostic metrics which can be used to change application behavior:  for example, the application may go into \"safety mode\" based on the publish error rates or event counts of one of its services. 
 * Task division amongst \"worker\" nodes - worker nodes can divide work amongst themselves without a centralized coordinator. 
 
-Instrumenting your application services with Sovereign quickly provides a high baseline level of cluster-awareness, allowing you to build scalable, fault-tolerant applications without worrying about the basic details of a distributed application.
+Instrumenting your application with Sovereign quickly provides a high level of cluster-awareness and coordination capabilities:  allowing you to focus your efforts on application functionality, not low level infrastructure.
+
+Sovereign features a pluggable programming API which allows additional services to be built on top of or in addition to the included core services.
+
 
 Easy to Use
 -----------
@@ -49,6 +51,12 @@ The default layout in Zookeeper is outlined below.  Custom layouts may be create
 * `/conf` - configuration data for services, etc. are found under this path
 * `/data` - data published by services for consumption by other nodes connected to ZK via the framework is found here
 * `/lock` - data describing distributed locks lives here
+
+
+Upcoming
+--------
+
+* SASL support
 
 
 

@@ -28,6 +28,10 @@ public abstract class ServiceObserverWrapper<T extends ServiceObserver> {
      */
     public abstract void notifyObserver(Object o);
 
+    /**
+     * Overridden to ensure that we do not notify the same observer multiple
+     * times.
+     */
     @Override
     public boolean equals(Object o) {
         if (o == null || !(o instanceof ServiceObserverWrapper)) {
@@ -36,6 +40,10 @@ public abstract class ServiceObserverWrapper<T extends ServiceObserver> {
         return this.observer == ((ServiceObserverWrapper) o).getObserver();
     }
 
+    /**
+     * Overridden to ensure that we do not notify the same observer multiple
+     * times.
+     */
     @Override
     public int hashCode() {
         return this.observer.hashCode();

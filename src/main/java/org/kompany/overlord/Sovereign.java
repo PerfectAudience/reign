@@ -41,7 +41,19 @@ public class Sovereign implements Watcher {
 
     private ZkClient zkClient;
 
-    private Map<String, ServiceWrapper> serviceMap = new HashMap<String, ServiceWrapper>();
+    private final Map<String, ServiceWrapper> serviceMap = new HashMap<String, ServiceWrapper>();
+
+    private final ServiceDirectory serviceDirectory = new ServiceDirectory() {
+        @Override
+        public Service getService(String serviceName) {
+            ServiceWrapper serviceWrapper = serviceMap.get(serviceName);
+            if (serviceWrapper != null) {
+                return serviceWrapper.getService();
+            } else {
+                return null;
+            }
+        }
+    };
 
     private Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
 
@@ -146,12 +158,17 @@ public class Sovereign implements Watcher {
     // }
 
     public Service getService(String serviceName) {
-        ServiceWrapper serviceWrapper = this.serviceMap.get(serviceName);
-        return serviceWrapper.getService();
+        return serviceDirectory.getService(serviceName);
     }
 
     void register(String serviceName, Service service) {
         throwExceptionIfNotOkayToRegister();
+
+        // check that we don't have duplicate services
+        if (serviceMap.get(serviceName) != null) {
+            throw new IllegalStateException("An existing service already exists under the same name:  serviceName="
+                    + serviceName);
+        }
 
         logger.info("Registering service:  serviceName={}", serviceName);
 
@@ -159,6 +176,7 @@ public class Sovereign implements Watcher {
         service.setPathScheme(pathScheme);
         service.setZkClient(zkClient);
         service.setPathCache(pathCache);
+        service.setServiceDirectory(serviceDirectory);
         service.init();
 
         // add to zkClient's list of watchers if Watcher interface is
@@ -177,6 +195,7 @@ public class Sovereign implements Watcher {
         for (String serviceName : serviceMap.keySet()) {
             register(serviceName, serviceMap.get(serviceName));
         }
+
     }
 
     void throwExceptionIfNotOkayToRegister() {

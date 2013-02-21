@@ -14,6 +14,17 @@ public abstract class AbstractService implements Service {
 
     private PathCache pathCache;
 
+    private ServiceDirectory serviceDirectory;
+
+    public ServiceDirectory getServiceDirectory() {
+        return serviceDirectory;
+    }
+
+    @Override
+    public void setServiceDirectory(ServiceDirectory serviceDirectory) {
+        this.serviceDirectory = serviceDirectory;
+    }
+
     public PathCache getPathCache() {
         return pathCache;
     }
