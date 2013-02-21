@@ -5,8 +5,10 @@ package org.kompany.overlord;
  * 
  * @author ypai
  * 
+ * @param <T>
+ *            the type observer being wrapped
  */
-public abstract class ServiceObserverWrapper<T> {
+public abstract class ServiceObserverWrapper<T extends ServiceObserver> {
 
     /** cannot be null */
     protected T observer;

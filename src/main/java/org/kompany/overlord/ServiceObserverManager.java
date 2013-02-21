@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  * @param <T>
+ *            the type of observer wrapper
  */
 public class ServiceObserverManager<T extends ServiceObserverWrapper> {
 
@@ -34,7 +35,7 @@ public class ServiceObserverManager<T extends ServiceObserverWrapper> {
         return Collections.unmodifiableSet(wrapperSet);
     }
 
-    public void remove(String path, ServiceObserverWrapper<T> observerWrapper) {
+    public void remove(String path, ServiceObserverWrapper observerWrapper) {
         Set<T> wrapperSet = getWrapperSet(path, false);
         wrapperSet.remove(observerWrapper);
 

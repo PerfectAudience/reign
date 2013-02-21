@@ -1,18 +1,12 @@
 package org.kompany.overlord.conf;
 
+import org.kompany.overlord.ServiceObserver;
+
 /**
  * 
  * @author ypai
  * 
  */
-public interface ConfObserver<T> {
-
-    /**
-     * Called when there is a change
-     * 
-     * @param conf
-     *            updated configuration; or null if no longer available
-     */
-    public void handle(T conf);
+public interface ConfObserver<T> extends ServiceObserver<T> {
 
 }
