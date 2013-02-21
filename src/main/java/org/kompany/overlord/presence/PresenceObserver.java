@@ -12,11 +12,8 @@ public interface PresenceObserver<T> {
      * Called when there is a change
      * 
      * @param info
+     *            updated info; or null if no longer available
      */
     public void handle(T info);
 
-    /**
-     * Called when no longer longer available.
-     */
-    public void unavailable();
 }

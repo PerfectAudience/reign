@@ -1,8 +1,6 @@
 package org.kompany.overlord.conf;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -14,7 +12,10 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractService;
+import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathType;
+import org.kompany.overlord.ServiceObserverManager;
+import org.kompany.overlord.ServiceObserverWrapper;
 import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.util.PathCache.PathCacheEntry;
 import org.kompany.overlord.util.ZkUtil;
@@ -27,7 +28,7 @@ public class ConfService extends AbstractService implements Watcher {
 
     private ZkUtil zkUtil = new ZkUtil();
 
-    private ConcurrentMap<String, ConfObserverWrapper> observerMap = new ConcurrentHashMap<String, ConfObserverWrapper>();
+    private ServiceObserverManager<ConfObserverWrapper> observerManager = new ServiceObserverManager<ConfObserverWrapper>();
 
     /**
      * 
@@ -36,7 +37,8 @@ public class ConfService extends AbstractService implements Watcher {
      * @return
      */
     public <T> T getConf(String relativePath, ConfSerializer<T> confSerializer) {
-        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF, relativePath), confSerializer, null);
+        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath),
+                confSerializer, null, true);
 
     }
 
@@ -48,8 +50,8 @@ public class ConfService extends AbstractService implements Watcher {
      * @return
      */
     public <T> T getConf(String relativePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer) {
-        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF, relativePath), confSerializer,
-                observer);
+        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath),
+                confSerializer, observer, true);
 
     }
 
@@ -60,8 +62,8 @@ public class ConfService extends AbstractService implements Watcher {
      * @param confSerializer
      */
     public <T> void putConf(String relativePath, T conf, ConfSerializer<T> confSerializer) {
-        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF, relativePath), conf, confSerializer,
-                Sovereign.DEFAULT_ACL_LIST);
+        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath), conf,
+                confSerializer, Sovereign.DEFAULT_ACL_LIST);
     }
 
     /**
@@ -72,7 +74,32 @@ public class ConfService extends AbstractService implements Watcher {
      * @param aclList
      */
     public <T> void putConf(String relativePath, T conf, ConfSerializer<T> confSerializer, List<ACL> aclList) {
-        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF, relativePath), conf, confSerializer, aclList);
+        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath), conf,
+                confSerializer, aclList);
+    }
+
+    /**
+     * 
+     * @param relativePath
+     */
+    public void removeConf(String relativePath) {
+        String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath);
+        try {
+            getZkClient().delete(path, -1);
+
+            // set up watch for when path comes back if there are
+            // observers
+            if (this.observerManager.isBeingObserved(path)) {
+                getZkClient().exists(path, true);
+            }
+
+        } catch (KeeperException e) {
+            if (e.code() != Code.NONODE) {
+                logger.error("removeConf():  error trying to delete node:  " + e + ":  path=" + path, e);
+            }
+        } catch (Exception e) {
+            logger.error("removeConf():  error trying to delete node:  " + e + ":  path=" + path, e);
+        }
     }
 
     /**
@@ -81,13 +108,14 @@ public class ConfService extends AbstractService implements Watcher {
      * @param confSerializer
      * @return
      */
-    <T> T getConfAbsolutePath(String absolutePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer) {
+    <T> T getConfAbsolutePath(String absolutePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer,
+            boolean useCache) {
         boolean error = false;
         byte[] bytes = null;
         T result = null;
         try {
             PathCacheEntry pathCacheEntry = getPathCache().get(absolutePath);
-            if (pathCacheEntry != null) {
+            if (useCache && observer == null && pathCacheEntry != null) {
                 // found in cache
                 bytes = pathCacheEntry.getBytes();
             } else {
@@ -125,7 +153,7 @@ public class ConfService extends AbstractService implements Watcher {
 
         /** add observer if given **/
         if (observer != null) {
-            this.observerMap.put(absolutePath, new ConfObserverWrapper<T>(absolutePath, observer, confSerializer,
+            this.observerManager.put(absolutePath, new ConfObserverWrapper<T>(absolutePath, observer, confSerializer,
                     result));
 
         }
@@ -166,25 +194,29 @@ public class ConfService extends AbstractService implements Watcher {
 
         // check observer map
         String path = event.getPath();
-        ConfObserverWrapper observerWrapper = observerMap.get(path);
-        if (observerWrapper != null) {
+        if (observerManager.isBeingObserved(path)) {
+            ConfObserverWrapper<ConfObserver> observerWrapper = observerManager.getObserverWrapperSet(path).iterator()
+                    .next();
+
             switch (event.getType()) {
             case NodeChildrenChanged:
 
                 break;
             case NodeCreated:
-                observerWrapper.getObserver().handle(
-                        getConfAbsolutePath(path, observerWrapper.getConfSerializer(), observerWrapper.getObserver()));
-                break;
+                // observerManager.notifyObservers(path,
+                // getConfAbsolutePath(path,
+                // observerWrapper.getConfSerializer(),
+                // observerWrapper.getObserver()));
+                // break;
             case NodeDataChanged:
-                Object newValue = getConfAbsolutePath(path, observerWrapper.getConfSerializer(),
-                        observerWrapper.getObserver());
+                // don't use cache so we make sure to re-establish watch
+                Object newValue = getConfAbsolutePath(path, observerWrapper.getConfSerializer(), null, true);
                 if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
-                    observerWrapper.getObserver().handle(newValue);
+                    observerManager.notifyObservers(path, newValue);
                 }
                 break;
             case NodeDeleted:
-                observerWrapper.getObserver().unavailable();
+                observerManager.notifyObservers(path, null);
                 break;
             case None:
                 break;
@@ -206,30 +238,38 @@ public class ConfService extends AbstractService implements Watcher {
 
     }
 
-    private static class ConfObserverWrapper<T> {
-        private ConfObserver<T> observer;
+    private static class ConfObserverWrapper<T> extends ServiceObserverWrapper<ConfObserver<T>> {
 
-        private String path;
+        // private String path;
 
         private ConfSerializer<T> confSerializer;
 
-        private T currentValue;
+        private volatile T currentValue;
 
         public ConfObserverWrapper(String path, ConfObserver<T> observer, ConfSerializer<T> confSerializer,
                 T currentValue) {
-            this.path = path;
+            // from super class
             this.observer = observer;
+
+            // this.path = path;
             this.confSerializer = confSerializer;
             this.currentValue = currentValue;
         }
 
-        public ConfObserver<T> getObserver() {
-            return observer;
+        @Override
+        public void notifyObserver(Object o) {
+            this.observer.handle((T) o);
+
+            // update current value for comparison against any future events
+            // (sometimes we get a ZK event even if relevant value has not
+            // changed: for example, when updating node data with the exact same
+            // value)
+            this.currentValue = (T) o;
         }
 
-        public String getPath() {
-            return path;
-        }
+        // public String getPath() {
+        // return path;
+        // }
 
         public ConfSerializer<T> getConfSerializer() {
             return confSerializer;

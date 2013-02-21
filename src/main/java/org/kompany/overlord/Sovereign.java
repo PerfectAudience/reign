@@ -64,14 +64,14 @@ public class Sovereign implements Watcher {
     public Sovereign() {
     }
 
-    public Sovereign(String zkConnectString, int sessionTimeoutMillis) {
-        this(zkConnectString, sessionTimeoutMillis, 1024, 8);
+    public Sovereign(String zkConnectString, int zkSessionTimeout) {
+        this(zkConnectString, zkSessionTimeout, 1024, 8);
     }
 
-    public Sovereign(String zkConnectString, int sessionTimeoutMillis, int pathCacheSize, int pathCacheConcurrencyLevel) {
+    public Sovereign(String zkConnectString, int zkSessionTimeout, int pathCacheSize, int pathCacheConcurrencyLevel) {
         this();
         try {
-            zkClient = new ResilientZooKeeper(zkConnectString, sessionTimeoutMillis);
+            zkClient = new ResilientZooKeeper(zkConnectString, zkSessionTimeout);
         } catch (IOException e) {
             throw new IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
         }
@@ -323,7 +323,7 @@ public class Sovereign implements Watcher {
     }
 
     /**
-     * Wrapper providing additional properties that allow us to track service execution metadata.
+     * Convenience wrapper providing methods for interpreting service metadata.
      * 
      * @author ypai
      * 

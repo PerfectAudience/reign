@@ -17,7 +17,8 @@ import org.slf4j.LoggerFactory;
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 
 /**
- * A thread-safe LRU cache of ZooKeeper path data, will auto-update on watched node changes.
+ * A thread-safe LRU cache of ZooKeeper path data, will auto-update on watched
+ * node changes.
  * 
  * @author ypai
  * 
@@ -30,7 +31,7 @@ public class PathCache implements Watcher {
     private ZkClient zkClient;
 
     public PathCache(int maxSize, int concurrencyLevel, ZkClient zkClient) {
-        cache = new ConcurrentLinkedHashMap.Builder<String, PathCacheEntry>().maximumWeightedCapacity(10000)
+        cache = new ConcurrentLinkedHashMap.Builder<String, PathCacheEntry>().maximumWeightedCapacity(maxSize)
                 .initialCapacity(maxSize).concurrencyLevel(concurrencyLevel).build();
 
         this.zkClient = zkClient;
@@ -131,7 +132,7 @@ public class PathCache implements Watcher {
 
                 if (event.getType() == EventType.NodeChildrenChanged) {
                     logger.info("Change detected:  updating path children:  path={}", path);
-                    children = zkClient.getChildren(path, false, stat);
+                    children = zkClient.getChildren(path, true, stat);
                 }
 
                 // update cache

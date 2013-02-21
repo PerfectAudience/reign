@@ -16,7 +16,10 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractActiveService;
+import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathType;
+import org.kompany.overlord.ServiceObserverManager;
+import org.kompany.overlord.ServiceObserverWrapper;
 import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.util.PathCache.PathCacheEntry;
 import org.kompany.overlord.util.ZkUtil;
@@ -46,14 +49,14 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
     private ConcurrentMap<String, Announcement> announcementMap = new ConcurrentHashMap<String, Announcement>();
 
-    private ConcurrentMap<String, PresenceObserverWrapper> observerMap = new ConcurrentHashMap<String, PresenceObserverWrapper>();
+    private ServiceObserverManager<PresenceObserverWrapper> observerManager = new ServiceObserverManager<PresenceObserverWrapper>();
 
     private ZkUtil zkUtil = new ZkUtil();
 
     public List<String> getAvailableServices(String clusterId) {
         /** get node data from zk **/
         String clusterPath = getPathScheme().buildRelativePath(clusterId);
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterPath);
+        String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, clusterPath);
         List<String> children = null;
         try {
             Stat stat = new Stat();
@@ -88,14 +91,14 @@ public class PresenceService extends AbstractActiveService implements Watcher {
             NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
         /** get node data from zk **/
         String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
+        String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, servicePath);
 
         boolean error = false;
 
         List<String> children = null;
         try {
             PathCacheEntry pathCacheEntry = getPathCache().get(path);
-            if (useCache && pathCacheEntry != null) {
+            if (useCache && observer == null && pathCacheEntry != null) {
                 // found in cache
                 children = pathCacheEntry.getChildren();
             } else {
@@ -135,8 +138,8 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
         /** add observer if given **/
         if (observer != null) {
-            this.observerMap.put(path, new PresenceObserverWrapper<ServiceInfo>(clusterId, serviceId, null, observer,
-                    nodeAttributeSerializer, result));
+            this.observerManager.put(path, new PresenceObserverWrapper<ServiceInfo>(clusterId, serviceId, null,
+                    observer, nodeAttributeSerializer, result));
         }
 
         return result;
@@ -155,7 +158,7 @@ public class PresenceService extends AbstractActiveService implements Watcher {
             NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
         /** get node data from zk **/
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+        String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
 
         boolean error = false;
 
@@ -208,8 +211,8 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
         /** add observer if passed in **/
         if (observer != null) {
-            this.observerMap.put(path, new PresenceObserverWrapper<NodeInfo>(clusterId, serviceId, nodeId, observer,
-                    nodeAttributeSerializer, result));
+            this.observerManager.put(path, new PresenceObserverWrapper<NodeInfo>(clusterId, serviceId, nodeId,
+                    observer, nodeAttributeSerializer, result));
         }
 
         return result;
@@ -224,8 +227,8 @@ public class PresenceService extends AbstractActiveService implements Watcher {
     }
 
     /**
-     * This method only has to be called once per service node and/or when node data changes. Announcements happen
-     * asynchronously.
+     * This method only has to be called once per service node and/or when node
+     * data changes. Announcements happen asynchronously.
      * 
      * @param clusterId
      * @param serviceId
@@ -298,19 +301,28 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         for (String nodePath : nodePathSet) {
             Announcement announcement = announcementMap.get(nodePath);
 
-            // skip if announcement no longer exists or less than heartbeat interval
+            // skip if announcement no longer exists or less than heartbeat
+            // interval
             if (announcement == null || currentTimestamp - announcement.getLastUpdated() < this.heartbeatIntervalMillis) {
                 continue;
             }
 
             // announce or hide node
-            String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+            String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
             if (announcement.isHidden()) {
                 // delete
                 try {
+                    // delete presence path
                     getZkClient().delete(path, -1);
 
-                    // set last updated with some randomizer to spread out requests
+                    // set up watch for when path comes back if there are
+                    // observers
+                    if (this.observerManager.isBeingObserved(path)) {
+                        getZkClient().exists(path, true);
+                    }
+
+                    // set last updated with some randomizer to spread out
+                    // requests
                     announcement.setLastUpdated(currentTimestamp
                             + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
                 } catch (KeeperException e) {
@@ -333,7 +345,8 @@ public class PresenceService extends AbstractActiveService implements Watcher {
                     String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
                             announcement.getAclList(), CreateMode.EPHEMERAL, -1);
 
-                    // set last updated with some randomizer to spread out requests
+                    // set last updated with some randomizer to spread out
+                    // requests
                     announcement.setLastUpdated(currentTimestamp
                             + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
 
@@ -376,47 +389,53 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
         // check observer map
         String path = event.getPath();
-        PresenceObserverWrapper observerWrapper = observerMap.get(path);
-        if (observerWrapper != null) {
+        if (observerManager.isBeingObserved(path)) {
+            PresenceObserverWrapper observerWrapper = observerManager.getObserverWrapperSet(path).iterator().next();
+
             switch (event.getType()) {
             case NodeChildrenChanged:
                 if (observerWrapper.isService()) {
                     // only service nodes can have children
-                    observerWrapper.getObserver().handle(
-                            lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
-                                    observerWrapper.getObserver(), observerWrapper.getNodeAttributeSerializer(), true));
-                }
-                break;
-            case NodeCreated:
-                if (observerWrapper.isService()) {
-                    observerWrapper.getObserver().handle(
-                            lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
-                                    observerWrapper.getObserver(), observerWrapper.getNodeAttributeSerializer(), true));
-                } else {
-                    observerWrapper.getObserver().handle(
-                            lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
-                                    observerWrapper.getNodeId(), observerWrapper.getObserver(),
+                    observerManager.notifyObservers(
+                            path,
+                            lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
                                     observerWrapper.getNodeAttributeSerializer(), true));
                 }
                 break;
+            case NodeCreated:
+                // if (observerWrapper.isService()) {
+                // observerWrapper.getObserver().handle(
+                // lookup(observerWrapper.getClusterId(),
+                // observerWrapper.getServiceId(),
+                // observerWrapper.getObserver(),
+                // observerWrapper.getNodeAttributeSerializer(), true));
+                // } else {
+                // observerWrapper.getObserver().handle(
+                // lookup(observerWrapper.getClusterId(),
+                // observerWrapper.getServiceId(),
+                // observerWrapper.getNodeId(), observerWrapper.getObserver(),
+                // observerWrapper.getNodeAttributeSerializer(), true));
+                // }
+                // break;
             case NodeDataChanged:
                 if (observerWrapper.isService()) {
+                    // call but don't use cache to ensure we re-establish watch
                     ServiceInfo updatedValue = lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
-                            observerWrapper.getObserver(), observerWrapper.getNodeAttributeSerializer(), true);
+                            null, observerWrapper.getNodeAttributeSerializer(), true);
                     if (updatedValue != null && !updatedValue.equals(observerWrapper.getCurrentValue())) {
-                        observerWrapper.getObserver().handle(updatedValue);
+                        observerManager.notifyObservers(path, updatedValue);
                     }
                 } else {
+                    // call but don't use cache to ensure we re-establish watch
                     NodeInfo updatedValue = lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
-                            observerWrapper.getNodeId(), observerWrapper.getObserver(),
-                            observerWrapper.getNodeAttributeSerializer(), true);
+                            observerWrapper.getNodeId(), null, observerWrapper.getNodeAttributeSerializer(), true);
                     if (updatedValue != null && !updatedValue.equals(observerWrapper.getCurrentValue())) {
-                        observerWrapper.getObserver().handle(updatedValue);
+                        observerManager.notifyObservers(path, updatedValue);
                     }
                 }
                 break;
             case NodeDeleted:
-                observerWrapper.getObserver().unavailable();
+                observerManager.notifyObservers(path, null);
                 break;
             case None:
                 break;
@@ -463,8 +482,7 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         this.heartbeatIntervalMillis = heartbeatIntervalMillis;
     }
 
-    private static class PresenceObserverWrapper<T> {
-        private PresenceObserver<T> observer;
+    private static class PresenceObserverWrapper<T> extends ServiceObserverWrapper<PresenceObserver<T>> {
 
         private String clusterId;
         private String serviceId;
@@ -472,20 +490,29 @@ public class PresenceService extends AbstractActiveService implements Watcher {
 
         private NodeAttributeSerializer nodeAttributeSerializer;
 
-        private T currentValue;
+        private volatile T currentValue;
 
         public PresenceObserverWrapper(String clusterId, String serviceId, String nodeId, PresenceObserver<T> observer,
                 NodeAttributeSerializer nodeAttributeSerializer, T currentValue) {
+            // from super class
+            this.observer = observer;
+
             this.clusterId = clusterId;
             this.serviceId = serviceId;
             this.nodeId = nodeId;
-            this.observer = observer;
             this.nodeAttributeSerializer = nodeAttributeSerializer;
             this.currentValue = currentValue;
         }
 
-        public PresenceObserver<T> getObserver() {
-            return observer;
+        @Override
+        public void notifyObserver(Object o) {
+            this.observer.handle((T) o);
+
+            // update current value for comparison against any future events
+            // (sometimes we get a ZK event even if relevant value has not
+            // changed: for example, when updating node data with the exact same
+            // value)
+            this.currentValue = (T) o;
         }
 
         public String getClusterId() {

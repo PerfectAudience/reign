@@ -56,40 +56,33 @@ public class PresenceServiceExample {
         presenceService.announce("examples", "service2", "node1", nodeAttributes);
 
         /** look up service and node info **/
+        // service info
         PresenceObserver<ServiceInfo> serviceObserver = new PresenceObserver<ServiceInfo>() {
-
             @Override
             public void handle(ServiceInfo info) {
-                logger.info("Observer:  serviceInfo={}",
-                        ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
-
+                if (info != null) {
+                    logger.info("Observer:  serviceInfo={}",
+                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                } else {
+                    logger.info("Observer:  serviceInfo deleted");
+                }
             }
-
-            @Override
-            public void unavailable() {
-                logger.info("Observer:  serviceInfo deleted");
-
-            }
-
         };
         ServiceInfo serviceInfo = presenceService.lookup("examples", "service1", serviceObserver);
         logger.info("serviceInfo={}", ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
 
+        // node info
         PresenceObserver<NodeInfo> nodeObserver = new PresenceObserver<NodeInfo>() {
-
             @Override
             public void handle(NodeInfo info) {
-                logger.info("Observer:  nodeInfo={}",
-                        ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                if (info != null) {
+                    logger.info("Observer:  nodeInfo={}",
+                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
 
+                } else {
+                    logger.info("Observer:  nodeInfo deleted");
+                }
             }
-
-            @Override
-            public void unavailable() {
-                logger.info("Observer:  nodeInfo deleted");
-
-            }
-
         };
         NodeInfo nodeInfo = presenceService.lookup("examples", "service2", "node1", nodeObserver);
         logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));

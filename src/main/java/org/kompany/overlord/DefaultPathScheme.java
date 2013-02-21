@@ -30,37 +30,29 @@ public class DefaultPathScheme implements PathScheme {
         this.basePath = basePath;
     }
 
-    public void setInternalBasePath(String basePath) {
+    public void setInternalBasePath(String internalBasePath) {
         this.internalBasePath = internalBasePath;
     }
 
     @Override
-    public String getInternalBasePath() {
-        return internalBasePath;
+    public String getBasePath(PathContext pathContext) {
+        if (pathContext == PathContext.INTERNAL) {
+            return internalBasePath;
+        } else if (pathContext == PathContext.USER) {
+            return basePath;
+        }
+        throw new IllegalArgumentException("Invalid path context:  pathContext=" + pathContext);
     }
 
     @Override
-    public String getInternalAbsolutePath(PathType pathType) {
-        return internalBasePath + "/" + pathType;
-    }
-
-    @Override
-    public String getInternalAbsolutePath(PathType pathType, String relativePath) {
-        return internalBasePath + "/" + pathType + "/" + relativePath;
-    }
-
-    @Override
-    public String getBasePath() {
-        return basePath;
-    }
-
-    @Override
-    public String getAbsolutePath(PathType pathType) {
+    public String getAbsolutePath(PathContext pathContext, PathType pathType) {
+        String basePath = getBasePath(pathContext);
         return basePath + "/" + pathType;
     }
 
     @Override
-    public String getAbsolutePath(PathType pathType, String relativePath) {
+    public String getAbsolutePath(PathContext pathContext, PathType pathType, String relativePath) {
+        String basePath = getBasePath(pathContext);
         return basePath + "/" + pathType + "/" + relativePath;
     }
 

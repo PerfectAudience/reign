@@ -10,12 +10,9 @@ public interface ConfObserver<T> {
     /**
      * Called when there is a change
      * 
-     * @param info
+     * @param conf
+     *            updated configuration; or null if no longer available
      */
     public void handle(T conf);
 
-    /**
-     * Called when no longer longer available.
-     */
-    public void unavailable();
 }

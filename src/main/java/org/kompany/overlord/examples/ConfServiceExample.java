@@ -42,25 +42,21 @@ public class ConfServiceExample {
         /** start sovereign **/
         sovereign.start();
 
-        /** use presence service to announce that service nodes are up **/
+        /** use conf service to create a sample configuration **/
         // this is how you would normally get a service
         confService = (ConfService) sovereign.getService("conf");
 
         // load a configuration with observer
         ConfObserver<PropertiesConf> confObserver = new ConfObserver<PropertiesConf>() {
-
             @Override
             public void handle(PropertiesConf conf) {
-                logger.info("Observer:  conf={}", conf);
+                if (conf != null) {
+                    logger.info("Observer:  conf={}", conf);
 
+                } else {
+                    logger.info("Observer:  conf deleted");
+                }
             }
-
-            @Override
-            public void unavailable() {
-                logger.info("Observer:  conf deleted");
-
-            }
-
         };
         Properties loadedConf = confService.getConf("examples/config1.properties",
                 new PropertiesConfSerializer<PropertiesConf>(false), confObserver);
