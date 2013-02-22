@@ -49,7 +49,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node1", "semaphore1", 4);
+                ZkSemaphore semaphore = coordService.getSemaphore("node1", "semaphore1", 5);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 4;
@@ -72,7 +72,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node2", "semaphore1", 4);
+                ZkSemaphore semaphore = coordService.getSemaphore("node2", "semaphore1", 5);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 2;
@@ -95,7 +95,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node3", "semaphore1", 4);
+                ZkSemaphore semaphore = coordService.getSemaphore("node3", "semaphore1", 5);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -117,7 +117,7 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node4", "semaphore1", 4);
+                ZkSemaphore semaphore = coordService.getSemaphore("node4", "semaphore1", 5);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {

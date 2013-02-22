@@ -22,10 +22,15 @@ public class QuickStartExample {
         sovereign.start();
 
         /** presence service example **/
-        // presenceServiceExample(sovereign);
+        // PresenceServiceExample.presenceServiceExample(sovereign);
 
         /** conf service example **/
-        // confServiceExample(sovereign);
+        // ConfServiceExample.confServiceExample(sovereign);
+
+        /** coordination service example **/
+        CoordinationServiceExample.coordinationServiceExclusiveLockExample(sovereign);
+        CoordinationServiceExample.coordinationServiceReadWriteLockExample(sovereign);
+        CoordinationServiceExample.coordinationServiceSemaphoreExample(sovereign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(60000);
@@ -36,5 +41,4 @@ public class QuickStartExample {
         /** sleep a bit to observe observer callbacks **/
         Thread.sleep(10000);
     }
-
 }

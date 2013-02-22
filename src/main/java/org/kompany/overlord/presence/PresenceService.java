@@ -14,6 +14,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractActiveService;
+import org.kompany.overlord.ObservableService;
 import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathType;
 import org.kompany.overlord.ServiceObserverManager;
@@ -29,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class PresenceService extends AbstractActiveService implements Watcher {
+public class PresenceService extends AbstractActiveService implements ObservableService, Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(PresenceService.class);
 
@@ -377,6 +378,16 @@ public class PresenceService extends AbstractActiveService implements Watcher {
     }
 
     @Override
+    public void signalStateReset(Object o) {
+        this.observerManager.signalStateReset(o);
+    }
+
+    @Override
+    public void signalStateUnknown(Object o) {
+        this.observerManager.signalStateUnknown(o);
+    }
+
+    @Override
     public boolean filterWatchedEvent(WatchedEvent event) {
         return !observerManager.isBeingObserved(event.getPath());
 
@@ -388,7 +399,7 @@ public class PresenceService extends AbstractActiveService implements Watcher {
         PresenceObserverWrapper observerWrapper = observerManager.getObserverWrapperSet(path).iterator().next();
         if (observerWrapper.isService()) {
             // only service nodes can have children
-            observerManager.signalAllObservers(
+            observerManager.signal(
                     path,
                     lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
                             observerWrapper.getNodeAttributeSerializer(), true));
@@ -409,21 +420,36 @@ public class PresenceService extends AbstractActiveService implements Watcher {
             ServiceInfo updatedValue = lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
                     observerWrapper.getNodeAttributeSerializer(), true);
             if (updatedValue != null && !updatedValue.equals(observerWrapper.getCurrentValue())) {
-                observerManager.signalAllObservers(path, updatedValue);
+                observerManager.signal(path, updatedValue);
             }
         } else {
             // call but don't use cache to ensure we re-establish watch
             NodeInfo updatedValue = lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
                     observerWrapper.getNodeId(), null, observerWrapper.getNodeAttributeSerializer(), true);
             if (updatedValue != null && !updatedValue.equals(observerWrapper.getCurrentValue())) {
-                observerManager.signalAllObservers(path, updatedValue);
+                observerManager.signal(path, updatedValue);
             }
         }
     }
 
     @Override
     public void nodeDeleted(WatchedEvent event) {
-        observerManager.signalAllObservers(event.getPath(), null);
+        observerManager.signal(event.getPath(), null);
+    }
+
+    @Override
+    public void connected(WatchedEvent event) {
+        this.signalStateReset(null);
+    }
+
+    @Override
+    public void sessionExpired(WatchedEvent event) {
+        this.signalStateUnknown(null);
+    }
+
+    @Override
+    public void disconnected(WatchedEvent event) {
+        this.signalStateUnknown(null);
     }
 
     public int getConcurrencyLevel() {

@@ -48,7 +48,27 @@ public class ServiceObserverManager<T extends ServiceObserverWrapper> {
         logger.info("Removed all observers:  path={}", path);
     }
 
-    public void signalAllObservers(String path, Object o) {
+    public void signalStateReset(Object o) {
+        logger.info("Notifying ALL observers:  state unknown");
+        for (String path : this.wrapperMap.keySet()) {
+            Set<T> wrapperSet = getWrapperSet(path, false);
+            for (T wrapper : wrapperSet) {
+                wrapper.getObserver().stateReset(o);
+            }
+        }
+    }
+
+    public void signalStateUnknown(Object o) {
+        logger.info("Notifying ALL observers:  state unknown");
+        for (String path : this.wrapperMap.keySet()) {
+            Set<T> wrapperSet = getWrapperSet(path, false);
+            for (T wrapper : wrapperSet) {
+                wrapper.getObserver().stateUnknown(o);
+            }
+        }
+    }
+
+    public void signal(String path, Object o) {
         Set<T> wrapperSet = getWrapperSet(path, false);
 
         logger.info("Notifying observers:  path={}; pathObserverCount={}", path, wrapperSet.size());

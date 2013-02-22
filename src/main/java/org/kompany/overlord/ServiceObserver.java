@@ -22,7 +22,7 @@ public interface ServiceObserver<T> {
      * "safe mode".
      * 
      * @param o
-     *            object with some information; may be null
+     *            object with some information if applicable; may be null
      */
     public void stateUnknown(Object o);
 

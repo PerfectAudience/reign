@@ -10,6 +10,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractService;
+import org.kompany.overlord.ObservableService;
 import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathType;
 import org.kompany.overlord.ServiceObserverManager;
@@ -20,7 +21,7 @@ import org.kompany.overlord.util.ZkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ConfService extends AbstractService implements Watcher {
+public class ConfService extends AbstractService implements ObservableService, Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfService.class);
 
@@ -181,52 +182,15 @@ public class ConfService extends AbstractService implements Watcher {
         }
     }
 
-    // @Override
-    // public void process(WatchedEvent event) {
-    // // log if DEBUG
-    // if (logger.isDebugEnabled()) {
-    // logger.debug("***** Received ZooKeeper Event:  {}",
-    // ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
-    //
-    // }
-    //
-    // // check observer map
-    // String path = event.getPath();
-    // if (observerManager.isBeingObserved(path)) {
-    // ConfObserverWrapper<ConfObserver> observerWrapper =
-    // observerManager.getObserverWrapperSet(path).iterator()
-    // .next();
-    //
-    // switch (event.getType()) {
-    // case NodeChildrenChanged:
-    //
-    // break;
-    // case NodeCreated:
-    // // observerManager.notifyObservers(path,
-    // // getConfAbsolutePath(path,
-    // // observerWrapper.getConfSerializer(),
-    // // observerWrapper.getObserver()));
-    // // break;
-    // case NodeDataChanged:
-    // // don't use cache so we make sure to re-establish watch
-    // Object newValue = getConfAbsolutePath(path,
-    // observerWrapper.getConfSerializer(), null, true);
-    // if (newValue != null &&
-    // !newValue.equals(observerWrapper.getCurrentValue())) {
-    // observerManager.notifyObservers(path, newValue);
-    // }
-    // break;
-    // case NodeDeleted:
-    // observerManager.notifyObservers(path, null);
-    // break;
-    // case None:
-    // break;
-    // default:
-    // logger.warn("Unhandled event type:  eventType=" + event.getType() +
-    // "; eventState=" + event.getState());
-    // }
-    // }
-    // }
+    @Override
+    public void signalStateReset(Object o) {
+        this.observerManager.signalStateReset(o);
+    }
+
+    @Override
+    public void signalStateUnknown(Object o) {
+        this.observerManager.signalStateUnknown(o);
+    }
 
     @Override
     public boolean filterWatchedEvent(WatchedEvent event) {
@@ -246,13 +210,28 @@ public class ConfService extends AbstractService implements Watcher {
                 .next();
         Object newValue = getConfAbsolutePath(path, observerWrapper.getConfSerializer(), null, true);
         if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
-            observerManager.signalAllObservers(path, newValue);
+            observerManager.signal(path, newValue);
         }
     }
 
     @Override
     public void nodeDeleted(WatchedEvent event) {
-        observerManager.signalAllObservers(event.getPath(), null);
+        observerManager.signal(event.getPath(), null);
+    }
+
+    @Override
+    public void connected(WatchedEvent event) {
+        this.signalStateReset(null);
+    }
+
+    @Override
+    public void sessionExpired(WatchedEvent event) {
+        this.signalStateUnknown(null);
+    }
+
+    @Override
+    public void disconnected(WatchedEvent event) {
+        this.signalStateUnknown(null);
     }
 
     @Override

@@ -11,6 +11,7 @@ import org.kompany.overlord.AbstractActiveService;
 import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathType;
 import org.kompany.overlord.Sovereign;
+import org.kompany.overlord.conf.ConfObserver;
 import org.kompany.overlord.conf.ConfSerializer;
 import org.kompany.overlord.conf.ConfService;
 import org.kompany.overlord.conf.JsonConfSerializer;
@@ -36,6 +37,14 @@ public class CoordinationService extends AbstractActiveService {
 
         // by default, check/clean-up locks every minute
         this.setExecutionIntervalMillis(60000);
+    }
+
+    public void observeLock(String relativeLockPath, LockObserver observer) {
+
+    }
+
+    public void observeSemaphore(String relativeSemaphorePath, SemaphoreObserver observer) {
+
     }
 
     /**
@@ -83,13 +92,22 @@ public class CoordinationService extends AbstractActiveService {
         return new ZkReadWriteLock(zkLockManager, ownerId, PathContext.USER, relativeLockPath, aclList);
     }
 
-    public ZkSemaphore getSemaphore(String ownerId, String relativeSemaphorePath, int maxAvailablePermits) {
-        return getSemaphore(ownerId, relativeSemaphorePath, maxAvailablePermits, Sovereign.DEFAULT_ACL_LIST);
+    public ZkSemaphore getSemaphore(String ownerId, String relativeSemaphorePath, int permitPoolSize) {
+        return getSemaphore(ownerId, relativeSemaphorePath, permitPoolSize, Sovereign.DEFAULT_ACL_LIST, false);
     }
 
-    public ZkSemaphore getSemaphore(String ownerId, String relativeSemaphorePath, int maxAvailablePermits,
-            List<ACL> aclList) {
-        // attempt to get lock to create Semaphore configuration
+    /**
+     * Initial creation of semaphore may result in more writes.
+     * 
+     * @param ownerId
+     * @param relativeSemaphorePath
+     * @param permitPoolSize
+     * @param aclList
+     * @param overwriteExistingConfig
+     * @return
+     */
+    public synchronized ZkSemaphore getSemaphore(String ownerId, String relativeSemaphorePath, int permitPoolSize,
+            List<ACL> aclList, boolean overwriteExistingConfigIfDifferent) {
 
         // read configuration
         ConfService confService = (ConfService) getServiceDirectory().getService("conf");
@@ -98,40 +116,61 @@ public class CoordinationService extends AbstractActiveService {
         ConfSerializer<Map<String, String>> confSerializer = new JsonConfSerializer();
         Map<String, String> semaphoreConf = confService.getConfAbsolutePath(absoluteSemaphoreConfPath, confSerializer,
                 null, true);
+        if (semaphoreConf != null && semaphoreConf.get("permitPoolSize") == null) {
+            semaphoreConf = null;
+        }
 
-        // write out new configuration if one does not exist
-        while (semaphoreConf == null || semaphoreConf.size() < 1 || semaphoreConf.get("maxAvailablePermits") == null) {
-            logger.info("Creating new semaphore configuration:  path={}", absoluteSemaphoreConfPath);
-            Lock lock = getLock(ownerId, relativeSemaphorePath, aclList);
-            if (lock.tryLock()) {
+        // check if we should force overwrite because config is different
+        if (overwriteExistingConfigIfDifferent) {
+            if (semaphoreConf != null) {
+                if (!semaphoreConf.get("permitPoolSize").equals(Integer.toString(permitPoolSize))) {
+                    // set to null to force overwrite
+                    semaphoreConf = null;
+                }
+            }
+        }
+
+        /** write out new configuration if one does not exist **/
+        final Object monitorObject = this;
+
+        if (semaphoreConf == null || semaphoreConf.get("permitPoolSize") == null) {
+            logger.debug("Creating new semaphore configuration:  path={}", absoluteSemaphoreConfPath);
+
+            // write configuration if necessary
+            semaphoreConf = new HashMap<String, String>(1, 0.9f);
+            semaphoreConf.put("permitPoolSize", Integer.toString(permitPoolSize));
+
+            // set up observer to signal when write completes in ZK
+            confService.getConfAbsolutePath(absoluteSemaphoreConfPath, confSerializer,
+                    new ConfObserver<Map<String, String>>() {
+                        @Override
+                        public void updated(Map<String, String> data) {
+                            synchronized (monitorObject) {
+                                monitorObject.notifyAll();
+                            }
+                        }
+                    }, true);
+            confService.putConfAbsolutePath(absoluteSemaphoreConfPath, semaphoreConf, confSerializer, aclList);
+
+            // will be unlocked by observer
+            synchronized (this) {
                 try {
-                    // write configuration if necessary
-                    semaphoreConf = new HashMap<String, String>(1, 0.9f);
-                    semaphoreConf.put("maxAvailablePermits", Integer.toString(maxAvailablePermits));
-                    confService.putConfAbsolutePath(absoluteSemaphoreConfPath, semaphoreConf, confSerializer, aclList);
-
-                } finally {
-                    lock.unlock();
+                    wait();
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted while waiting:  " + e, e);
                 }
             }
 
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                logger.warn("Interrupted while waiting for semaphore config:  " + e + ":  path="
-                        + absoluteSemaphoreConfPath, e);
-            }
-
-            semaphoreConf = confService.getConfAbsolutePath(absoluteSemaphoreConfPath, confSerializer, null, true);
+            logger.info("Created new semaphore configuration:  path={}; conf={}", absoluteSemaphoreConfPath,
+                    semaphoreConf);
         }
 
-        // read Semaphore configuration
-        logger.info("Reading existing semaphore configuration:  path={}; conf={}", absoluteSemaphoreConfPath,
-                semaphoreConf);
-        maxAvailablePermits = Integer.parseInt(semaphoreConf.get("maxAvailablePermits"));
+        /** read Semaphore configuration **/
+        logger.debug("Reading semaphore configuration:  path={}; conf={}", absoluteSemaphoreConfPath, semaphoreConf);
+        permitPoolSize = Integer.parseInt(semaphoreConf.get("permitPoolSize"));
+        logger.info("Read semaphore configuration:  path={}; conf={}", absoluteSemaphoreConfPath, semaphoreConf);
 
-        return new ZkSemaphore(zkLockManager, ownerId, PathContext.USER, relativeSemaphorePath, aclList,
-                maxAvailablePermits);
+        return new ZkSemaphore(zkLockManager, ownerId, PathContext.USER, relativeSemaphorePath, aclList, permitPoolSize);
     }
 
     public long getMaxLockHoldTimeMillis() {

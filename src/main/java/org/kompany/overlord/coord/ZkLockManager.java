@@ -17,6 +17,13 @@ import org.kompany.overlord.util.ZkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Contains basic functionality for creating Lock/Semaphore functionality using
+ * ZooKeeper.
+ * 
+ * @author ypai
+ * 
+ */
 class ZkLockManager {
 
     private static final Logger logger = LoggerFactory.getLogger(ZkLockManager.class);
@@ -40,6 +47,29 @@ class ZkLockManager {
         this.shutdown = true;
     }
 
+    /**
+     * 
+     * @param pathContext
+     * @param entityName
+     * @param reservationType
+     * @param useCache
+     * @return sorted list of lock/semaphore requesters, first to last
+     */
+    public List<String> getSortedReservationList(PathContext pathContext, String entityName,
+            ReservationType reservationType, boolean useCache) {
+        List<String> list = getReservationList(pathContext, entityName, reservationType, useCache);
+        Collections.sort(list, lockReservationComparator);
+        return list;
+    }
+
+    /**
+     * 
+     * @param pathContext
+     * @param entityName
+     * @param reservationType
+     * @param useCache
+     * @return unsorted list of lock/semaphore requesters
+     */
     public List<String> getReservationList(PathContext pathContext, String entityName, ReservationType reservationType,
             boolean useCache) {
         String entityPath = pathScheme.getAbsolutePath(pathContext, PathType.COORD,
