@@ -2,8 +2,6 @@ package org.kompany.overlord.conf;
 
 import java.util.List;
 
-import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
@@ -183,59 +181,86 @@ public class ConfService extends AbstractService implements Watcher {
         }
     }
 
+    // @Override
+    // public void process(WatchedEvent event) {
+    // // log if DEBUG
+    // if (logger.isDebugEnabled()) {
+    // logger.debug("***** Received ZooKeeper Event:  {}",
+    // ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+    //
+    // }
+    //
+    // // check observer map
+    // String path = event.getPath();
+    // if (observerManager.isBeingObserved(path)) {
+    // ConfObserverWrapper<ConfObserver> observerWrapper =
+    // observerManager.getObserverWrapperSet(path).iterator()
+    // .next();
+    //
+    // switch (event.getType()) {
+    // case NodeChildrenChanged:
+    //
+    // break;
+    // case NodeCreated:
+    // // observerManager.notifyObservers(path,
+    // // getConfAbsolutePath(path,
+    // // observerWrapper.getConfSerializer(),
+    // // observerWrapper.getObserver()));
+    // // break;
+    // case NodeDataChanged:
+    // // don't use cache so we make sure to re-establish watch
+    // Object newValue = getConfAbsolutePath(path,
+    // observerWrapper.getConfSerializer(), null, true);
+    // if (newValue != null &&
+    // !newValue.equals(observerWrapper.getCurrentValue())) {
+    // observerManager.notifyObservers(path, newValue);
+    // }
+    // break;
+    // case NodeDeleted:
+    // observerManager.notifyObservers(path, null);
+    // break;
+    // case None:
+    // break;
+    // default:
+    // logger.warn("Unhandled event type:  eventType=" + event.getType() +
+    // "; eventState=" + event.getState());
+    // }
+    // }
+    // }
+
     @Override
-    public void process(WatchedEvent event) {
-        // log if DEBUG
-        if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}",
-                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+    public boolean filterWatchedEvent(WatchedEvent event) {
+        return !observerManager.isBeingObserved(event.getPath());
 
-        }
+    }
 
-        // check observer map
+    @Override
+    public void nodeCreated(WatchedEvent event) {
+        nodeDataChanged(event);
+    }
+
+    @Override
+    public void nodeDataChanged(WatchedEvent event) {
         String path = event.getPath();
-        if (observerManager.isBeingObserved(path)) {
-            ConfObserverWrapper<ConfObserver> observerWrapper = observerManager.getObserverWrapperSet(path).iterator()
-                    .next();
-
-            switch (event.getType()) {
-            case NodeChildrenChanged:
-
-                break;
-            case NodeCreated:
-                // observerManager.notifyObservers(path,
-                // getConfAbsolutePath(path,
-                // observerWrapper.getConfSerializer(),
-                // observerWrapper.getObserver()));
-                // break;
-            case NodeDataChanged:
-                // don't use cache so we make sure to re-establish watch
-                Object newValue = getConfAbsolutePath(path, observerWrapper.getConfSerializer(), null, true);
-                if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
-                    observerManager.notifyObservers(path, newValue);
-                }
-                break;
-            case NodeDeleted:
-                observerManager.notifyObservers(path, null);
-                break;
-            case None:
-                break;
-            default:
-                logger.warn("Unhandled event type:  eventType=" + event.getType() + "; eventState=" + event.getState());
-            }
+        ConfObserverWrapper<ConfObserver> observerWrapper = observerManager.getObserverWrapperSet(path).iterator()
+                .next();
+        Object newValue = getConfAbsolutePath(path, observerWrapper.getConfSerializer(), null, true);
+        if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
+            observerManager.signalAllObservers(path, newValue);
         }
+    }
+
+    @Override
+    public void nodeDeleted(WatchedEvent event) {
+        observerManager.signalAllObservers(event.getPath(), null);
     }
 
     @Override
     public void init() {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public void destroy() {
-        // TODO Auto-generated method stub
-
     }
 
     private static class ConfObserverWrapper<T> extends ServiceObserverWrapper<ConfObserver<T>> {
@@ -257,8 +282,8 @@ public class ConfService extends AbstractService implements Watcher {
         }
 
         @Override
-        public void notifyObserver(Object o) {
-            this.observer.handle((T) o);
+        public void signalObserver(Object o) {
+            this.observer.updated((T) o);
 
             // update current value for comparison against any future events
             // (sometimes we get a ZK event even if relevant value has not

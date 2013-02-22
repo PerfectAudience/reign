@@ -22,11 +22,12 @@ public abstract class ServiceObserverWrapper<T extends ServiceObserver> {
     }
 
     /**
+     * Entry point for notifying the wrapped observer of some change.
      * 
      * @param o
      *            updated value; or null if no longer available
      */
-    public abstract void notifyObserver(Object o);
+    public abstract void signalObserver(Object o);
 
     /**
      * Overridden to ensure that we do not notify the same observer multiple

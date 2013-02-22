@@ -7,6 +7,18 @@ import org.kompany.overlord.ServiceObserver;
  * @author ypai
  * 
  */
-public interface ConfObserver<T> extends ServiceObserver<T> {
+public abstract class ConfObserver<T> implements ServiceObserver<T> {
+
+    public abstract void updated(T data);
+
+    @Override
+    public void stateReset(Object o) {
+
+    }
+
+    @Override
+    public void stateUnknown(Object o) {
+
+    }
 
 }

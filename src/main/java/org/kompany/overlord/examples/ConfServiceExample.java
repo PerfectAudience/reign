@@ -1,11 +1,9 @@
 package org.kompany.overlord.examples;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
-import org.kompany.overlord.Service;
 import org.kompany.overlord.Sovereign;
+import org.kompany.overlord.SovereignBuilder;
 import org.kompany.overlord.conf.ConfObserver;
 import org.kompany.overlord.conf.ConfService;
 import org.kompany.overlord.conf.PropertiesConf;
@@ -24,55 +22,64 @@ public class ConfServiceExample {
     private static final Logger logger = LoggerFactory.getLogger(ConfServiceExample.class);
 
     public static void main(String[] args) throws Exception {
-        /** init sovereign using default ZkClient implementation **/
-        Sovereign sovereign = new Sovereign("localhost:2181", 15000);
-
-        /** set up zk client if you want to use some other implementation **/
-        // ZkClient zkClient = new ResilientZooKeeper("localhost:2181", 15000);
-        // sovereign.setZkClient(zkClient);
-
-        /** set-up services and register **/
-        Map<String, Service> serviceMap = new HashMap<String, Service>();
-
-        // conf service
-        ConfService confService = new ConfService();
-        serviceMap.put("conf", confService);
-        sovereign.registerServices(serviceMap);
-
-        /** start sovereign **/
+        /** init and start sovereign using builder **/
+        Sovereign sovereign = (new SovereignBuilder()).zkConfig("localhost:2181", 15000).pathCache(1024, 8)
+                .allCoreServices().build();
         sovereign.start();
 
-        /** use conf service to create a sample configuration **/
+        /** conf service example **/
+        confServiceExample(sovereign);
+
+        /** sleep to allow examples to run for a bit **/
+        Thread.sleep(60000);
+
+        /** shutdown sovereign **/
+        sovereign.stop();
+
+        /** sleep a bit to observe observer callbacks **/
+        Thread.sleep(10000);
+    }
+
+    public static void confServiceExample(Sovereign sovereign) throws Exception {
         // this is how you would normally get a service
-        confService = (ConfService) sovereign.getService("conf");
+        ConfService confService = (ConfService) sovereign.getService("conf");
 
-        // load a configuration with observer
-        ConfObserver<PropertiesConf> confObserver = new ConfObserver<PropertiesConf>() {
-            @Override
-            public void handle(PropertiesConf conf) {
-                if (conf != null) {
-                    logger.info("Observer:  conf={}", conf);
-
-                } else {
-                    logger.info("Observer:  conf deleted");
-                }
-            }
-        };
+        // load a configuration which will not be immediately available but pass
+        // observer to be notified of changes in configuration
         Properties loadedConf = confService.getConf("examples/config1.properties",
-                new PropertiesConfSerializer<PropertiesConf>(false), confObserver);
+                new PropertiesConfSerializer<PropertiesConf>(false), new ConfObserver<PropertiesConf>() {
+                    @Override
+                    public void updated(PropertiesConf conf) {
+                        if (conf != null) {
+                            logger.info("Observer:  conf={}", conf);
+
+                        } else {
+                            logger.info("Observer:  conf deleted");
+                        }
+                    }
+                });
         logger.debug("loadedConf={}", loadedConf);
 
-        // save a configuration
+        // save the configuration that we were trying to access above; the
+        // observer will be notified of the change
         Properties conf = new Properties();
         conf.setProperty("capacity.min", "111");
         conf.setProperty("capacity.max", "999");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
         confService.putConf("examples/config1.properties", conf, new PropertiesConfSerializer<Properties>(false));
 
-        // sleep
-        Thread.sleep(20000);
+        Thread.sleep(10000);
 
-        sovereign.stop();
+        // change configuration
+        conf = new Properties();
+        conf.setProperty("capacity.min", "333");
+        conf.setProperty("capacity.max", "1024");
+        conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
+        confService.putConf("examples/config1.properties", conf, new PropertiesConfSerializer<Properties>(false));
 
+        Thread.sleep(10000);
+
+        // remove configuration
+        confService.removeConf("examples/config1.properties");
     }
 }

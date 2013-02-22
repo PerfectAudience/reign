@@ -5,8 +5,8 @@ import java.util.Map;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
-import org.kompany.overlord.Service;
 import org.kompany.overlord.Sovereign;
+import org.kompany.overlord.SovereignBuilder;
 import org.kompany.overlord.presence.NodeInfo;
 import org.kompany.overlord.presence.PresenceObserver;
 import org.kompany.overlord.presence.PresenceService;
@@ -25,41 +25,34 @@ public class PresenceServiceExample {
     private static final Logger logger = LoggerFactory.getLogger(PresenceServiceExample.class);
 
     public static void main(String[] args) throws Exception {
-        /** init sovereign using default ZkClient implementation **/
-        Sovereign sovereign = new Sovereign("localhost:2181", 15000);
-
-        /** set up zk client if you want to use some other implementation **/
-        // ZkClient zkClient = new ResilientZooKeeper("localhost:2181", 15000);
-        // sovereign.setZkClient(zkClient);
-
-        /** set-up services and register **/
-        Map<String, Service> serviceMap = new HashMap<String, Service>();
-
-        // presence service
-        PresenceService presenceService = new PresenceService();
-        serviceMap.put("presence", presenceService);
-        sovereign.registerServices(serviceMap);
-
-        /** start sovereign **/
+        /** init and start sovereign using builder **/
+        Sovereign sovereign = (new SovereignBuilder()).zkConfig("localhost:2181", 15000).pathCache(1024, 8)
+                .allCoreServices().build();
         sovereign.start();
 
-        /** use presence service to announce that service nodes are up **/
-        // this is how you would normally get a service
-        presenceService = (PresenceService) sovereign.getService("presence");
+        /** presence service example **/
+        presenceServiceExample(sovereign);
 
-        // basic service node announcement
-        presenceService.announce("examples", "service1", "node1");
+        /** sleep to allow examples to run for a bit **/
+        Thread.sleep(60000);
 
-        // service node accouncement with some additional info
-        Map<String, String> nodeAttributes = new HashMap<String, String>();
-        nodeAttributes.put("port", "1234");
-        presenceService.announce("examples", "service2", "node1", nodeAttributes);
+        /** shutdown sovereign **/
+        sovereign.stop();
 
-        /** look up service and node info **/
-        // service info
-        PresenceObserver<ServiceInfo> serviceObserver = new PresenceObserver<ServiceInfo>() {
+        /** sleep a bit to observe observer callbacks **/
+        Thread.sleep(10000);
+    }
+
+    public static void presenceServiceExample(Sovereign sovereign) throws Exception {
+        // get presence service
+        PresenceService presenceService = (PresenceService) sovereign.getService("presence");
+
+        // try to retrieve service info (which may not be immediately
+        // available); include observer to be notified of changes in service
+        // info
+        ServiceInfo serviceInfo = presenceService.lookup("examples", "service1", new PresenceObserver<ServiceInfo>() {
             @Override
-            public void handle(ServiceInfo info) {
+            public void updated(ServiceInfo info) {
                 if (info != null) {
                     logger.info("Observer:  serviceInfo={}",
                             ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
@@ -67,14 +60,15 @@ public class PresenceServiceExample {
                     logger.info("Observer:  serviceInfo deleted");
                 }
             }
-        };
-        ServiceInfo serviceInfo = presenceService.lookup("examples", "service1", serviceObserver);
+        });
         logger.info("serviceInfo={}", ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
 
-        // node info
-        PresenceObserver<NodeInfo> nodeObserver = new PresenceObserver<NodeInfo>() {
+        // try to retrieve node info (which may not be immediately
+        // available); include observer to be notified of changes in node
+        // info
+        NodeInfo nodeInfo = presenceService.lookup("examples", "service2", "node1", new PresenceObserver<NodeInfo>() {
             @Override
-            public void handle(NodeInfo info) {
+            public void updated(NodeInfo info) {
                 if (info != null) {
                     logger.info("Observer:  nodeInfo={}",
                             ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
@@ -83,14 +77,41 @@ public class PresenceServiceExample {
                     logger.info("Observer:  nodeInfo deleted");
                 }
             }
-        };
-        NodeInfo nodeInfo = presenceService.lookup("examples", "service2", "node1", nodeObserver);
+        });
         logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
 
-        // sleep to allow initialization and announcements to happen
-        Thread.sleep(60000);
+        // basic service node announcement
+        presenceService.announce("examples", "service1", "node1");
 
-        sovereign.stop();
+        // service node announcement with some additional info
+        Map<String, String> nodeAttributes = new HashMap<String, String>();
+        nodeAttributes.put("port", "1234");
+        presenceService.announce("examples", "service2", "node1", nodeAttributes);
+
+        // sleep a bit
+        Thread.sleep(10000);
+
+        presenceService.hide("examples", "service2", "node1");
+
+        // sleep a bit
+        Thread.sleep(10000);
+
+        presenceService.unhide("examples", "service2", "node1");
+
+        // new node available in service
+        presenceService.announce("examples", "service1", "node2");
+
+        // sleep a bit
+        Thread.sleep(10000);
+
+        // new node available in service
+        presenceService.hide("examples", "service1", "node2");
+
+        // reannounce service with changed attributes
+        // service node announcement with some additional info
+        nodeAttributes = new HashMap<String, String>();
+        nodeAttributes.put("port", "9999");
+        presenceService.announce("examples", "service2", "node1", nodeAttributes);
 
     }
 }

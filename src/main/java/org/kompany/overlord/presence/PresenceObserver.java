@@ -8,6 +8,17 @@ import org.kompany.overlord.ServiceObserver;
  * 
  * @param <T>
  */
-public interface PresenceObserver<T> extends ServiceObserver<T> {
+public abstract class PresenceObserver<T> implements ServiceObserver<T> {
 
+    public abstract void updated(T data);
+
+    @Override
+    public void stateReset(Object o) {
+
+    }
+
+    @Override
+    public void stateUnknown(Object o) {
+
+    }
 }

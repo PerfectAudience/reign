@@ -21,7 +21,7 @@ public class ServiceObserverManager<T extends ServiceObserverWrapper> {
 
     private static final Logger logger = LoggerFactory.getLogger(ServiceObserverManager.class);
 
-    private ConcurrentMap<String, Set<T>> wrapperMap = new ConcurrentHashMap<String, Set<T>>(32, 0.9f, 4);
+    private final ConcurrentMap<String, Set<T>> wrapperMap = new ConcurrentHashMap<String, Set<T>>(32, 0.9f, 4);
 
     public void put(String path, T observerWrapper) {
         Set<T> wrapperSet = getWrapperSet(path, true);
@@ -48,12 +48,13 @@ public class ServiceObserverManager<T extends ServiceObserverWrapper> {
         logger.info("Removed all observers:  path={}", path);
     }
 
-    public void notifyObservers(String path, Object o) {
+    public void signalAllObservers(String path, Object o) {
         Set<T> wrapperSet = getWrapperSet(path, false);
 
         logger.info("Notifying observers:  path={}; pathObserverCount={}", path, wrapperSet.size());
+
         for (T wrapper : wrapperSet) {
-            wrapper.notifyObserver(o);
+            wrapper.signalObserver(o);
         }
     }
 
