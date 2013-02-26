@@ -48,7 +48,7 @@ public class ZkLock implements Lock {
     @Override
     public void lock() {
         try {
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, -1, aclList, -1,
+            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
                     false);
         } catch (InterruptedException e) {
             logger.warn("Interrupted in lock():  should not happen:  " + e, e);
@@ -64,8 +64,7 @@ public class ZkLock implements Lock {
      */
     @Override
     public void lockInterruptibly() throws InterruptedException {
-        acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, -1, aclList, -1,
-                true);
+        acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1, true);
 
     }
 
@@ -87,7 +86,7 @@ public class ZkLock implements Lock {
     @Override
     public boolean tryLock() {
         try {
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, -1, aclList, 0,
+            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, 0,
                     false);
         } catch (InterruptedException e) {
             logger.warn("Interrupted in lock():  should not happen:  " + e, e);
@@ -107,7 +106,7 @@ public class ZkLock implements Lock {
         long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
 
         // attempt to acquire lock
-        acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, -1, aclList,
+        acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList,
                 timeWaitMillis, true);
 
         return acquiredLockPath != null;

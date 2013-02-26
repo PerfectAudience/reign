@@ -49,7 +49,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node1", "semaphore1", 5);
+                ZkSemaphore semaphore = coordService.getSemaphore("node1", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 4;
@@ -72,7 +72,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node2", "semaphore1", 5);
+                ZkSemaphore semaphore = coordService.getSemaphore("node2", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 2;
@@ -95,7 +95,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node3", "semaphore1", 5);
+                ZkSemaphore semaphore = coordService.getSemaphore("node3", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -117,7 +117,7 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                ZkSemaphore semaphore = coordService.getSemaphore("node4", "semaphore1", 5);
+                ZkSemaphore semaphore = coordService.getSemaphore("node4", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -142,7 +142,7 @@ public class CoordinationServiceExample {
         // this is how you would normally get a service
         final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
 
-        final int lockHoldTimeMillis = 15000;
+        final int lockHoldTimeMillis = 30000;
 
         Thread t1 = new Thread() {
             @Override
@@ -151,9 +151,9 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
-                    logger.info("{}:  acquired lock:  will hold for {} seconds...", this.getName(),
-                            lockHoldTimeMillis / 1000);
-                    Thread.sleep(lockHoldTimeMillis);
+                    long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
+                    logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -172,9 +172,9 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
-                    logger.info("{}:  acquired lock:  will hold for {} seconds...", this.getName(),
-                            lockHoldTimeMillis / 1000);
-                    Thread.sleep(lockHoldTimeMillis);
+                    long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
+                    logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -193,9 +193,9 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
-                    logger.info("{}:  acquired lock:  will hold for {} seconds...", this.getName(),
-                            lockHoldTimeMillis / 1000);
-                    Thread.sleep(lockHoldTimeMillis);
+                    long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
+                    logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -212,7 +212,7 @@ public class CoordinationServiceExample {
         // this is how you would normally get a service
         final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
 
-        final int lockHoldTimeMillis = 15000;
+        final int lockHoldTimeMillis = 30000;
 
         Thread t1 = new Thread() {
             @Override
@@ -221,9 +221,9 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
-                    logger.info("{}:  acquired lock:  will hold for {} seconds...", this.getName(),
-                            lockHoldTimeMillis / 1000);
-                    Thread.sleep(lockHoldTimeMillis);
+                    long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
+                    logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -242,9 +242,9 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
-                    logger.info("{}:  acquired lock:  will hold for {} seconds...", this.getName(),
-                            lockHoldTimeMillis / 1000);
-                    Thread.sleep(lockHoldTimeMillis);
+                    long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
+                    logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -263,9 +263,9 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.writeLock().lock();
                 try {
-                    logger.info("{}:  acquired lock:  will hold for {} seconds...", this.getName(),
-                            lockHoldTimeMillis / 1000);
-                    Thread.sleep(lockHoldTimeMillis);
+                    long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
+                    logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -282,15 +282,15 @@ public class CoordinationServiceExample {
             public void run() {
                 ReadWriteLock rwLock = coordService.getReadWriteLock("node4", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
-                rwLock.readLock().lock();
+                rwLock.writeLock().lock();
                 try {
-                    logger.info("{}:  acquired lock:  will hold for {} seconds...", this.getName(),
-                            lockHoldTimeMillis / 1000);
-                    Thread.sleep(lockHoldTimeMillis);
+                    long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
+                    logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
-                    rwLock.readLock().unlock();
+                    rwLock.writeLock().unlock();
                 }
             }
         };

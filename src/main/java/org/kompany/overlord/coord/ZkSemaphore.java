@@ -56,7 +56,7 @@ public class ZkSemaphore implements Watcher {
     }
 
     public void acquire() throws InterruptedException {
-        String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
+        String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
                 ReservationType.PERMIT, permitPoolSize, aclList, -1, true);
         if (acquiredPermitPath != null) {
             acquiredPermitPathSet.add(acquiredPermitPath);
@@ -68,8 +68,8 @@ public class ZkSemaphore implements Watcher {
 
         try {
             for (int i = 0; i < permits; i++) {
-                String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
-                        ReservationType.PERMIT, permitPoolSize, aclList, -1, true);
+                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
+                        relativeSemaphorePath, ReservationType.PERMIT, permitPoolSize, aclList, -1, true);
                 if (acquiredPermitPath != null) {
                     tmpAcquiredPermitPathSet.add(acquiredPermitPath);
                 }
@@ -90,7 +90,7 @@ public class ZkSemaphore implements Watcher {
         // necessary
         boolean interrupted = false;
         try {
-            String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
+            String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
                     ReservationType.PERMIT, permitPoolSize, aclList, -1, false);
 
             if (acquiredPermitPath != null) {
@@ -112,8 +112,8 @@ public class ZkSemaphore implements Watcher {
         boolean interrupted = false;
         while (permits > 0) {
             try {
-                String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
-                        ReservationType.PERMIT, permitPoolSize, aclList, -1, false);
+                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
+                        relativeSemaphorePath, ReservationType.PERMIT, permitPoolSize, aclList, -1, false);
 
                 if (acquiredPermitPath != null) {
                     acquiredPermitPathSet.add(acquiredPermitPath);
@@ -157,7 +157,7 @@ public class ZkSemaphore implements Watcher {
         try {
             String acquiredPermitPath = null;
             do {
-                acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
+                acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
                         ReservationType.PERMIT, permitPoolSize, aclList, 0, false);
 
                 if (acquiredPermitPath != null) {
@@ -257,7 +257,7 @@ public class ZkSemaphore implements Watcher {
         }
 
         try {
-            String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
+            String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
                     ReservationType.PERMIT, permitPoolSize, aclList, 0, false);
 
             if (acquiredPermitPath != null) {
@@ -283,8 +283,8 @@ public class ZkSemaphore implements Watcher {
         long startTimestamp = System.currentTimeMillis();
         try {
             for (int i = 0; i < permits && System.currentTimeMillis() - startTimestamp < timeWaitMillis; i++) {
-                String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
-                        ReservationType.PERMIT, permitPoolSize, aclList, timeWaitMillis, true);
+                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
+                        relativeSemaphorePath, ReservationType.PERMIT, permitPoolSize, aclList, timeWaitMillis, true);
                 if (acquiredPermitPath != null) {
                     tmpAcquiredPermitPathSet.add(acquiredPermitPath);
                 }
@@ -326,8 +326,8 @@ public class ZkSemaphore implements Watcher {
 
         try {
             for (int i = 0; i < permits; i++) {
-                String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
-                        ReservationType.PERMIT, permitPoolSize, aclList, 0, true);
+                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
+                        relativeSemaphorePath, ReservationType.PERMIT, permitPoolSize, aclList, 0, true);
                 if (acquiredPermitPath != null) {
                     tmpAcquiredPermitPathSet.add(acquiredPermitPath);
                 } else {
@@ -360,7 +360,7 @@ public class ZkSemaphore implements Watcher {
 
         long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
 
-        String acquiredPermitPath = zkLockManager.acquire(ownerId, pathContext, relativeSemaphorePath,
+        String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
                 ReservationType.PERMIT, permitPoolSize, aclList, timeWaitMillis, false);
 
         if (acquiredPermitPath != null) {

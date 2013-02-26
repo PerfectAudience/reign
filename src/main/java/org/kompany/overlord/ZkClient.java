@@ -22,6 +22,8 @@ public interface ZkClient {
 
     public Stat exists(final String path, final boolean watch) throws KeeperException, InterruptedException;
 
+    public Stat exists(final String path, Watcher watcher) throws KeeperException, InterruptedException;
+
     public List<String> getChildren(final String path, final boolean watch, final Stat stat) throws KeeperException,
             InterruptedException;
 

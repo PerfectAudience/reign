@@ -8,13 +8,13 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 import org.apache.zookeeper.data.ACL;
 import org.kompany.overlord.AbstractActiveService;
+import org.kompany.overlord.DataSerializer;
+import org.kompany.overlord.JsonDataSerializer;
 import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathType;
 import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.conf.ConfObserver;
-import org.kompany.overlord.conf.ConfSerializer;
 import org.kompany.overlord.conf.ConfService;
-import org.kompany.overlord.conf.JsonConfSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,7 +113,7 @@ public class CoordinationService extends AbstractActiveService {
         ConfService confService = (ConfService) getServiceDirectory().getService("conf");
         String absoluteSemaphoreConfPath = getPathScheme().getAbsolutePath(PathContext.USER, PathType.COORD,
                 ReservationType.PERMIT.getSubCategoryPathToken() + "/" + relativeSemaphorePath);
-        ConfSerializer<Map<String, String>> confSerializer = new JsonConfSerializer();
+        DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         Map<String, String> semaphoreConf = confService.getConfAbsolutePath(absoluteSemaphoreConfPath, confSerializer,
                 null, true);
         if (semaphoreConf != null && semaphoreConf.get("permitPoolSize") == null) {

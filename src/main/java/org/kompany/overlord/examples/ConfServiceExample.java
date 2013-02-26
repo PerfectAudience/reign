@@ -6,8 +6,8 @@ import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.SovereignBuilder;
 import org.kompany.overlord.conf.ConfObserver;
 import org.kompany.overlord.conf.ConfService;
-import org.kompany.overlord.conf.PropertiesConf;
-import org.kompany.overlord.conf.PropertiesConfSerializer;
+import org.kompany.overlord.conf.ConfProperties;
+import org.kompany.overlord.conf.ConfPropertiesSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +47,9 @@ public class ConfServiceExample {
         // load a configuration which will not be immediately available but pass
         // observer to be notified of changes in configuration
         Properties loadedConf = confService.getConf("examples/config1.properties",
-                new PropertiesConfSerializer<PropertiesConf>(false), new ConfObserver<PropertiesConf>() {
+                new ConfPropertiesSerializer<ConfProperties>(false), new ConfObserver<ConfProperties>() {
                     @Override
-                    public void updated(PropertiesConf conf) {
+                    public void updated(ConfProperties conf) {
                         if (conf != null) {
                             logger.info("Observer:  conf={}", conf);
 
@@ -66,7 +66,7 @@ public class ConfServiceExample {
         conf.setProperty("capacity.min", "111");
         conf.setProperty("capacity.max", "999");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples/config1.properties", conf, new PropertiesConfSerializer<Properties>(false));
+        confService.putConf("examples/config1.properties", conf, new ConfPropertiesSerializer<Properties>(false));
 
         Thread.sleep(10000);
 
@@ -75,7 +75,7 @@ public class ConfServiceExample {
         conf.setProperty("capacity.min", "333");
         conf.setProperty("capacity.max", "1024");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples/config1.properties", conf, new PropertiesConfSerializer<Properties>(false));
+        confService.putConf("examples/config1.properties", conf, new ConfPropertiesSerializer<Properties>(false));
 
         Thread.sleep(10000);
 

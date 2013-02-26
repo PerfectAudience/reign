@@ -17,7 +17,7 @@ public interface ServiceObserver<T> {
     public void stateReset(Object o);
 
     /**
-     * Called when there is a change is ZooKeeper connection status so state is
+     * Called when there is a change in ZooKeeper connection status so state is
      * unknown: generally, a signal that your application should go into
      * "safe mode".
      * 

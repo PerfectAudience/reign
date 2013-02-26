@@ -10,6 +10,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractService;
+import org.kompany.overlord.DataSerializer;
 import org.kompany.overlord.ObservableService;
 import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathType;
@@ -35,7 +36,7 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param confSerializer
      * @return
      */
-    public <T> T getConf(String relativePath, ConfSerializer<T> confSerializer) {
+    public <T> T getConf(String relativePath, DataSerializer<T> confSerializer) {
         return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath),
                 confSerializer, null, true);
 
@@ -48,7 +49,7 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param observer
      * @return
      */
-    public <T> T getConf(String relativePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer) {
+    public <T> T getConf(String relativePath, DataSerializer<T> confSerializer, ConfObserver<T> observer) {
         return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath),
                 confSerializer, observer, true);
 
@@ -60,7 +61,7 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param conf
      * @param confSerializer
      */
-    public <T> void putConf(String relativePath, T conf, ConfSerializer<T> confSerializer) {
+    public <T> void putConf(String relativePath, T conf, DataSerializer<T> confSerializer) {
         putConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath), conf,
                 confSerializer, Sovereign.DEFAULT_ACL_LIST);
     }
@@ -72,7 +73,7 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param confSerializer
      * @param aclList
      */
-    public <T> void putConf(String relativePath, T conf, ConfSerializer<T> confSerializer, List<ACL> aclList) {
+    public <T> void putConf(String relativePath, T conf, DataSerializer<T> confSerializer, List<ACL> aclList) {
         putConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath), conf,
                 confSerializer, aclList);
     }
@@ -107,7 +108,7 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param confSerializer
      * @return
      */
-    public <T> T getConfAbsolutePath(String absolutePath, ConfSerializer<T> confSerializer, ConfObserver<T> observer,
+    public <T> T getConfAbsolutePath(String absolutePath, DataSerializer<T> confSerializer, ConfObserver<T> observer,
             boolean useCache) {
         boolean error = false;
         byte[] bytes = null;
@@ -168,7 +169,7 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param confSerializer
      * @param aclList
      */
-    public <T> void putConfAbsolutePath(String absolutePath, T conf, ConfSerializer<T> confSerializer, List<ACL> aclList) {
+    public <T> void putConfAbsolutePath(String absolutePath, T conf, DataSerializer<T> confSerializer, List<ACL> aclList) {
         try {
             // write to ZK
             byte[] leafData = confSerializer.serialize(conf);
@@ -208,7 +209,7 @@ public class ConfService extends AbstractService implements ObservableService, W
         String path = event.getPath();
         ConfObserverWrapper<ConfObserver> observerWrapper = observerManager.getObserverWrapperSet(path).iterator()
                 .next();
-        Object newValue = getConfAbsolutePath(path, observerWrapper.getConfSerializer(), null, true);
+        Object newValue = getConfAbsolutePath(path, observerWrapper.getDataSerializer(), null, true);
         if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
             observerManager.signal(path, newValue);
         }
@@ -246,17 +247,17 @@ public class ConfService extends AbstractService implements ObservableService, W
 
         // private String path;
 
-        private final ConfSerializer<T> confSerializer;
+        private final DataSerializer<T> dataSerializer;
 
         private volatile T currentValue;
 
-        public ConfObserverWrapper(String path, ConfObserver<T> observer, ConfSerializer<T> confSerializer,
+        public ConfObserverWrapper(String path, ConfObserver<T> observer, DataSerializer<T> dataSerializer,
                 T currentValue) {
             // from super class
             this.observer = observer;
 
             // this.path = path;
-            this.confSerializer = confSerializer;
+            this.dataSerializer = dataSerializer;
             this.currentValue = currentValue;
         }
 
@@ -275,14 +276,14 @@ public class ConfService extends AbstractService implements ObservableService, W
         // return path;
         // }
 
-        public ConfSerializer<T> getConfSerializer() {
-            return confSerializer;
+        public DataSerializer<T> getDataSerializer() {
+            return dataSerializer;
         }
 
         public T getCurrentValue() {
             return currentValue;
         }
 
-    }
+    }// private
 
 }

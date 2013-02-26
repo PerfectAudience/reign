@@ -22,10 +22,10 @@ public class QuickStartExample {
         sovereign.start();
 
         /** presence service example **/
-        // PresenceServiceExample.presenceServiceExample(sovereign);
+        PresenceServiceExample.presenceServiceExample(sovereign);
 
         /** conf service example **/
-        // ConfServiceExample.confServiceExample(sovereign);
+        ConfServiceExample.confServiceExample(sovereign);
 
         /** coordination service example **/
         CoordinationServiceExample.coordinationServiceExclusiveLockExample(sovereign);

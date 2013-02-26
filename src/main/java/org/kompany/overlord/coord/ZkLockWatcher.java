@@ -9,14 +9,15 @@ import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * @author ypai
+ * 
+ */
 public class ZkLockWatcher implements Watcher {
     private static final Logger logger = LoggerFactory.getLogger(ZkLockWatcher.class);
 
     private static AtomicInteger instancesOutstanding = new AtomicInteger(0);
-
-    // private final AtomicInteger watchedReservations = new AtomicInteger(0);
-    //
-    // private final AtomicInteger watchesSet = new AtomicInteger(0);
 
     private final String lockPath;
 
@@ -44,32 +45,10 @@ public class ZkLockWatcher implements Watcher {
         instancesOutstanding.decrementAndGet();
     }
 
-    // public int incrementWatchesSet() {
-    // return this.watchesSet.incrementAndGet();
-    // }
-    //
-    // public int watchesSet() {
-    // return this.watchesSet.intValue();
-    // }
-    //
-    // public int incrementWatchedReservations() {
-    // return this.watchedReservations.incrementAndGet();
-    // }
-    //
-    // public int decrementWatchedReservations() {
-    // return this.watchedReservations.decrementAndGet();
-    // }
-    //
-    // public int watchedReservations() {
-    // return this.watchedReservations.intValue();
-    // }
-
     public void waitForEvent(long waitTimeoutMs) throws InterruptedException {
         // if (this.watchedReservations() > 0) {
         synchronized (this) {
             if (waitTimeoutMs == -1) {
-                // this.wait();
-
                 long startTimestamp = System.currentTimeMillis();
 
                 // TODO: change this back to above once we fix issue
@@ -78,10 +57,8 @@ public class ZkLockWatcher implements Watcher {
                 this.wait(60000);
 
                 if (System.currentTimeMillis() - startTimestamp > 60000) {
-                    logger.warn(
-                            "Safety wait timeout of 60 seconds reached:  resetting watched items to 0:  instancesOutstanding={}; lockName={}; lockReservation={}",
+                    logger.warn("Safety wait timeout of 60 seconds reached:  lockName={}; lockReservation={}",
                             new Object[] { instancesOutstanding.get(), lockPath, lockReservationPath });
-                    // this.watchedReservations.set(0);
                 }
 
             } else {
@@ -100,20 +77,12 @@ public class ZkLockWatcher implements Watcher {
 
         }
 
-        // if (this.watchedReservations() == 0) {
-        // return;
-        //
-        // } else {
-
         // process events
         switch (event.getType()) {
         case NodeCreated:
         case NodeChildrenChanged:
         case NodeDataChanged:
         case NodeDeleted:
-            // this.decrementWatchedReservations();
-            //
-            // if (this.watchedReservations() <= 0) {
             synchronized (this) {
                 this.notifyAll();
 
@@ -123,7 +92,6 @@ public class ZkLockWatcher implements Watcher {
                             + "; lockReservation=" + lockReservationPath);
                 }
             }
-            // }
             break;
 
         case None:
