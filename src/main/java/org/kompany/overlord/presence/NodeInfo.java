@@ -99,7 +99,8 @@ public class NodeInfo {
 
     @Override
     public int hashCode() {
-        // TODO Auto-generated method stub
+        // TODO possibly do something more clever later
+
         return super.hashCode();
     }
 

@@ -4,6 +4,11 @@ import java.util.concurrent.locks.Lock;
 
 import org.kompany.overlord.ServiceObserver;
 
+/**
+ * 
+ * @author ypai
+ * 
+ */
 public abstract class LockObserver implements ServiceObserver {
 
     /**

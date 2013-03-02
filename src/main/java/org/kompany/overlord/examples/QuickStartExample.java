@@ -30,7 +30,7 @@ public class QuickStartExample {
         /** coordination service example **/
         CoordinationServiceExample.coordinationServiceExclusiveLockExample(sovereign);
         CoordinationServiceExample.coordinationServiceReadWriteLockExample(sovereign);
-        CoordinationServiceExample.coordinationServiceSemaphoreExample(sovereign);
+        CoordinationServiceExample.coordinationServiceFixedSemaphoreExample(sovereign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(60000);

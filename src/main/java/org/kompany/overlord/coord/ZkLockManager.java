@@ -73,8 +73,8 @@ class ZkLockManager {
      */
     public List<String> getReservationList(PathContext pathContext, String entityName, ReservationType reservationType,
             boolean useCache) {
-        String entityPath = pathScheme.getAbsolutePath(pathContext, PathType.COORD,
-                reservationType.getSubCategoryPathToken() + "/" + entityName);
+        String entityPath = pathScheme.getAbsolutePath(pathContext, PathType.COORD, reservationType.category() + "/"
+                + entityName);
         try {
             List<String> lockReservationList = null;
 
@@ -122,15 +122,15 @@ class ZkLockManager {
             // LockWatcher lockWatcher = null;
 
             // path to lock (parent node of all reservations)
-            String lockPath = pathScheme.getAbsolutePath(pathContext, PathType.COORD,
-                    reservationType.getSubCategoryPathToken() + "/" + entityName);
+            String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
+                    reservationType, entityName);
 
             // owner data in JSON
             String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
 
             // path to lock reservation node (to "get in line" for lock)
-            String lockReservationPrefix = pathScheme.getAbsolutePath(pathContext, PathType.COORD,
-                    reservationType.getSubCategoryPathToken() + "/" + entityName + "/" + reservationType + "_");
+            String lockReservationPrefix = CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
+                    pathContext, PathType.COORD, reservationType, entityName);
 
             // create lock reservation sequential node
             String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme, lockReservationPrefix,
@@ -165,21 +165,21 @@ class ZkLockManager {
                         // see if we have the lock
                         if (lockReservation.equals(currentReservation)) {
                             if (i == 0
-                                    || (reservationType != ReservationType.EXCLUSIVE && !exclusiveReservationEncountered)) {
+                                    || (reservationType != ReservationType.LOCK_EXCLUSIVE && !exclusiveReservationEncountered)) {
                                 acquiredLockPath = lockReservationPath;
                                 break;
                             }
 
                             // set the one ahead of this reservation so we can
                             // watch if we do not acquire
-                            reservationAheadPath = lockPath + "/" + lockReservationList.get(i - 1);
+                            reservationAheadPath = pathScheme.join(lockPath, lockReservationList.get(i - 1));
                             break;
                         }
 
                         // see if we have encountered an exclusive lock yet
                         if (!exclusiveReservationEncountered) {
-                            exclusiveReservationEncountered = currentReservation.startsWith(ReservationType.EXCLUSIVE
-                                    .toString());
+                            exclusiveReservationEncountered = currentReservation
+                                    .startsWith(ReservationType.LOCK_EXCLUSIVE.toString());
                         }
 
                     }
@@ -239,8 +239,8 @@ class ZkLockManager {
     public String acquireForSemaphore(String ownerId, PathContext pathContext, String entityName,
             ReservationType reservationType, int totalAvailable, List<ACL> aclList, long waitTimeoutMs,
             boolean interruptible) throws InterruptedException {
-        if (reservationType != ReservationType.PERMIT) {
-            throw new IllegalArgumentException("Invalid reservation type:  " + ReservationType.PERMIT);
+        if (reservationType != ReservationType.SEMAPHORE) {
+            throw new IllegalArgumentException("Invalid reservation type:  " + ReservationType.SEMAPHORE);
         }
 
         try {
@@ -249,15 +249,15 @@ class ZkLockManager {
             // LockWatcher lockWatcher = null;
 
             // path to lock (parent node of all reservations)
-            String lockPath = pathScheme.getAbsolutePath(pathContext, PathType.COORD,
-                    reservationType.getSubCategoryPathToken() + "/" + entityName);
+            String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
+                    reservationType, entityName);
 
             // owner data in JSON
             String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
 
             // path to lock reservation node (to "get in line" for lock)
-            String lockReservationPrefix = pathScheme.getAbsolutePath(pathContext, PathType.COORD,
-                    reservationType.getSubCategoryPathToken() + "/" + entityName + "/" + reservationType + "_");
+            String lockReservationPrefix = CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
+                    pathContext, PathType.COORD, reservationType, entityName);
 
             // create lock reservation sequential node
             String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme, lockReservationPrefix,
@@ -310,7 +310,7 @@ class ZkLockManager {
                                 }
                             }
 
-                            exclusiveReservationEncountered = reservationType == ReservationType.EXCLUSIVE;
+                            exclusiveReservationEncountered = reservationType == ReservationType.LOCK_EXCLUSIVE;
                         }
                     }// if
 

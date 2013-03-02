@@ -57,6 +57,16 @@ public class DefaultPathScheme implements PathScheme {
     }
 
     @Override
+    public String getAbsolutePath(PathContext pathContext, PathType pathType, String... pathTokens) {
+        return getAbsolutePath(pathContext, pathType, buildRelativePath(pathTokens));
+    }
+
+    @Override
+    public String join(String pathSegment1, String pathSegment2) {
+        return pathSegment1 + '/' + pathSegment2;
+    }
+
+    @Override
     public String[] tokenizePath(String path) {
         return PATTERN_PATH_TOKENIZER.split(path);
     }

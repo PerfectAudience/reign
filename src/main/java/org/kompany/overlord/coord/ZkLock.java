@@ -3,7 +3,6 @@ package org.kompany.overlord.coord;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 
 import org.apache.zookeeper.data.ACL;
 import org.kompany.overlord.PathContext;
@@ -16,7 +15,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class ZkLock implements Lock {
+public class ZkLock implements DistributedLock {
 
     private static final Logger logger = LoggerFactory.getLogger(ZkLock.class);
 
@@ -46,10 +45,14 @@ public class ZkLock implements Lock {
      * @see java.util.concurrent.locks.Lock#lock()
      */
     @Override
-    public void lock() {
+    public synchronized void lock() {
         try {
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
-                    false);
+            if (acquiredLockPath == null) {
+                acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
+                        false);
+            } else {
+                this.wait();
+            }
         } catch (InterruptedException e) {
             logger.warn("Interrupted in lock():  should not happen:  " + e, e);
         }
@@ -63,8 +66,13 @@ public class ZkLock implements Lock {
      * @see java.util.concurrent.locks.Lock#lockInterruptibly()
      */
     @Override
-    public void lockInterruptibly() throws InterruptedException {
-        acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1, true);
+    public synchronized void lockInterruptibly() throws InterruptedException {
+        if (acquiredLockPath == null) {
+            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
+                    true);
+        } else {
+            this.wait();
+        }
 
     }
 
@@ -84,10 +92,12 @@ public class ZkLock implements Lock {
      * @see java.util.concurrent.locks.Lock#tryLock()
      */
     @Override
-    public boolean tryLock() {
+    public synchronized boolean tryLock() {
         try {
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, 0,
-                    false);
+            if (acquiredLockPath == null) {
+                acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, 0,
+                        false);
+            }
         } catch (InterruptedException e) {
             logger.warn("Interrupted in lock():  should not happen:  " + e, e);
         }
@@ -101,13 +111,15 @@ public class ZkLock implements Lock {
      * java.util.concurrent.TimeUnit)
      */
     @Override
-    public boolean tryLock(long wait, TimeUnit timeUnit) throws InterruptedException {
-        // convert wait to millis
-        long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
+    public synchronized boolean tryLock(long wait, TimeUnit timeUnit) throws InterruptedException {
+        if (acquiredLockPath == null) {
+            // convert wait to millis
+            long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
 
-        // attempt to acquire lock
-        acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList,
-                timeWaitMillis, true);
+            // attempt to acquire lock
+            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList,
+                    timeWaitMillis, true);
+        }
 
         return acquiredLockPath != null;
     }
@@ -118,8 +130,10 @@ public class ZkLock implements Lock {
      * @see java.util.concurrent.locks.Lock#unlock()
      */
     @Override
-    public void unlock() {
+    public synchronized void unlock() {
         zkLockManager.relinquish(acquiredLockPath);
+        acquiredLockPath = null;
+        this.notifyAll();
     }
 
 }

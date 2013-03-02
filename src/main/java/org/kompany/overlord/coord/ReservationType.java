@@ -7,51 +7,53 @@ package org.kompany.overlord.coord;
  */
 public enum ReservationType {
 
-    EXCLUSIVE {
+    LOCK_EXCLUSIVE {
         @Override
-        public String toString() {
+        public String prefix() {
             return "EX";
         }
 
         @Override
-        public String getSubCategoryPathToken() {
+        public String category() {
             return "lock";
         }
     },
-    SHARED {
+    LOCK_SHARED {
         @Override
-        public String toString() {
+        public String prefix() {
             return "SH";
         }
 
         @Override
-        public String getSubCategoryPathToken() {
+        public String category() {
             return "lock";
         }
     },
-    PERMIT {
+    SEMAPHORE {
         @Override
-        public String toString() {
+        public String prefix() {
             return "PT";
         }
 
         @Override
-        public String getSubCategoryPathToken() {
+        public String category() {
             return "semaphore";
         }
     },
     BARRIER {
         @Override
-        public String toString() {
+        public String prefix() {
             return "BR";
         }
 
         @Override
-        public String getSubCategoryPathToken() {
+        public String category() {
             return "barrier";
         }
     };
 
-    public abstract String getSubCategoryPathToken();
+    public abstract String category();
+
+    public abstract String prefix();
 
 }

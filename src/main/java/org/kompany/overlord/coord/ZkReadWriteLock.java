@@ -21,8 +21,8 @@ public class ZkReadWriteLock implements ReadWriteLock {
             String relativeLockPath, List<ACL> aclList) {
         super();
 
-        writeLock = new ZkLock(zkLockManager, ownerId, PathContext.USER, relativeLockPath, ReservationType.EXCLUSIVE, aclList);
-        readLock = new ZkLock(zkLockManager, ownerId, PathContext.USER, relativeLockPath, ReservationType.SHARED, aclList);
+        writeLock = new ZkLock(zkLockManager, ownerId, PathContext.USER, relativeLockPath, ReservationType.LOCK_EXCLUSIVE, aclList);
+        readLock = new ZkLock(zkLockManager, ownerId, PathContext.USER, relativeLockPath, ReservationType.LOCK_SHARED, aclList);
     }
 
     @Override

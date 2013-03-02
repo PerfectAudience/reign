@@ -7,11 +7,15 @@ package org.kompany.overlord;
  */
 public interface PathScheme {
 
-    public String getBasePath(PathContext context);
+    public String getBasePath(PathContext pathContext);
 
-    public String getAbsolutePath(PathContext context, PathType pathType);
+    public String getAbsolutePath(PathContext pathContext, PathType pathType);
 
-    public String getAbsolutePath(PathContext context, PathType pathType, String relativePath);
+    public String getAbsolutePath(PathContext pathContext, PathType pathType, String relativePath);
+
+    public String getAbsolutePath(PathContext pathContext, PathType pathType, String... pathTokens);
+
+    public String join(String pathSegment1, String pathSegment2);
 
     public String[] tokenizePath(String path);
 
