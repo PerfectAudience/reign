@@ -14,4 +14,6 @@ public interface DistributedSemaphore {
     public void release();
 
     public void release(int permitsToRelease);
+
+    public int permitPoolSize();
 }

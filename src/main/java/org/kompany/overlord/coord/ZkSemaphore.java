@@ -50,6 +50,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         return Collections.unmodifiableSet(acquiredPermitPathSet);
     }
 
+    @Override
     public synchronized int permitPoolSize() {
         return this.permitPoolSizeFunction.get();
     }
@@ -272,7 +273,8 @@ public class ZkSemaphore implements DistributedSemaphore {
         try {
             for (int i = 0; i < permits && System.currentTimeMillis() - startTimestamp < timeWaitMillis; i++) {
                 String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
-                        relativeSemaphorePath, ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis, true);
+                        relativeSemaphorePath, ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis,
+                        true);
                 if (acquiredPermitPath != null) {
                     tmpAcquiredPermitPathSet.add(acquiredPermitPath);
                 }
