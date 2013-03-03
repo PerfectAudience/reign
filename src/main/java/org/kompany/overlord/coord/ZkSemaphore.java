@@ -1,6 +1,7 @@
 package org.kompany.overlord.coord;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -25,29 +26,31 @@ public class ZkSemaphore implements DistributedSemaphore {
 
     private static final Logger logger = LoggerFactory.getLogger(ZkSemaphore.class);
 
-    private final ZkLockManager zkLockManager;
+    private final ZkReservationManager zkReservationManager;
     private final String ownerId;
     private final PathContext pathContext;
-    private final String relativeSemaphorePath;
+    private final String clusterId;
+    private final String semaphoreName;
     // private final ReservationType lockType;
     private final List<ACL> aclList;
     private final PermitPoolSize permitPoolSizeFunction;
 
-    private final Set<String> acquiredPermitPathSet = new HashSet<String>(16, 0.9f);
+    private final Set<String> acquiredPermitIds = new HashSet<String>(16, 0.9f);
 
-    public ZkSemaphore(ZkLockManager zkLockManager, String ownerId, PathContext pathContext,
-            String relativeSemaphorePath, List<ACL> aclList, PermitPoolSize permitPoolSizeFunction) {
+    public ZkSemaphore(ZkReservationManager zkReservationManager, String ownerId, PathContext pathContext,
+            String clusterId, String semaphoreName, List<ACL> aclList, PermitPoolSize permitPoolSizeFunction) {
         super();
-        this.zkLockManager = zkLockManager;
+        this.zkReservationManager = zkReservationManager;
         this.ownerId = ownerId;
         this.pathContext = pathContext;
-        this.relativeSemaphorePath = relativeSemaphorePath;
+        this.clusterId = clusterId;
+        this.semaphoreName = semaphoreName;
         this.aclList = aclList;
         this.permitPoolSizeFunction = permitPoolSizeFunction;
     }
 
-    public synchronized Set<String> getAcquiredPermitIds() {
-        return Collections.unmodifiableSet(acquiredPermitPathSet);
+    public synchronized Collection<String> getAcquiredPermits() {
+        return Collections.unmodifiableSet(acquiredPermitIds);
     }
 
     @Override
@@ -56,34 +59,69 @@ public class ZkSemaphore implements DistributedSemaphore {
     }
 
     @Override
-    public synchronized void acquire() throws InterruptedException {
-        String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
-                ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, true);
+    public synchronized String acquire() throws InterruptedException {
+        String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, true);
         if (acquiredPermitPath != null) {
-            acquiredPermitPathSet.add(acquiredPermitPath);
+            acquiredPermitIds.add(acquiredPermitPath);
+        }
+
+        return acquiredPermitPath;
+    }
+
+    @Override
+    public synchronized Collection<String> acquire(int permits) throws InterruptedException {
+        List<String> tmpAcquiredPermits = new ArrayList<String>(permits);
+
+        try {
+            for (int i = 0; i < permits; i++) {
+                String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                        semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, true);
+                if (acquiredPermitPath != null) {
+                    tmpAcquiredPermits.add(acquiredPermitPath);
+                }
+            }
+            acquiredPermitIds.addAll(tmpAcquiredPermits);
+        } catch (InterruptedException e) {
+            // return all permits acquired thus far in method
+            for (String acquiredPermitPath : tmpAcquiredPermits) {
+                zkReservationManager.relinquish(acquiredPermitPath);
+            }
+
+            acquiredPermitIds.removeAll(tmpAcquiredPermits);
+
+            throw e;
+        }
+
+        return tmpAcquiredPermits.size() > 0 ? tmpAcquiredPermits : Collections.EMPTY_LIST;
+    }
+
+    @Override
+    public synchronized boolean isValid(String permitId) {
+        return acquiredPermitIds.contains(permitId);
+    }
+
+    @Override
+    public synchronized void release(String permitId) {
+        if (zkReservationManager.relinquish(permitId)) {
+            acquiredPermitIds.remove(permitId);
         }
     }
 
     @Override
-    public synchronized void acquire(int permits) throws InterruptedException {
-        Set<String> tmpAcquiredPermitPathSet = new HashSet<String>(permits, 0.9f);
-
-        try {
-            for (int i = 0; i < permits; i++) {
-                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
-                        relativeSemaphorePath, ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, true);
-                if (acquiredPermitPath != null) {
-                    tmpAcquiredPermitPathSet.add(acquiredPermitPath);
-                }
+    public synchronized void release(Collection<String> permitIds) {
+        int permitsReleased = 0;
+        for (String permitId : permitIds) {
+            if (zkReservationManager.relinquish(permitId)) {
+                acquiredPermitIds.remove(permitId);
+                permitsReleased++;
             }
-            acquiredPermitPathSet.addAll(tmpAcquiredPermitPathSet);
-        } catch (InterruptedException e) {
-            // return all permits acquired thus far in method
-            for (String acquiredPermitPath : tmpAcquiredPermitPathSet) {
-                zkLockManager.relinquish(acquiredPermitPath);
-            }
+        }
 
-            throw e;
+        // sanity check
+        if (permitsReleased < permitIds.size()) {
+            logger.warn("Number of permits released does not match requested:  requested={}; released={}",
+                    permitIds.size(), permitsReleased);
         }
     }
 
@@ -92,11 +130,11 @@ public class ZkSemaphore implements DistributedSemaphore {
         // necessary
         boolean interrupted = false;
         try {
-            String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
-                    ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, false);
+            String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                    semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, false);
 
             if (acquiredPermitPath != null) {
-                acquiredPermitPathSet.add(acquiredPermitPath);
+                acquiredPermitIds.add(acquiredPermitPath);
             }
         } catch (InterruptedException e) {
             logger.warn("Interrupted in acquireUninterruptibly():  should not happen:  " + e, e);
@@ -114,11 +152,11 @@ public class ZkSemaphore implements DistributedSemaphore {
         boolean interrupted = false;
         while (permits > 0) {
             try {
-                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
-                        relativeSemaphorePath, ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, false);
+                String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                        semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, false);
 
                 if (acquiredPermitPath != null) {
-                    acquiredPermitPathSet.add(acquiredPermitPath);
+                    acquiredPermitIds.add(acquiredPermitPath);
                     permits--;
                 }
             } catch (InterruptedException e) {
@@ -133,6 +171,7 @@ public class ZkSemaphore implements DistributedSemaphore {
 
     }
 
+    @Override
     public synchronized int availablePermits() {
         int currentlyAvailable = permitPoolSize() - getAllPermitRequests().size();
         return currentlyAvailable < 0 ? 0 : currentlyAvailable;
@@ -159,11 +198,11 @@ public class ZkSemaphore implements DistributedSemaphore {
         try {
             String acquiredPermitPath = null;
             do {
-                acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
-                        ReservationType.SEMAPHORE, permitPoolSize(), aclList, 0, false);
+                acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                        semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, 0, false);
 
                 if (acquiredPermitPath != null) {
-                    acquiredPermitPathSet.add(acquiredPermitPath);
+                    acquiredPermitIds.add(acquiredPermitPath);
                     permitsAcquired++;
                 }
             } while (acquiredPermitPath != null);
@@ -186,7 +225,8 @@ public class ZkSemaphore implements DistributedSemaphore {
      *         permit.
      */
     protected synchronized List<String> getAllPermitRequests() {
-        return zkLockManager.getReservationList(pathContext, relativeSemaphorePath, ReservationType.SEMAPHORE, true);
+        return zkReservationManager.getReservationList(pathContext, clusterId, semaphoreName,
+                ReservationType.SEMAPHORE, true);
     }
 
     public synchronized boolean isFair() {
@@ -207,8 +247,8 @@ public class ZkSemaphore implements DistributedSemaphore {
         // release from ZK
         int permitsReleased = 0;
         List<String> permitIdsReleased = new ArrayList<String>(permitsToRelease);
-        for (String acquiredPermitPath : acquiredPermitPathSet) {
-            if (zkLockManager.relinquish(acquiredPermitPath)) {
+        for (String acquiredPermitPath : acquiredPermitIds) {
+            if (zkReservationManager.relinquish(acquiredPermitPath)) {
                 permitIdsReleased.add(acquiredPermitPath);
                 permitsReleased++;
                 if (permitsReleased >= permitsToRelease) {
@@ -218,10 +258,9 @@ public class ZkSemaphore implements DistributedSemaphore {
         }
 
         // remove from local set
-        for (String releasedPermitId : permitIdsReleased) {
-            acquiredPermitPathSet.remove(releasedPermitId);
-        }
+        acquiredPermitIds.removeAll(permitIdsReleased);
 
+        // sanity check
         if (permitsReleased < permitsToRelease) {
             logger.warn("Number of permits released does not match requested:  requested={}; released={}",
                     permitsToRelease, permitsReleased);
@@ -246,11 +285,11 @@ public class ZkSemaphore implements DistributedSemaphore {
         }
 
         try {
-            String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
-                    ReservationType.SEMAPHORE, permitPoolSize(), aclList, 0, false);
+            String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                    semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, 0, false);
 
             if (acquiredPermitPath != null) {
-                acquiredPermitPathSet.add(acquiredPermitPath);
+                acquiredPermitIds.add(acquiredPermitPath);
             }
 
             return true;
@@ -272,9 +311,8 @@ public class ZkSemaphore implements DistributedSemaphore {
         long startTimestamp = System.currentTimeMillis();
         try {
             for (int i = 0; i < permits && System.currentTimeMillis() - startTimestamp < timeWaitMillis; i++) {
-                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
-                        relativeSemaphorePath, ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis,
-                        true);
+                String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                        semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis, true);
                 if (acquiredPermitPath != null) {
                     tmpAcquiredPermitPathSet.add(acquiredPermitPath);
                 }
@@ -284,20 +322,20 @@ public class ZkSemaphore implements DistributedSemaphore {
             if (tmpAcquiredPermitPathSet.size() < permits) {
                 // return all permits acquired thus far in method
                 for (String tmpAcquiredPermitPath : tmpAcquiredPermitPathSet) {
-                    zkLockManager.relinquish(tmpAcquiredPermitPath);
+                    zkReservationManager.relinquish(tmpAcquiredPermitPath);
                 }
                 return false;
             }
 
             if (tmpAcquiredPermitPathSet.size() > 0) {
-                acquiredPermitPathSet.addAll(tmpAcquiredPermitPathSet);
+                acquiredPermitIds.addAll(tmpAcquiredPermitPathSet);
             }
 
             return true;
         } catch (InterruptedException e) {
             // return all permits acquired thus far in method
             for (String acquiredPermitPath : tmpAcquiredPermitPathSet) {
-                zkLockManager.relinquish(acquiredPermitPath);
+                zkReservationManager.relinquish(acquiredPermitPath);
             }
 
             return false;
@@ -316,27 +354,27 @@ public class ZkSemaphore implements DistributedSemaphore {
 
         try {
             for (int i = 0; i < permits; i++) {
-                String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext,
-                        relativeSemaphorePath, ReservationType.SEMAPHORE, permitPoolSize(), aclList, 0, true);
+                String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                        semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, 0, true);
                 if (acquiredPermitPath != null) {
                     tmpAcquiredPermitPathSet.add(acquiredPermitPath);
                 } else {
                     // return all permits acquired thus far in method
                     for (String tmpAcquiredPermitPath : tmpAcquiredPermitPathSet) {
-                        zkLockManager.relinquish(tmpAcquiredPermitPath);
+                        zkReservationManager.relinquish(tmpAcquiredPermitPath);
                     }
                     return false;
                 }
             }
             if (tmpAcquiredPermitPathSet.size() > 0) {
-                acquiredPermitPathSet.addAll(tmpAcquiredPermitPathSet);
+                acquiredPermitIds.addAll(tmpAcquiredPermitPathSet);
             }
 
             return true;
         } catch (InterruptedException e) {
             // return all permits acquired thus far in method
             for (String acquiredPermitPath : tmpAcquiredPermitPathSet) {
-                zkLockManager.relinquish(acquiredPermitPath);
+                zkReservationManager.relinquish(acquiredPermitPath);
             }
 
             return false;
@@ -350,70 +388,17 @@ public class ZkSemaphore implements DistributedSemaphore {
 
         long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
 
-        String acquiredPermitPath = zkLockManager.acquireForSemaphore(ownerId, pathContext, relativeSemaphorePath,
-                ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis, false);
+        String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
+                semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis, false);
 
         if (acquiredPermitPath != null) {
-            acquiredPermitPathSet.add(acquiredPermitPath);
+            acquiredPermitIds.add(acquiredPermitPath);
         } else {
             return false;
         }
 
         return true;
     }
-
-    // @Override
-    // public void process(WatchedEvent event) {
-    // // log if DEBUG
-    // if (logger.isDebugEnabled()) {
-    // logger.debug("***** Received ZooKeeper Event:  {}",
-    // ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
-    //
-    // }
-    //
-    // // we only care about events having to do with this semaphore
-    // String path = event.getPath();
-    // if (path == null || !path.endsWith(this.relativeSemaphorePath)) {
-    // return;
-    // }
-    //
-    // // process events
-    // switch (event.getType()) {
-    // case NodeCreated:
-    //
-    // case NodeChildrenChanged:
-    // case NodeDataChanged:
-    // // TODO: read config
-    //
-    // break;
-    // case NodeDeleted:
-    // this.permitPoolSize = 0;
-    // break;
-    //
-    // case None:
-    // Event.KeeperState eventState = event.getState();
-    // if (eventState == Event.KeeperState.SyncConnected) {
-    // // TODO: update configuration
-    //
-    // } else if (eventState == Event.KeeperState.Disconnected || eventState ==
-    // Event.KeeperState.Expired) {
-    // // disconnected so set available permits to 0
-    // this.permitPoolSize = 0;
-    //
-    // } else {
-    // logger.warn("Unhandled event state:  "
-    // + ReflectionToStringBuilder.toString(event,
-    // ToStringStyle.DEFAULT_STYLE));
-    // }
-    // break;
-    //
-    // default:
-    // logger.warn("Unhandled event type:  "
-    // + ReflectionToStringBuilder.toString(event,
-    // ToStringStyle.DEFAULT_STYLE));
-    // }
-    //
-    // }// process()
 
     synchronized boolean isPermitAllocationAvailable(int permits) {
         if (permits < 0) {

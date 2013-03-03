@@ -19,23 +19,25 @@ public class ZkLock implements DistributedLock {
 
     private static final Logger logger = LoggerFactory.getLogger(ZkLock.class);
 
-    private final ZkLockManager zkLockManager;
+    private final ZkReservationManager zkReservationManager;
     private final String ownerId;
     private final PathContext pathContext;
-    private final String relativeLockPath;
+    private final String clusterId;
+    private final String lockName;
     private final ReservationType lockType;
     private final List<ACL> aclList;
 
     private String acquiredLockPath;
 
-    public ZkLock(ZkLockManager zkLockManager, String ownerId, PathContext pathContext, String relativeLockPath,
-            ReservationType lockType, List<ACL> aclList) {
+    public ZkLock(ZkReservationManager zkReservationManager, String ownerId, PathContext pathContext, String clusterId,
+            String lockName, ReservationType lockType, List<ACL> aclList) {
         super();
-        this.zkLockManager = zkLockManager;
+        this.zkReservationManager = zkReservationManager;
         this.ownerId = ownerId;
         this.pathContext = pathContext;
         this.lockType = lockType;
-        this.relativeLockPath = relativeLockPath;
+        this.clusterId = clusterId;
+        this.lockName = lockName;
         this.aclList = aclList;
     }
 
@@ -48,8 +50,8 @@ public class ZkLock implements DistributedLock {
     public synchronized void lock() {
         try {
             if (acquiredLockPath == null) {
-                acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
-                        false);
+                acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                        aclList, -1, false);
             } else {
                 this.wait();
             }
@@ -68,8 +70,8 @@ public class ZkLock implements DistributedLock {
     @Override
     public synchronized void lockInterruptibly() throws InterruptedException {
         if (acquiredLockPath == null) {
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
-                    true);
+            acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                    aclList, -1, true);
         } else {
             this.wait();
         }
@@ -95,8 +97,8 @@ public class ZkLock implements DistributedLock {
     public synchronized boolean tryLock() {
         try {
             if (acquiredLockPath == null) {
-                acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, 0,
-                        false);
+                acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                        aclList, 0, false);
             }
         } catch (InterruptedException e) {
             logger.warn("Interrupted in lock():  should not happen:  " + e, e);
@@ -117,8 +119,8 @@ public class ZkLock implements DistributedLock {
             long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
 
             // attempt to acquire lock
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList,
-                    timeWaitMillis, true);
+            acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                    aclList, timeWaitMillis, true);
         }
 
         return acquiredLockPath != null;
@@ -131,7 +133,7 @@ public class ZkLock implements DistributedLock {
      */
     @Override
     public synchronized void unlock() {
-        zkLockManager.relinquish(acquiredLockPath);
+        zkReservationManager.relinquish(acquiredLockPath);
         acquiredLockPath = null;
         this.notifyAll();
     }

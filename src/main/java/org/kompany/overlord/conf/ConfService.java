@@ -6,7 +6,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractService;
@@ -18,15 +17,15 @@ import org.kompany.overlord.ServiceObserverManager;
 import org.kompany.overlord.ServiceObserverWrapper;
 import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.util.PathCache.PathCacheEntry;
-import org.kompany.overlord.util.ZkUtil;
+import org.kompany.overlord.util.ZkClientUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ConfService extends AbstractService implements ObservableService, Watcher {
+public class ConfService extends AbstractService implements ObservableService {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfService.class);
 
-    private final ZkUtil zkUtil = new ZkUtil();
+    private final ZkClientUtil zkUtil = new ZkClientUtil();
 
     private final ServiceObserverManager<ConfObserverWrapper> observerManager = new ServiceObserverManager<ConfObserverWrapper>();
 
@@ -36,9 +35,9 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param confSerializer
      * @return
      */
-    public <T> T getConf(String relativePath, DataSerializer<T> confSerializer) {
-        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath),
-                confSerializer, null, true);
+    public <T> T getConf(String clusterId, String relativeConfPath, DataSerializer<T> confSerializer) {
+        return getConfAbsolutePath(PathContext.USER, PathType.CONF, clusterId, relativeConfPath, confSerializer, null,
+                true);
 
     }
 
@@ -49,9 +48,10 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param observer
      * @return
      */
-    public <T> T getConf(String relativePath, DataSerializer<T> confSerializer, ConfObserver<T> observer) {
-        return getConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath),
-                confSerializer, observer, true);
+    public <T> T getConf(String clusterId, String relativeConfPath, DataSerializer<T> confSerializer,
+            ConfObserver<T> observer) {
+        return getConfAbsolutePath(PathContext.USER, PathType.CONF, clusterId, relativeConfPath, confSerializer,
+                observer, true);
 
     }
 
@@ -61,9 +61,9 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param conf
      * @param confSerializer
      */
-    public <T> void putConf(String relativePath, T conf, DataSerializer<T> confSerializer) {
-        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath), conf,
-                confSerializer, Sovereign.DEFAULT_ACL_LIST);
+    public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer) {
+        putConfAbsolutePath(PathContext.USER, PathType.CONF, clusterId, relativeConfPath, conf, confSerializer,
+                Sovereign.DEFAULT_ACL_LIST);
     }
 
     /**
@@ -73,22 +73,22 @@ public class ConfService extends AbstractService implements ObservableService, W
      * @param confSerializer
      * @param aclList
      */
-    public <T> void putConf(String relativePath, T conf, DataSerializer<T> confSerializer, List<ACL> aclList) {
-        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath), conf,
-                confSerializer, aclList);
+    public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer,
+            List<ACL> aclList) {
+        putConfAbsolutePath(PathContext.USER, PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, aclList);
     }
 
     /**
      * 
      * @param relativePath
      */
-    public void removeConf(String relativePath) {
-        String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF, relativePath);
+    public void removeConf(String clusterId, String relativeConfPath) {
+        String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.CONF,
+                getPathScheme().join(clusterId, relativeConfPath));
         try {
             getZkClient().delete(path, -1);
 
-            // set up watch for when path comes back if there are
-            // observers
+            // set up watch for when path comes back if there are observers
             if (this.observerManager.isBeingObserved(path)) {
                 getZkClient().exists(path, true);
             }
@@ -104,15 +104,39 @@ public class ConfService extends AbstractService implements ObservableService, W
 
     /**
      * 
-     * @param absolutePath
+     * @param <T>
+     * @param pathContext
+     * @param pathType
+     * @param clusterId
+     * @param relativeConfPath
      * @param confSerializer
+     * @param observer
+     * @param useCache
      * @return
      */
-    public <T> T getConfAbsolutePath(String absolutePath, DataSerializer<T> confSerializer, ConfObserver<T> observer,
+    public <T> T getConfAbsolutePath(PathContext pathContext, PathType pathType, String clusterId,
+            String relativeConfPath, DataSerializer<T> confSerializer, ConfObserver<T> observer, boolean useCache) {
+        String absolutePath = getPathScheme().getAbsolutePath(pathContext, pathType,
+                getPathScheme().join(clusterId, relativeConfPath));
+        return getConfAbsolutePath(absolutePath, confSerializer, observer, useCache);
+
+    }
+
+    /**
+     * 
+     * @param <T>
+     * @param absolutePath
+     * @param confSerializer
+     * @param observer
+     * @param useCache
+     * @return
+     */
+    <T> T getConfAbsolutePath(String absolutePath, DataSerializer<T> confSerializer, ConfObserver<T> observer,
             boolean useCache) {
         boolean error = false;
         byte[] bytes = null;
         T result = null;
+
         try {
             PathCacheEntry pathCacheEntry = getPathCache().get(absolutePath);
             if (useCache && observer == null && pathCacheEntry != null) {
@@ -164,12 +188,19 @@ public class ConfService extends AbstractService implements ObservableService, W
 
     /**
      * 
-     * @param absolutePath
+     * @param <T>
+     * @param pathContext
+     * @param pathType
+     * @param clusterId
+     * @param relativeConfPath
      * @param conf
      * @param confSerializer
      * @param aclList
      */
-    public <T> void putConfAbsolutePath(String absolutePath, T conf, DataSerializer<T> confSerializer, List<ACL> aclList) {
+    public <T> void putConfAbsolutePath(PathContext pathContext, PathType pathType, String clusterId,
+            String relativeConfPath, T conf, DataSerializer<T> confSerializer, List<ACL> aclList) {
+        String absolutePath = getPathScheme().getAbsolutePath(pathContext, pathType,
+                getPathScheme().join(clusterId, relativeConfPath));
         try {
             // write to ZK
             byte[] leafData = confSerializer.serialize(conf);

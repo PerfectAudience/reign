@@ -1,31 +1,16 @@
 package org.kompany.overlord.coord;
 
-import org.kompany.overlord.ServiceObserver;
-
 /**
  * 
  * @author ypai
  * 
  */
-public abstract class SemaphoreObserver implements ServiceObserver {
+public abstract class SemaphoreObserver extends CoordObserver<DistributedSemaphore> {
     /**
      * @param semaphore
      * @param permitId
      *            the acquired permit that was revoked.
      */
-    public void revoked(ZkSemaphore semaphore, String permitId) {
+    public abstract void revoked(DistributedSemaphore semaphore, String reservationId);
 
-    }
-
-    @Override
-    public void stateReset(Object o) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void stateUnknown(Object o) {
-        // TODO Auto-generated method stub
-
-    }
 }

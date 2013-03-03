@@ -50,68 +50,70 @@ public class PresenceServiceExample {
         // try to retrieve service info (which may not be immediately
         // available); include observer to be notified of changes in service
         // info
-        ServiceInfo serviceInfo = presenceService.lookup("examples", "service1", new PresenceObserver<ServiceInfo>() {
-            @Override
-            public void updated(ServiceInfo info) {
-                if (info != null) {
-                    logger.info("Observer:  serviceInfo={}",
-                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
-                } else {
-                    logger.info("Observer:  serviceInfo deleted");
-                }
-            }
-        });
+        ServiceInfo serviceInfo = presenceService.lookup("examples-cluster", "service1",
+                new PresenceObserver<ServiceInfo>() {
+                    @Override
+                    public void updated(ServiceInfo info) {
+                        if (info != null) {
+                            logger.info("Observer:  serviceInfo={}",
+                                    ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                        } else {
+                            logger.info("Observer:  serviceInfo deleted");
+                        }
+                    }
+                });
         logger.info("serviceInfo={}", ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
 
         // try to retrieve node info (which may not be immediately
         // available); include observer to be notified of changes in node
         // info
-        NodeInfo nodeInfo = presenceService.lookup("examples", "service2", "node1", new PresenceObserver<NodeInfo>() {
-            @Override
-            public void updated(NodeInfo info) {
-                if (info != null) {
-                    logger.info("Observer:  nodeInfo={}",
-                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+        NodeInfo nodeInfo = presenceService.lookup("examples-cluster", "service2", "node1",
+                new PresenceObserver<NodeInfo>() {
+                    @Override
+                    public void updated(NodeInfo info) {
+                        if (info != null) {
+                            logger.info("Observer:  nodeInfo={}",
+                                    ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
 
-                } else {
-                    logger.info("Observer:  nodeInfo deleted");
-                }
-            }
-        });
+                        } else {
+                            logger.info("Observer:  nodeInfo deleted");
+                        }
+                    }
+                });
         logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
 
         // basic service node announcement
-        presenceService.announce("examples", "service1", "node1");
+        presenceService.announce("examples-cluster", "service1", "node1");
 
         // service node announcement with some additional info
         Map<String, String> nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "1234");
-        presenceService.announce("examples", "service2", "node1", nodeAttributes);
+        presenceService.announce("examples-cluster", "service2", "node1", nodeAttributes);
 
         // sleep a bit
         Thread.sleep(10000);
 
-        presenceService.hide("examples", "service2", "node1");
+        presenceService.hide("examples-cluster", "service2", "node1");
 
         // sleep a bit
         Thread.sleep(10000);
 
-        presenceService.unhide("examples", "service2", "node1");
+        presenceService.unhide("examples-cluster", "service2", "node1");
 
         // new node available in service
-        presenceService.announce("examples", "service1", "node2");
+        presenceService.announce("examples-cluster", "service1", "node2");
 
         // sleep a bit
         Thread.sleep(10000);
 
         // new node available in service
-        presenceService.hide("examples", "service1", "node2");
+        presenceService.hide("examples-cluster", "service1", "node2");
 
         // reannounce service with changed attributes
         // service node announcement with some additional info
         nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "9999");
-        presenceService.announce("examples", "service2", "node1", nodeAttributes);
+        presenceService.announce("examples-cluster", "service2", "node1", nodeAttributes);
 
     }
 }

@@ -2,6 +2,8 @@ package org.kompany.overlord;
 
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
+
 /**
  * Default path scheme.
  * 
@@ -88,7 +90,7 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public boolean isValidPathToken(String pathToken) {
-        return pathToken.indexOf('/') == -1;
+        return !StringUtils.isBlank(pathToken) && pathToken.indexOf('/') == -1;
     }
 
 }

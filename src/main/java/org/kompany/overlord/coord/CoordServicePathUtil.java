@@ -22,9 +22,9 @@ public class CoordServicePathUtil {
      * @return
      */
     public static String getAbsolutePathEntity(PathScheme pathScheme, PathContext pathContext, PathType pathType,
-            ReservationType reservationType, String entityName) {
+            String clusterId, ReservationType reservationType, String entityName) {
 
-        return pathScheme.getAbsolutePath(pathContext, pathType, reservationType.category(), entityName);
+        return pathScheme.getAbsolutePath(pathContext, pathType, clusterId, reservationType.category(), entityName);
     }
 
     /**
@@ -38,9 +38,9 @@ public class CoordServicePathUtil {
      * @return
      */
     public static String getAbsolutePathReservationPrefix(PathScheme pathScheme, PathContext pathContext,
-            PathType pathType, ReservationType reservationType, String entityName) {
+            PathType pathType, String clusterId, ReservationType reservationType, String entityName) {
 
-        return pathScheme.getAbsolutePath(pathContext, pathType, reservationType.category(), entityName,
+        return pathScheme.getAbsolutePath(pathContext, pathType, clusterId, reservationType.category(), entityName,
                 reservationType.prefix() + "_");
     }
 }

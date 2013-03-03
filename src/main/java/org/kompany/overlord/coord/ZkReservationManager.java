@@ -14,7 +14,7 @@ import org.kompany.overlord.PathType;
 import org.kompany.overlord.ZkClient;
 import org.kompany.overlord.util.PathCache;
 import org.kompany.overlord.util.PathCache.PathCacheEntry;
-import org.kompany.overlord.util.ZkUtil;
+import org.kompany.overlord.util.ZkClientUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,19 +25,19 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-class ZkLockManager {
+class ZkReservationManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(ZkLockManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(ZkReservationManager.class);
 
     private final Comparator<String> lockReservationComparator = new LockReservationComparator("_");
     private final ZkClient zkClient;
     private final PathScheme pathScheme;
-    private final ZkUtil zkUtil = new ZkUtil();
+    private final ZkClientUtil zkUtil = new ZkClientUtil();
     private volatile boolean shutdown = false;
 
     private final PathCache pathCache;
 
-    ZkLockManager(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache) {
+    ZkReservationManager(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache) {
         super();
         this.zkClient = zkClient;
         this.pathScheme = pathScheme;
@@ -56,9 +56,9 @@ class ZkLockManager {
      * @param useCache
      * @return sorted list of lock/semaphore requesters, first to last
      */
-    public List<String> getSortedReservationList(PathContext pathContext, String entityName,
+    public List<String> getSortedReservationList(PathContext pathContext, String clusterId, String entityName,
             ReservationType reservationType, boolean useCache) {
-        List<String> list = getReservationList(pathContext, entityName, reservationType, useCache);
+        List<String> list = getReservationList(pathContext, clusterId, entityName, reservationType, useCache);
         Collections.sort(list, lockReservationComparator);
         return list;
     }
@@ -71,10 +71,10 @@ class ZkLockManager {
      * @param useCache
      * @return unsorted list of lock/semaphore requesters
      */
-    public List<String> getReservationList(PathContext pathContext, String entityName, ReservationType reservationType,
-            boolean useCache) {
-        String entityPath = pathScheme.getAbsolutePath(pathContext, PathType.COORD, reservationType.category() + "/"
-                + entityName);
+    public List<String> getReservationList(PathContext pathContext, String clusterId, String entityName,
+            ReservationType reservationType, boolean useCache) {
+        String entityPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
+                clusterId, reservationType, entityName);
         try {
             List<String> lockReservationList = null;
 
@@ -114,8 +114,9 @@ class ZkLockManager {
      * @return path of acquired lock node (this needs to be kept in order to
      *         unlock!)
      */
-    public String acquire(String ownerId, PathContext pathContext, String entityName, ReservationType reservationType,
-            List<ACL> aclList, long waitTimeoutMs, boolean interruptible) throws InterruptedException {
+    public String acquire(String ownerId, PathContext pathContext, String clusterId, String entityName,
+            ReservationType reservationType, List<ACL> aclList, long waitTimeoutMs, boolean interruptible)
+            throws InterruptedException {
         try {
             long startTimestamp = System.currentTimeMillis();
             // String lockReservationPath = null;
@@ -123,14 +124,14 @@ class ZkLockManager {
 
             // path to lock (parent node of all reservations)
             String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
-                    reservationType, entityName);
+                    clusterId, reservationType, entityName);
 
             // owner data in JSON
             String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
 
             // path to lock reservation node (to "get in line" for lock)
             String lockReservationPrefix = CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
-                    pathContext, PathType.COORD, reservationType, entityName);
+                    pathContext, PathType.COORD, clusterId, reservationType, entityName);
 
             // create lock reservation sequential node
             String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme, lockReservationPrefix,
@@ -236,7 +237,7 @@ class ZkLockManager {
 
     }
 
-    public String acquireForSemaphore(String ownerId, PathContext pathContext, String entityName,
+    public String acquireForSemaphore(String ownerId, PathContext pathContext, String clusterId, String entityName,
             ReservationType reservationType, int totalAvailable, List<ACL> aclList, long waitTimeoutMs,
             boolean interruptible) throws InterruptedException {
         if (reservationType != ReservationType.SEMAPHORE) {
@@ -250,14 +251,14 @@ class ZkLockManager {
 
             // path to lock (parent node of all reservations)
             String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
-                    reservationType, entityName);
+                    clusterId, reservationType, entityName);
 
             // owner data in JSON
             String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
 
             // path to lock reservation node (to "get in line" for lock)
             String lockReservationPrefix = CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
-                    pathContext, PathType.COORD, reservationType, entityName);
+                    pathContext, PathType.COORD, clusterId, reservationType, entityName);
 
             // create lock reservation sequential node
             String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme, lockReservationPrefix,

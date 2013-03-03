@@ -11,7 +11,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.AbstractActiveService;
 import org.kompany.overlord.ObservableService;
@@ -21,7 +20,7 @@ import org.kompany.overlord.ServiceObserverManager;
 import org.kompany.overlord.ServiceObserverWrapper;
 import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.util.PathCache.PathCacheEntry;
-import org.kompany.overlord.util.ZkUtil;
+import org.kompany.overlord.util.ZkClientUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +29,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class PresenceService extends AbstractActiveService implements ObservableService, Watcher {
+public class PresenceService extends AbstractActiveService implements ObservableService {
 
     private static final Logger logger = LoggerFactory.getLogger(PresenceService.class);
 
@@ -50,7 +49,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     private final ServiceObserverManager<PresenceObserverWrapper> observerManager = new ServiceObserverManager<PresenceObserverWrapper>();
 
-    private final ZkUtil zkUtil = new ZkUtil();
+    private final ZkClientUtil zkUtil = new ZkClientUtil();
 
     public List<String> getAvailableServices(String clusterId) {
         /** get node data from zk **/

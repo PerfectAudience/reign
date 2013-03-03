@@ -52,7 +52,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getReentrantLock("node1", "exclusive_lock1");
+                Lock lock = coordService.getReentrantLock("node1", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -74,7 +74,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getReentrantLock("node2", "exclusive_lock1");
+                Lock lock = coordService.getReentrantLock("node2", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -96,7 +96,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getReentrantLock("node3", "exclusive_lock1");
+                Lock lock = coordService.getReentrantLock("node3", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -121,7 +121,7 @@ public class CoordinationServiceExample {
         final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
 
         // configure semaphore
-        coordService.setSemaphoreConf("semaphore2", 5);
+        coordService.setSemaphoreConf("examples-cluster", "semaphore2", 5);
 
         // wait a few seconds to make sure semaphore configuration is persisted
         // to ZK
@@ -132,7 +132,8 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node1", "semaphore2", 4, false);
+                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node1", "examples-cluster",
+                        "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 4;
@@ -155,7 +156,8 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node2", "semaphore2", 4, false);
+                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node2", "examples-cluster",
+                        "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 2;
@@ -178,7 +180,8 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node3", "semaphore2", 4, false);
+                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node3", "examples-cluster",
+                        "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -200,7 +203,8 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node4", "semaphore2", 4, false);
+                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node4", "examples-cluster",
+                        "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -230,7 +234,8 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node1", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node1", "examples-cluster",
+                        "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 4;
@@ -253,7 +258,8 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node2", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node2", "examples-cluster",
+                        "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 2;
@@ -276,7 +282,8 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node3", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node3", "examples-cluster",
+                        "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -298,7 +305,8 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node4", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node4", "examples-cluster",
+                        "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -328,7 +336,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getLock("node1", "exclusive_lock1");
+                Lock lock = coordService.getLock("node1", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -349,7 +357,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getLock("node2", "exclusive_lock1");
+                Lock lock = coordService.getLock("node2", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -370,7 +378,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getLock("node3", "exclusive_lock1");
+                Lock lock = coordService.getLock("node3", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -398,7 +406,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node1", "rw_lock1");
+                ReadWriteLock rwLock = coordService.getReadWriteLock("node1", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
@@ -419,7 +427,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node2", "rw_lock1");
+                ReadWriteLock rwLock = coordService.getReadWriteLock("node2", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
@@ -440,7 +448,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node3", "rw_lock1");
+                ReadWriteLock rwLock = coordService.getReadWriteLock("node3", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.writeLock().lock();
                 try {
@@ -461,7 +469,7 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node4", "rw_lock1");
+                ReadWriteLock rwLock = coordService.getReadWriteLock("node4", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.writeLock().lock();
                 try {

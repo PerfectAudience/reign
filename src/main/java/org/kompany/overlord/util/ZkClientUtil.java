@@ -16,8 +16,8 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class ZkUtil {
-    private static final Logger logger = LoggerFactory.getLogger(ZkUtil.class);
+public class ZkClientUtil {
+    private static final Logger logger = LoggerFactory.getLogger(ZkClientUtil.class);
 
     /**
      * Creates path, including parent nodes if necessary.
@@ -104,6 +104,9 @@ public class ZkUtil {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Creating node:  pathToCreate={}; token={}", pathToCreate, token);
                     }
+
+                    // default to persistent mode until leaf node, then we use
+                    // the preferred create mode of caller
                     CreateMode currentCreateMode = CreateMode.PERSISTENT;
                     byte[] nodeData = null;
                     if (i == tokens.length - 1) {

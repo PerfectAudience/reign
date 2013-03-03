@@ -19,10 +19,11 @@ public class ZkReentrantLock implements DistributedReentrantLock {
 
     private static final Logger logger = LoggerFactory.getLogger(ZkReentrantLock.class);
 
-    private final ZkLockManager zkLockManager;
+    private final ZkReservationManager zkReservationManager;
     private final String ownerId;
     private final PathContext pathContext;
-    private final String relativeLockPath;
+    private final String clusterId;
+    private final String lockName;
     private final ReservationType lockType;
     private final List<ACL> aclList;
 
@@ -30,14 +31,15 @@ public class ZkReentrantLock implements DistributedReentrantLock {
 
     private int holdCount = 0;
 
-    public ZkReentrantLock(ZkLockManager zkLockManager, String ownerId, PathContext pathContext,
-            String relativeLockPath, ReservationType lockType, List<ACL> aclList) {
+    public ZkReentrantLock(ZkReservationManager zkReservationManager, String ownerId, PathContext pathContext,
+            String clusterId, String lockName, ReservationType lockType, List<ACL> aclList) {
         super();
-        this.zkLockManager = zkLockManager;
+        this.zkReservationManager = zkReservationManager;
         this.ownerId = ownerId;
         this.pathContext = pathContext;
         this.lockType = lockType;
-        this.relativeLockPath = relativeLockPath;
+        this.clusterId = clusterId;
+        this.lockName = lockName;
         this.aclList = aclList;
     }
 
@@ -50,8 +52,8 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     public synchronized void lock() {
         if (acquiredLockPath == null) {
             try {
-                acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
-                        false);
+                acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                        aclList, -1, false);
                 holdCount++;
             } catch (InterruptedException e) {
                 logger.warn("Interrupted in lock():  should not happen:  " + e, e);
@@ -70,8 +72,8 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     @Override
     public synchronized void lockInterruptibly() throws InterruptedException {
         if (acquiredLockPath == null) {
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, -1,
-                    true);
+            acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                    aclList, -1, true);
         }
 
         holdCount++;
@@ -105,8 +107,8 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     public synchronized boolean tryLock() {
         try {
             if (acquiredLockPath == null) {
-                acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList, 0,
-                        false);
+                acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                        aclList, 0, false);
             }
 
             holdCount++;
@@ -129,8 +131,8 @@ public class ZkReentrantLock implements DistributedReentrantLock {
             long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
 
             // attempt to acquire lock
-            acquiredLockPath = zkLockManager.acquire(ownerId, pathContext, relativeLockPath, lockType, aclList,
-                    timeWaitMillis, true);
+            acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, lockType,
+                    aclList, timeWaitMillis, true);
 
             holdCount++;
         } else {
@@ -147,7 +149,7 @@ public class ZkReentrantLock implements DistributedReentrantLock {
      */
     @Override
     public synchronized void unlock() {
-        zkLockManager.relinquish(acquiredLockPath);
+        zkReservationManager.relinquish(acquiredLockPath);
         holdCount--;
 
         if (holdCount < 1) {
