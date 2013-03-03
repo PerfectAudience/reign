@@ -8,9 +8,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
-import org.kompany.overlord.PathContext;
 import org.kompany.overlord.PathScheme;
-import org.kompany.overlord.PathType;
 import org.kompany.overlord.ZkClient;
 import org.kompany.overlord.util.PathCache;
 import org.kompany.overlord.util.PathCache.PathCacheEntry;
@@ -52,43 +50,58 @@ class ZkReservationManager {
         this.shutdown = true;
     }
 
-    public void destroySemaphore(String clusterId, String semaphoreName, DistributedSemaphore semaphore,
-            PermitPoolSize permitPoolSize) {
-        coordinationServiceCache.removeSemaphore(clusterId, semaphoreName, semaphore);
-        coordinationServiceCache.removePermitPoolSize(clusterId, semaphoreName, permitPoolSize);
+    public void destroySemaphore(String entityPath, DistributedSemaphore semaphore, PermitPoolSize permitPoolSize) {
+        coordinationServiceCache.removeSemaphore(entityPath, semaphore);
+        coordinationServiceCache.removePermitPoolSize(entityPath, permitPoolSize);
     }
 
-    public void destroyLock(String clusterId, String lockName, ReservationType reservationType, DistributedLock lock) {
-        coordinationServiceCache.removeLock(clusterId, lockName, reservationType, lock);
+    public void destroyLock(String entityPath, ReservationType reservationType, DistributedLock lock) {
+        coordinationServiceCache.removeLock(entityPath, reservationType, lock);
     }
 
-    /**
-     * 
-     * @param pathContext
-     * @param entityName
-     * @param reservationType
-     * @param useCache
-     * @return sorted list of lock/semaphore requesters, first to last
-     */
-    public List<String> getSortedReservationList(PathContext pathContext, String clusterId, String entityName,
-            ReservationType reservationType, boolean useCache) {
-        List<String> list = getReservationList(pathContext, clusterId, entityName, reservationType, useCache);
+    // /**
+    // *
+    // * @param pathContext
+    // * @param entityName
+    // * @param reservationType
+    // * @param useCache
+    // * @return sorted list of lock/semaphore requesters, first to last
+    // */
+    // public List<String> getSortedReservationList(PathContext pathContext,
+    // String clusterId, String entityName,
+    // ReservationType reservationType, boolean useCache) {
+    // String entityPath =
+    // CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext,
+    // PathType.COORD,
+    // clusterId, reservationType, entityName);
+    // return getSortedReservationList(entityPath, useCache);
+    // }
+
+    // /**
+    // *
+    // * @param pathContext
+    // * @param entityName
+    // * @param reservationType
+    // * @param useCache
+    // * @return unsorted list of lock/semaphore requesters
+    // */
+    // public List<String> getReservationList(PathContext pathContext, String
+    // clusterId, String entityName,
+    // ReservationType reservationType, boolean useCache) {
+    // String entityPath =
+    // CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext,
+    // PathType.COORD,
+    // clusterId, reservationType, entityName);
+    // return getReservationList(entityPath, useCache);
+    // }
+
+    public List<String> getSortedReservationList(String entityPath, boolean useCache) {
+        List<String> list = getReservationList(entityPath, useCache);
         Collections.sort(list, lockReservationComparator);
         return list;
     }
 
-    /**
-     * 
-     * @param pathContext
-     * @param entityName
-     * @param reservationType
-     * @param useCache
-     * @return unsorted list of lock/semaphore requesters
-     */
-    public List<String> getReservationList(PathContext pathContext, String clusterId, String entityName,
-            ReservationType reservationType, boolean useCache) {
-        String entityPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
-                clusterId, reservationType, entityName);
+    public List<String> getReservationList(String entityPath, boolean useCache) {
         try {
             List<String> lockReservationList = null;
 
@@ -110,42 +123,181 @@ class ZkReservationManager {
         }
     }
 
-    /**
-     * 
-     * @param ownerId
-     * @param pathContext
-     * @param entityName
-     * @param reservationType
-     * @param totalAvailable
-     *            the total number of locks available; -1 for no limit
-     * @param aclList
-     * @param waitTimeoutMs
-     *            total time to wait in millis for lock acquisition; -1 to wait
-     *            indefinitely
-     * @param aclList
-     * @param interruptible
-     *            true to throw InterruptedException(s); false to eat them
-     * @return path of acquired lock node (this needs to be kept in order to
-     *         unlock!)
-     */
-    public String acquire(String ownerId, PathContext pathContext, String clusterId, String entityName,
-            ReservationType reservationType, List<ACL> aclList, long waitTimeoutMs, boolean interruptible)
-            throws InterruptedException {
+    // /**
+    // *
+    // * @param ownerId
+    // * @param pathContext
+    // * @param entityName
+    // * @param reservationType
+    // * @param totalAvailable
+    // * the total number of locks available; -1 for no limit
+    // * @param aclList
+    // * @param waitTimeoutMs
+    // * total time to wait in millis for lock acquisition; -1 to wait
+    // * indefinitely
+    // * @param aclList
+    // * @param interruptible
+    // * true to throw InterruptedException(s); false to eat them
+    // * @return path of acquired lock node (this needs to be kept in order to
+    // * unlock!)
+    // */
+    // public String acquire(String ownerId, PathContext pathContext, String
+    // clusterId, String entityName,
+    // ReservationType reservationType, List<ACL> aclList, long waitTimeoutMs,
+    // boolean interruptible)
+    // throws InterruptedException {
+    // try {
+    // long startTimestamp = System.currentTimeMillis();
+    // // String lockReservationPath = null;
+    // // LockWatcher lockWatcher = null;
+    //
+    // // path to lock (parent node of all reservations)
+    // String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme,
+    // pathContext, PathType.COORD,
+    // clusterId, reservationType, entityName);
+    //
+    // // owner data in JSON
+    // String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
+    //
+    // // path to lock reservation node (to "get in line" for lock)
+    // String lockReservationPrefix =
+    // CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
+    // pathContext, PathType.COORD, clusterId, reservationType, entityName);
+    //
+    // // create lock reservation sequential node
+    // String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme,
+    // lockReservationPrefix,
+    // lockReservationData.getBytes("UTF-8"), aclList,
+    // CreateMode.EPHEMERAL_SEQUENTIAL, -1);
+    //
+    // // path token (last part of path)
+    // String lockReservation =
+    // lockReservationPath.substring(lockReservationPath.lastIndexOf('/') + 1);
+    //
+    // // create lock watcher for wait/notify
+    // if (logger.isDebugEnabled()) {
+    // logger.debug("Attempting to acquire:  ownerId={}; lockType={}; lockReservationPath={}",
+    // new Object[] {
+    // ownerId, reservationType, lockReservationPath });
+    // }
+    //
+    // String acquiredLockPath = null;
+    // ZkLockWatcher lockReservationWatcher = null;
+    // do {
+    // try {
+    // /** see if we can acquire right away **/
+    // // get lock reservation list without watch
+    // List<String> lockReservationList = zkClient.getChildren(lockPath, false);
+    //
+    // // sort child list
+    // Collections.sort(lockReservationList, lockReservationComparator);
+    //
+    // // loop through children and see if we have the lock
+    // String reservationAheadPath = null;
+    // boolean exclusiveReservationEncountered = false;
+    // for (int i = 0; i < lockReservationList.size(); i++) {
+    // String currentReservation = lockReservationList.get(i);
+    //
+    // // see if we have the lock
+    // if (lockReservation.equals(currentReservation)) {
+    // if (i == 0
+    // || (reservationType != ReservationType.LOCK_EXCLUSIVE &&
+    // !exclusiveReservationEncountered)) {
+    // acquiredLockPath = lockReservationPath;
+    // break;
+    // }
+    //
+    // // set the one ahead of this reservation so we can
+    // // watch if we do not acquire
+    // reservationAheadPath = pathScheme.join(lockPath,
+    // lockReservationList.get(i - 1));
+    // break;
+    // }
+    //
+    // // see if we have encountered an exclusive lock yet
+    // if (!exclusiveReservationEncountered) {
+    // exclusiveReservationEncountered = currentReservation
+    // .startsWith(ReservationType.LOCK_EXCLUSIVE.toString());
+    // }
+    //
+    // }
+    //
+    // /** see if we acquired lock **/
+    // if (acquiredLockPath == null) {
+    // // wait to acquire if not yet acquired
+    // logger.info(
+    // "Waiting to acquire:  ownerId={}; lockType={}; lockReservationPath={}; watchPath={}",
+    // new Object[] { ownerId, reservationType, lockReservationPath,
+    // reservationAheadPath });
+    // if (lockReservationWatcher == null) {
+    // lockReservationWatcher = new ZkLockWatcher(lockPath,
+    // lockReservationPath);
+    // }
+    //
+    // // set lock on the reservation ahead of this one
+    // zkClient.exists(reservationAheadPath, lockReservationWatcher);
+    //
+    // // wait for notification
+    // lockReservationWatcher.waitForEvent(waitTimeoutMs);
+    // } else {
+    // logger.info("Acquired:  ownerId={}; lockType={}; acquiredLockPath={}",
+    // new Object[] { ownerId,
+    // reservationType, acquiredLockPath });
+    //
+    // // set watch on lock node so that we are notified if it
+    // // is deleted outside of framework and can notify any
+    // // lock observers
+    // zkClient.exists(acquiredLockPath, true);
+    //
+    // break;
+    // }
+    // } catch (InterruptedException e) {
+    // if (interruptible) {
+    // throw e;
+    // } else {
+    // logger.info(
+    // "Ignoring attempted interrupt while waiting for lock acquisition:  ownerId={}; lockType={}; lockPath={}",
+    // new Object[] { ownerId, reservationType, lockPath });
+    // }
+    // }
+    //
+    // } while (!this.shutdown && acquiredLockPath == null
+    // && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs >
+    // System.currentTimeMillis()));
+    //
+    // // log that we could not acquire in given time
+    // if (acquiredLockPath == null) {
+    // logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
+    // new Object[] { ownerId, reservationType, lockPath, waitTimeoutMs });
+    // }
+    //
+    // return acquiredLockPath;
+    //
+    // } catch (KeeperException e) {
+    // logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId +
+    // "; lockName=" + entityName
+    // + "; lockType=" + reservationType, e);
+    // } catch (Exception e) {
+    // logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId +
+    // "; lockName=" + entityName
+    // + "; lockType=" + reservationType, e);
+    // }
+    //
+    // return null;
+    //
+    // }
+
+    public String acquire(String ownerId, String entityPath, ReservationType reservationType, List<ACL> aclList,
+            long waitTimeoutMs, boolean interruptible) throws InterruptedException {
         try {
             long startTimestamp = System.currentTimeMillis();
-            // String lockReservationPath = null;
-            // LockWatcher lockWatcher = null;
-
-            // path to lock (parent node of all reservations)
-            String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
-                    clusterId, reservationType, entityName);
 
             // owner data in JSON
             String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
 
             // path to lock reservation node (to "get in line" for lock)
             String lockReservationPrefix = CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
-                    pathContext, PathType.COORD, clusterId, reservationType, entityName);
+                    entityPath, reservationType);
 
             // create lock reservation sequential node
             String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme, lockReservationPrefix,
@@ -160,13 +312,13 @@ class ZkReservationManager {
                         ownerId, reservationType, lockReservationPath });
             }
 
-            String acquiredLockPath = null;
+            String acquiredPath = null;
             ZkLockWatcher lockReservationWatcher = null;
             do {
                 try {
                     /** see if we can acquire right away **/
                     // get lock reservation list without watch
-                    List<String> lockReservationList = zkClient.getChildren(lockPath, false);
+                    List<String> lockReservationList = zkClient.getChildren(entityPath, false);
 
                     // sort child list
                     Collections.sort(lockReservationList, lockReservationComparator);
@@ -181,13 +333,13 @@ class ZkReservationManager {
                         if (lockReservation.equals(currentReservation)) {
                             if (i == 0
                                     || (reservationType != ReservationType.LOCK_EXCLUSIVE && !exclusiveReservationEncountered)) {
-                                acquiredLockPath = lockReservationPath;
+                                acquiredPath = lockReservationPath;
                                 break;
                             }
 
                             // set the one ahead of this reservation so we can
                             // watch if we do not acquire
-                            reservationAheadPath = pathScheme.join(lockPath, lockReservationList.get(i - 1));
+                            reservationAheadPath = pathScheme.join(entityPath, lockReservationList.get(i - 1));
                             break;
                         }
 
@@ -200,13 +352,12 @@ class ZkReservationManager {
                     }
 
                     /** see if we acquired lock **/
-                    if (acquiredLockPath == null) {
+                    if (acquiredPath == null) {
                         // wait to acquire if not yet acquired
-                        logger.info(
-                                "Waiting to acquire:  ownerId={}; lockType={}; lockReservationPath={}; watchPath={}",
+                        logger.info("Waiting to acquire:  ownerId={}; lockType={}; reservationPath={}; watchPath={}",
                                 new Object[] { ownerId, reservationType, lockReservationPath, reservationAheadPath });
                         if (lockReservationWatcher == null) {
-                            lockReservationWatcher = new ZkLockWatcher(lockPath, lockReservationPath);
+                            lockReservationWatcher = new ZkLockWatcher(entityPath, lockReservationPath);
                         }
 
                         // set lock on the reservation ahead of this one
@@ -215,13 +366,13 @@ class ZkReservationManager {
                         // wait for notification
                         lockReservationWatcher.waitForEvent(waitTimeoutMs);
                     } else {
-                        logger.info("Acquired:  ownerId={}; lockType={}; acquiredLockPath={}", new Object[] { ownerId,
-                                reservationType, acquiredLockPath });
+                        logger.info("Acquired:  ownerId={}; reservationType={}; acquiredPath={}", new Object[] {
+                                ownerId, reservationType, acquiredPath });
 
                         // set watch on lock node so that we are notified if it
                         // is deleted outside of framework and can notify any
                         // lock observers
-                        zkClient.exists(acquiredLockPath, true);
+                        zkClient.exists(acquiredPath, true);
 
                         break;
                     }
@@ -230,27 +381,27 @@ class ZkReservationManager {
                         throw e;
                     } else {
                         logger.info(
-                                "Ignoring attempted interrupt while waiting for lock acquisition:  ownerId={}; lockType={}; lockPath={}",
-                                new Object[] { ownerId, reservationType, lockPath });
+                                "Ignoring attempted interrupt while waiting for lock acquisition:  ownerId={}; reservationType={}; entityPath={}",
+                                new Object[] { ownerId, reservationType, entityPath });
                     }
                 }
 
-            } while (!this.shutdown && acquiredLockPath == null
+            } while (!this.shutdown && acquiredPath == null
                     && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs > System.currentTimeMillis()));
 
             // log that we could not acquire in given time
-            if (acquiredLockPath == null) {
+            if (acquiredPath == null) {
                 logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
-                        new Object[] { ownerId, reservationType, lockPath, waitTimeoutMs });
+                        new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs });
             }
 
-            return acquiredLockPath;
+            return acquiredPath;
 
         } catch (KeeperException e) {
-            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; lockName=" + entityName
+            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; entityPath=" + entityPath
                     + "; lockType=" + reservationType, e);
         } catch (Exception e) {
-            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; lockName=" + entityName
+            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; entityPath=" + entityPath
                     + "; lockType=" + reservationType, e);
         }
 
@@ -258,28 +409,176 @@ class ZkReservationManager {
 
     }
 
-    public String acquireForSemaphore(String ownerId, PathContext pathContext, String clusterId, String entityName,
-            ReservationType reservationType, int totalAvailable, List<ACL> aclList, long waitTimeoutMs,
-            boolean interruptible) throws InterruptedException {
+    // /**
+    // *
+    // * @param ownerId
+    // * @param pathContext
+    // * @param clusterId
+    // * @param entityName
+    // * @param reservationType
+    // * @param totalAvailable
+    // * @param aclList
+    // * @param waitTimeoutMs
+    // * @param interruptible
+    // * @return
+    // * @throws InterruptedException
+    // */
+    // public String acquireForSemaphore(String ownerId, PathContext
+    // pathContext, String clusterId, String entityName,
+    // ReservationType reservationType, int totalAvailable, List<ACL> aclList,
+    // long waitTimeoutMs,
+    // boolean interruptible) throws InterruptedException {
+    // if (reservationType != ReservationType.SEMAPHORE) {
+    // throw new IllegalArgumentException("Invalid reservation type:  " +
+    // ReservationType.SEMAPHORE);
+    // }
+    //
+    // try {
+    // long startTimestamp = System.currentTimeMillis();
+    // // String lockReservationPath = null;
+    // // LockWatcher lockWatcher = null;
+    //
+    // // path to lock (parent node of all reservations)
+    // String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme,
+    // pathContext, PathType.COORD,
+    // clusterId, reservationType, entityName);
+    //
+    // // owner data in JSON
+    // String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
+    //
+    // // path to lock reservation node (to "get in line" for lock)
+    // String lockReservationPrefix =
+    // CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
+    // pathContext, PathType.COORD, clusterId, reservationType, entityName);
+    //
+    // // create lock reservation sequential node
+    // String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme,
+    // lockReservationPrefix,
+    // lockReservationData.getBytes("UTF-8"), aclList,
+    // CreateMode.EPHEMERAL_SEQUENTIAL, -1);
+    //
+    // // path token (last part of path)
+    // String lockReservation =
+    // lockReservationPath.substring(lockReservationPath.lastIndexOf('/') + 1);
+    //
+    // // create lock watcher for wait/notify
+    // if (logger.isDebugEnabled()) {
+    // logger.debug("Attempting to acquire:  ownerId={}; lockType={}; lockReservationPath={}",
+    // new Object[] {
+    // ownerId, reservationType, lockReservationPath });
+    // }
+    //
+    // String acquiredLockPath = null;
+    // ZkLockWatcher lockReservationWatcher = null;
+    // do {
+    // try {
+    // /** see if we can acquire right away **/
+    // // set lock on the reservation ahead of this one
+    // Stat stat = zkClient.exists(lockPath, false);
+    //
+    // // if we are only after semaphore reservations, check child
+    // // count to see if we event need to count children
+    // // explicitly
+    // if (stat.getNumChildren() < totalAvailable) {
+    // acquiredLockPath = lockReservationPath;
+    // break;
+    // } else {
+    // // get lock reservation list with watch
+    // if (lockReservationWatcher == null) {
+    // lockReservationWatcher = new ZkLockWatcher(lockPath,
+    // lockReservationPath);
+    // }
+    // List<String> lockReservationList = zkClient.getChildren(lockPath,
+    // lockReservationWatcher);
+    //
+    // // sort child list
+    // Collections.sort(lockReservationList, lockReservationComparator);
+    //
+    // // loop through children and see if we have the lock
+    // boolean exclusiveReservationEncountered = false;
+    // for (int i = 0; i < lockReservationList.size(); i++) {
+    // String currentReservation = lockReservationList.get(i);
+    //
+    // // see if we have the lock
+    // if (lockReservation.equals(currentReservation)) {
+    // boolean stillAvailable = (totalAvailable < 0 || i < totalAvailable);
+    // if (stillAvailable && (i == 0 || !exclusiveReservationEncountered)) {
+    // acquiredLockPath = lockReservationPath;
+    // break;
+    // }
+    // }
+    //
+    // exclusiveReservationEncountered = reservationType ==
+    // ReservationType.LOCK_EXCLUSIVE;
+    // }
+    // }// if
+    //
+    // /** see if we acquired lock **/
+    // if (acquiredLockPath == null) {
+    // // wait to acquire if not yet acquired
+    // logger.info(
+    // "Waiting to acquire:  ownerId={}; lockType={}; lockReservationPath={}; watchPath={}",
+    // new Object[] { ownerId, reservationType, lockReservationPath, lockPath
+    // });
+    // // wait for notification
+    // lockReservationWatcher.waitForEvent(waitTimeoutMs);
+    // } else {
+    // logger.info("Acquired:  ownerId={}; lockType={}; acquiredLockPath={}",
+    // new Object[] { ownerId,
+    // reservationType, acquiredLockPath });
+    // break;
+    // }
+    // } catch (InterruptedException e) {
+    // if (interruptible) {
+    // throw e;
+    // } else {
+    // logger.info(
+    // "Ignoring attempted interrupt while waiting for lock acquisition:  ownerId={}; lockType={}; lockPath={}",
+    // new Object[] { ownerId, reservationType, lockPath });
+    // }
+    // }
+    //
+    // } while (!this.shutdown && acquiredLockPath == null
+    // && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs >
+    // System.currentTimeMillis()));
+    //
+    // if (acquiredLockPath == null) {
+    // logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
+    // new Object[] { ownerId, reservationType, lockPath, waitTimeoutMs });
+    // }
+    //
+    // return acquiredLockPath;
+    //
+    // } catch (KeeperException e) {
+    // logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId +
+    // "; lockName=" + entityName
+    // + "; lockType=" + reservationType, e);
+    // } catch (Exception e) {
+    // logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId +
+    // "; lockName=" + entityName
+    // + "; lockType=" + reservationType, e);
+    // }
+    //
+    // return null;
+    //
+    // }
+
+    public String acquireForSemaphore(String ownerId, String entityPath, ReservationType reservationType,
+            int totalAvailable, List<ACL> aclList, long waitTimeoutMs, boolean interruptible)
+            throws InterruptedException {
         if (reservationType != ReservationType.SEMAPHORE) {
             throw new IllegalArgumentException("Invalid reservation type:  " + ReservationType.SEMAPHORE);
         }
 
         try {
             long startTimestamp = System.currentTimeMillis();
-            // String lockReservationPath = null;
-            // LockWatcher lockWatcher = null;
-
-            // path to lock (parent node of all reservations)
-            String lockPath = CoordServicePathUtil.getAbsolutePathEntity(pathScheme, pathContext, PathType.COORD,
-                    clusterId, reservationType, entityName);
 
             // owner data in JSON
             String lockReservationData = "{\"ownerId\":\"" + ownerId + "\"}";
 
             // path to lock reservation node (to "get in line" for lock)
             String lockReservationPrefix = CoordServicePathUtil.getAbsolutePathReservationPrefix(pathScheme,
-                    pathContext, PathType.COORD, clusterId, reservationType, entityName);
+                    entityPath, reservationType);
 
             // create lock reservation sequential node
             String lockReservationPath = zkUtil.updatePath(zkClient, pathScheme, lockReservationPrefix,
@@ -294,26 +593,26 @@ class ZkReservationManager {
                         ownerId, reservationType, lockReservationPath });
             }
 
-            String acquiredLockPath = null;
+            String acquiredPath = null;
             ZkLockWatcher lockReservationWatcher = null;
             do {
                 try {
                     /** see if we can acquire right away **/
                     // set lock on the reservation ahead of this one
-                    Stat stat = zkClient.exists(lockPath, false);
+                    Stat stat = zkClient.exists(entityPath, false);
 
                     // if we are only after semaphore reservations, check child
                     // count to see if we event need to count children
                     // explicitly
                     if (stat.getNumChildren() < totalAvailable) {
-                        acquiredLockPath = lockReservationPath;
+                        acquiredPath = lockReservationPath;
                         break;
                     } else {
                         // get lock reservation list with watch
                         if (lockReservationWatcher == null) {
-                            lockReservationWatcher = new ZkLockWatcher(lockPath, lockReservationPath);
+                            lockReservationWatcher = new ZkLockWatcher(entityPath, lockReservationPath);
                         }
-                        List<String> lockReservationList = zkClient.getChildren(lockPath, lockReservationWatcher);
+                        List<String> lockReservationList = zkClient.getChildren(entityPath, lockReservationWatcher);
 
                         // sort child list
                         Collections.sort(lockReservationList, lockReservationComparator);
@@ -327,7 +626,7 @@ class ZkReservationManager {
                             if (lockReservation.equals(currentReservation)) {
                                 boolean stillAvailable = (totalAvailable < 0 || i < totalAvailable);
                                 if (stillAvailable && (i == 0 || !exclusiveReservationEncountered)) {
-                                    acquiredLockPath = lockReservationPath;
+                                    acquiredPath = lockReservationPath;
                                     break;
                                 }
                             }
@@ -337,16 +636,22 @@ class ZkReservationManager {
                     }// if
 
                     /** see if we acquired lock **/
-                    if (acquiredLockPath == null) {
+                    if (acquiredPath == null) {
                         // wait to acquire if not yet acquired
                         logger.info(
                                 "Waiting to acquire:  ownerId={}; lockType={}; lockReservationPath={}; watchPath={}",
-                                new Object[] { ownerId, reservationType, lockReservationPath, lockPath });
+                                new Object[] { ownerId, reservationType, lockReservationPath, entityPath });
                         // wait for notification
                         lockReservationWatcher.waitForEvent(waitTimeoutMs);
                     } else {
                         logger.info("Acquired:  ownerId={}; lockType={}; acquiredLockPath={}", new Object[] { ownerId,
-                                reservationType, acquiredLockPath });
+                                reservationType, acquiredPath });
+
+                        // set watch on lock node so that we are notified if it
+                        // is deleted outside of framework and can notify any
+                        // lock observers
+                        zkClient.exists(acquiredPath, true);
+
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -354,26 +659,26 @@ class ZkReservationManager {
                         throw e;
                     } else {
                         logger.info(
-                                "Ignoring attempted interrupt while waiting for lock acquisition:  ownerId={}; lockType={}; lockPath={}",
-                                new Object[] { ownerId, reservationType, lockPath });
+                                "Ignoring attempted interrupt while waiting for lock acquisition:  ownerId={}; lockType={}; entityPath={}",
+                                new Object[] { ownerId, reservationType, entityPath });
                     }
                 }
 
-            } while (!this.shutdown && acquiredLockPath == null
+            } while (!this.shutdown && acquiredPath == null
                     && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs > System.currentTimeMillis()));
 
-            if (acquiredLockPath == null) {
-                logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
-                        new Object[] { ownerId, reservationType, lockPath, waitTimeoutMs });
+            if (acquiredPath == null) {
+                logger.info("Could not acquire:  ownerId={}; lockType={}; entityPath={}; waitTimeoutMillis={}",
+                        new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs });
             }
 
-            return acquiredLockPath;
+            return acquiredPath;
 
         } catch (KeeperException e) {
-            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; lockName=" + entityName
+            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; entityPath=" + entityPath
                     + "; lockType=" + reservationType, e);
         } catch (Exception e) {
-            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; lockName=" + entityName
+            logger.error("Error trying to acquire:  " + e + ":  ownerId=" + ownerId + "; entityPath=" + entityPath
                     + "; lockType=" + reservationType, e);
         }
 
@@ -381,6 +686,11 @@ class ZkReservationManager {
 
     }
 
+    /**
+     * 
+     * @param reservationPath
+     * @return
+     */
     public boolean relinquish(String reservationPath) {
         if (reservationPath == null) {
             logger.debug("Trying to delete ZK reservation node with invalid path:  path={}", reservationPath);
@@ -401,6 +711,8 @@ class ZkReservationManager {
                     logger.debug("Already deleted ZK reservation node:  " + e + "; path=" + reservationPath, e);
                 }
 
+                return true;
+
             } else {
                 logger.error("Error while deleting ZK reservation node:  " + e + "; path=" + reservationPath, e);
                 throw new IllegalStateException("Error while deleting ZK reservation node:  " + e + "; path="
@@ -412,7 +724,6 @@ class ZkReservationManager {
                     + reservationPath, e);
         }// try
 
-        return false;
     }// unlock
 
 }

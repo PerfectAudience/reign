@@ -7,6 +7,8 @@ import org.kompany.overlord.coord.DistributedLock;
 import org.kompany.overlord.coord.DistributedReadWriteLock;
 import org.kompany.overlord.coord.DistributedReentrantLock;
 import org.kompany.overlord.coord.DistributedSemaphore;
+import org.kompany.overlord.coord.LockObserver;
+import org.kompany.overlord.coord.SemaphoreObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +49,13 @@ public class CoordinationServiceExample {
         final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
 
         final int lockHoldTimeMillis = 30000;
+
+        coordService.observeLock("examples-cluster", "exclusive_lock1", new LockObserver() {
+            @Override
+            public void revoked(DistributedLock lock, String reservationId) {
+                logger.info("Observer:  lock REVOKED:  reservationId={}", reservationId);
+            }
+        });
 
         Thread t1 = new Thread() {
             @Override
@@ -127,6 +136,13 @@ public class CoordinationServiceExample {
 
         // configure semaphore
         coordService.setSemaphoreConf("examples-cluster", "semaphore2", 5);
+
+        coordService.observeSemaphore("examples-cluster", "semaphore2", new SemaphoreObserver() {
+            @Override
+            public void revoked(DistributedSemaphore semaphore, String reservationId) {
+                logger.info("Observer:  permit REVOKED:  reservationId={}", reservationId);
+            }
+        });
 
         // wait a few seconds to make sure semaphore configuration is persisted
         // to ZK

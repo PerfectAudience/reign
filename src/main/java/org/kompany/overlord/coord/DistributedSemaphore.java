@@ -13,7 +13,7 @@ public interface DistributedSemaphore {
 
     public Collection<String> acquire(int permits) throws InterruptedException;
 
-    public boolean isValid(String permitId);
+    public boolean isRevoked(String permitId);
 
     public void release(String permitId);
 
@@ -30,5 +30,7 @@ public interface DistributedSemaphore {
     public int availablePermits();
 
     public void destroy();
+
+    public void revoke(String permitId);
 
 }

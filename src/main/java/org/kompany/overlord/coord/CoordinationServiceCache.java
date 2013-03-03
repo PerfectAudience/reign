@@ -1,9 +1,10 @@
 package org.kompany.overlord.coord;
 
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,6 @@ import com.google.common.base.Supplier;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
-import com.google.common.collect.Sets;
 
 /**
  * Tracks outstanding locks, semaphores, barriers, etc.
@@ -24,62 +24,62 @@ public class CoordinationServiceCache {
 
     private static final Logger logger = LoggerFactory.getLogger(CoordinationServiceCache.class);
 
-    private final Multimap<String, DistributedSemaphore> semaphoreCache = Multimaps.synchronizedSetMultimap(Multimaps
-            .newSetMultimap(Maps.<String, Collection<DistributedSemaphore>> newHashMap(),
-                    new Supplier<HashSet<DistributedSemaphore>>() {
+    private final Multimap<String, DistributedSemaphore> semaphoreCache = Multimaps.synchronizedListMultimap(Multimaps
+            .newListMultimap(Maps.<String, Collection<DistributedSemaphore>> newHashMap(),
+                    new Supplier<List<DistributedSemaphore>>() {
                         @Override
-                        public HashSet<DistributedSemaphore> get() {
-                            return Sets.newHashSet();
+                        public List<DistributedSemaphore> get() {
+                            return new CopyOnWriteArrayList<DistributedSemaphore>();
                         }
                     }));
 
     private final ConcurrentMap<String, PermitPoolSize> permitPoolSizeCache = new ConcurrentHashMap<String, PermitPoolSize>(
             8, 0.9f, 2);
 
-    private final Multimap<String, DistributedLock> lockCache = Multimaps.synchronizedSetMultimap(Multimaps
-            .newSetMultimap(Maps.<String, Collection<DistributedLock>> newHashMap(),
-                    new Supplier<HashSet<DistributedLock>>() {
+    private final Multimap<String, DistributedLock> lockCache = Multimaps.synchronizedListMultimap(Multimaps
+            .newListMultimap(Maps.<String, Collection<DistributedLock>> newHashMap(),
+                    new Supplier<List<DistributedLock>>() {
                         @Override
-                        public HashSet<DistributedLock> get() {
-                            return Sets.newHashSet();
+                        public List<DistributedLock> get() {
+                            return new CopyOnWriteArrayList<DistributedLock>();
                         }
                     }));
 
-    public Collection<DistributedLock> getLocks(String clusterId, String lockName, ReservationType reservationType) {
-        return lockCache.get(getKey(clusterId, lockName, reservationType));
+    public Collection<DistributedLock> getLocks(String entityPath, ReservationType reservationType) {
+        return lockCache.get(getKey(entityPath, reservationType));
     }
 
-    public void putLock(String clusterId, String lockName, ReservationType reservationType, DistributedLock lock) {
-        lockCache.put(getKey(clusterId, lockName, reservationType), lock);
+    public void putLock(String entityPath, ReservationType reservationType, DistributedLock lock) {
+        lockCache.put(getKey(entityPath, reservationType), lock);
         logger.info("lockCache.size()={}", lockCache.size());
     }
 
-    public void removeLock(String clusterId, String lockName, ReservationType reservationType, DistributedLock lock) {
-        lockCache.remove(getKey(clusterId, lockName, reservationType), lock);
+    public void removeLock(String entityPath, ReservationType reservationType, DistributedLock lock) {
+        lockCache.remove(getKey(entityPath, reservationType), lock);
         logger.info("lockCache.size()={}", lockCache.size());
     }
 
-    public Collection<DistributedSemaphore> getSemaphores(String clusterId, String semaphoreName) {
-        return semaphoreCache.get(getKey(clusterId, semaphoreName));
+    public Collection<DistributedSemaphore> getSemaphores(String entityPath) {
+        return semaphoreCache.get(entityPath);
     }
 
-    public void putSemaphore(String clusterId, String semaphoreName, DistributedSemaphore semaphore) {
-        semaphoreCache.put(getKey(clusterId, semaphoreName), semaphore);
+    public void putSemaphore(String entityPath, DistributedSemaphore semaphore) {
+        semaphoreCache.put(entityPath, semaphore);
         logger.info("semaphoreCache.size()={}", semaphoreCache.size());
 
     }
 
-    public void removeSemaphore(String clusterId, String semaphoreName, DistributedSemaphore semaphore) {
-        semaphoreCache.remove(getKey(clusterId, semaphoreName), semaphore);
+    public void removeSemaphore(String entityPath, DistributedSemaphore semaphore) {
+        semaphoreCache.remove(entityPath, semaphore);
         logger.info("semaphoreCache.size()={}", semaphoreCache.size());
     }
 
-    public PermitPoolSize getPermitPoolSize(String clusterId, String semaphoreName) {
-        return permitPoolSizeCache.get(getKey(clusterId, semaphoreName));
+    public PermitPoolSize getPermitPoolSize(String entityPath) {
+        return permitPoolSizeCache.get(entityPath);
     }
 
-    public PermitPoolSize putOrReturnCachedPermitPoolSize(String clusterId, String semaphoreName, PermitPoolSize pps) {
-        PermitPoolSize value = permitPoolSizeCache.putIfAbsent(getKey(clusterId, semaphoreName), pps);
+    public PermitPoolSize putOrReturnCachedPermitPoolSize(String entityPath, PermitPoolSize pps) {
+        PermitPoolSize value = permitPoolSizeCache.putIfAbsent(entityPath, pps);
         if (value == null) {
             value = pps;
         }
@@ -88,16 +88,12 @@ public class CoordinationServiceCache {
 
     }
 
-    public void removePermitPoolSize(String clusterId, String semaphoreName, PermitPoolSize pps) {
-        permitPoolSizeCache.remove(getKey(clusterId, semaphoreName));
+    public void removePermitPoolSize(String entityPath, PermitPoolSize pps) {
+        permitPoolSizeCache.remove(entityPath);
         logger.info("permitPoolSizeCache.size()={}", permitPoolSizeCache.size());
     }
 
-    String getKey(String clusterId, String lockName) {
-        return clusterId + "/" + lockName;
-    }
-
-    String getKey(String clusterId, String lockName, ReservationType reservationType) {
-        return clusterId + "/" + lockName + "/" + reservationType.prefix();
+    String getKey(String entityPath, ReservationType reservationType) {
+        return entityPath + "/" + reservationType.prefix();
     }
 }

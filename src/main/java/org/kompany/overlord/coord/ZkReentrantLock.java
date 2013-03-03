@@ -6,7 +6,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 
 import org.apache.zookeeper.data.ACL;
-import org.kompany.overlord.PathContext;
 import org.kompany.overlord.util.TimeUnitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +21,10 @@ public class ZkReentrantLock implements DistributedReentrantLock {
 
     private final ZkReservationManager zkReservationManager;
     private final String ownerId;
-    private final PathContext pathContext;
-    private final String clusterId;
-    private final String lockName;
+    // private final PathContext pathContext;
+    // private final String clusterId;
+    // private final String lockName;
+    private final String entityPath;
     private final ReservationType reservationType;
     private final List<ACL> aclList;
 
@@ -32,28 +32,41 @@ public class ZkReentrantLock implements DistributedReentrantLock {
 
     private final AtomicInteger holdCount = new AtomicInteger(0);
 
-    public ZkReentrantLock(ZkReservationManager zkReservationManager, String ownerId, PathContext pathContext,
-            String clusterId, String lockName, ReservationType reservationType, List<ACL> aclList) {
+    public ZkReentrantLock(ZkReservationManager zkReservationManager, String ownerId, String entityPath,
+            ReservationType reservationType, List<ACL> aclList) {
         super();
         this.zkReservationManager = zkReservationManager;
         this.ownerId = ownerId;
-        this.pathContext = pathContext;
+        this.entityPath = entityPath;
+        // this.pathContext = pathContext;
         this.reservationType = reservationType;
-        this.clusterId = clusterId;
-        this.lockName = lockName;
+        // this.clusterId = clusterId;
+        // this.lockName = lockName;
         this.aclList = aclList;
     }
 
     @Override
     public void destroy() {
         logger.info("destroy() called");
-        zkReservationManager.destroyLock(clusterId, lockName, reservationType, this);
+        zkReservationManager.destroyLock(entityPath, reservationType, this);
     }
 
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
         destroy();
+    }
+
+    @Override
+    public void revoke(String reservationId) {
+        if (reservationId != null && reservationId.equals(acquiredLockPath)) {
+            acquiredLockPath = null;
+        }
+    }
+
+    @Override
+    public boolean isRevoked() {
+        return this.acquiredLockPath == null;
     }
 
     @Override
@@ -70,8 +83,8 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     public void lock() {
         if (acquiredLockPath == null) {
             try {
-                acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName,
-                        reservationType, aclList, -1, false);
+                acquiredLockPath = zkReservationManager.acquire(ownerId, entityPath, reservationType, aclList, -1,
+                        false);
                 holdCount.incrementAndGet();
             } catch (InterruptedException e) {
                 logger.warn("Interrupted in lock():  should not happen:  " + e, e);
@@ -90,8 +103,7 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     @Override
     public void lockInterruptibly() throws InterruptedException {
         if (acquiredLockPath == null) {
-            acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, reservationType,
-                    aclList, -1, true);
+            acquiredLockPath = zkReservationManager.acquire(ownerId, entityPath, reservationType, aclList, -1, true);
         }
 
         holdCount.incrementAndGet();
@@ -125,8 +137,8 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     public boolean tryLock() {
         try {
             if (acquiredLockPath == null) {
-                acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName,
-                        reservationType, aclList, 0, false);
+                acquiredLockPath = zkReservationManager
+                        .acquire(ownerId, entityPath, reservationType, aclList, 0, false);
             }
 
             holdCount.incrementAndGet();
@@ -149,8 +161,8 @@ public class ZkReentrantLock implements DistributedReentrantLock {
             long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
 
             // attempt to acquire lock
-            acquiredLockPath = zkReservationManager.acquire(ownerId, pathContext, clusterId, lockName, reservationType,
-                    aclList, timeWaitMillis, true);
+            acquiredLockPath = zkReservationManager.acquire(ownerId, entityPath, reservationType, aclList,
+                    timeWaitMillis, true);
 
             holdCount.incrementAndGet();
         } else {
@@ -169,13 +181,17 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     public void unlock() {
         int updatedHoldCount = holdCount.decrementAndGet();
         if (updatedHoldCount < 1) {
-            zkReservationManager.relinquish(acquiredLockPath);
 
-            // try to set back to 0 by adding so as not to miss any other
-            // increments/decrements that are in flight
-            holdCount.addAndGet(0 - updatedHoldCount);
-
+            String tmpAcquiredLockPath = acquiredLockPath;
             acquiredLockPath = null;
+            if (!zkReservationManager.relinquish(tmpAcquiredLockPath)) {
+                acquiredLockPath = tmpAcquiredLockPath;
+                holdCount.incrementAndGet();
+            } else {
+                // try to set back to 0 by adding so as not to miss any other
+                // increments/decrements that are in flight
+                holdCount.addAndGet(0 - updatedHoldCount);
+            }
         }
     }
 
