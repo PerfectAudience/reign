@@ -1,13 +1,12 @@
 package org.kompany.overlord.examples;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-
 import org.kompany.overlord.Sovereign;
 import org.kompany.overlord.SovereignBuilder;
 import org.kompany.overlord.coord.CoordinationService;
+import org.kompany.overlord.coord.DistributedLock;
+import org.kompany.overlord.coord.DistributedReadWriteLock;
+import org.kompany.overlord.coord.DistributedReentrantLock;
 import org.kompany.overlord.coord.DistributedSemaphore;
-import org.kompany.overlord.coord.ZkReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +33,7 @@ public class CoordinationServiceExample {
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down Sovereign...");
-        Thread.sleep(300000);
+        Thread.sleep(120000);
 
         /** shutdown sovereign **/
         sovereign.stop();
@@ -52,18 +51,20 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getReentrantLock("node1", "examples-cluster", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("node1", "examples-cluster",
+                        "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
                     logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}",
-                            new Object[] { this.getName(), sleepInterval, ((ZkReentrantLock) lock).getHoldCount() });
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     lock.unlock();
+                    lock.destroy();
                 }
             }
         };
@@ -74,18 +75,20 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getReentrantLock("node2", "examples-cluster", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("node2", "examples-cluster",
+                        "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
                     logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}",
-                            new Object[] { this.getName(), sleepInterval, ((ZkReentrantLock) lock).getHoldCount() });
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     lock.unlock();
+                    lock.destroy();
                 }
             }
         };
@@ -96,18 +99,20 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getReentrantLock("node3", "examples-cluster", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("node3", "examples-cluster",
+                        "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
                     logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}",
-                            new Object[] { this.getName(), sleepInterval, ((ZkReentrantLock) lock).getHoldCount() });
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     lock.unlock();
+                    lock.destroy();
                 }
             }
         };
@@ -248,6 +253,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     semaphore.release(permitsToAcquire);
+                    semaphore.destroy();
                 }
             }
         };
@@ -272,6 +278,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     semaphore.release(permitsToAcquire);
+                    semaphore.destroy();
                 }
             }
         };
@@ -295,6 +302,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     semaphore.release();
+                    semaphore.destroy();
                 }
             }
         };
@@ -318,6 +326,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     semaphore.release();
+                    semaphore.destroy();
                 }
             }
         };
@@ -336,7 +345,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getLock("node1", "examples-cluster", "exclusive_lock1");
+                DistributedLock lock = coordService.getLock("node1", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -347,6 +356,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     lock.unlock();
+                    lock.destroy();
                 }
             }
         };
@@ -357,7 +367,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getLock("node2", "examples-cluster", "exclusive_lock1");
+                DistributedLock lock = coordService.getLock("node2", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -368,6 +378,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     lock.unlock();
+                    lock.destroy();
                 }
             }
         };
@@ -378,7 +389,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                Lock lock = coordService.getLock("node3", "examples-cluster", "exclusive_lock1");
+                DistributedLock lock = coordService.getLock("node3", "examples-cluster", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -389,6 +400,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     lock.unlock();
+                    lock.destroy();
                 }
             }
         };
@@ -406,7 +418,8 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node1", "examples-cluster", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService
+                        .getReadWriteLock("node1", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
@@ -417,6 +430,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     rwLock.readLock().unlock();
+                    rwLock.destroy();
                 }
             }
         };
@@ -427,7 +441,8 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node2", "examples-cluster", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService
+                        .getReadWriteLock("node2", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
@@ -438,6 +453,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     rwLock.readLock().unlock();
+                    rwLock.destroy();
                 }
             }
         };
@@ -448,7 +464,8 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node3", "examples-cluster", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService
+                        .getReadWriteLock("node3", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.writeLock().lock();
                 try {
@@ -459,6 +476,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     rwLock.writeLock().unlock();
+                    rwLock.destroy();
                 }
             }
         };
@@ -469,7 +487,8 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                ReadWriteLock rwLock = coordService.getReadWriteLock("node4", "examples-cluster", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService
+                        .getReadWriteLock("node4", "examples-cluster", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.writeLock().lock();
                 try {
@@ -480,6 +499,7 @@ public class CoordinationServiceExample {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
                     rwLock.writeLock().unlock();
+                    rwLock.destroy();
                 }
             }
         };

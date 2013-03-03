@@ -37,15 +37,29 @@ class ZkReservationManager {
 
     private final PathCache pathCache;
 
-    ZkReservationManager(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache) {
+    private final CoordinationServiceCache coordinationServiceCache;
+
+    ZkReservationManager(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
+            CoordinationServiceCache coordinationServiceCache) {
         super();
         this.zkClient = zkClient;
         this.pathScheme = pathScheme;
         this.pathCache = pathCache;
+        this.coordinationServiceCache = coordinationServiceCache;
     }
 
     public void shutdown() {
         this.shutdown = true;
+    }
+
+    public void destroySemaphore(String clusterId, String semaphoreName, DistributedSemaphore semaphore,
+            PermitPoolSize permitPoolSize) {
+        coordinationServiceCache.removeSemaphore(clusterId, semaphoreName, semaphore);
+        coordinationServiceCache.removePermitPoolSize(clusterId, semaphoreName, permitPoolSize);
+    }
+
+    public void destroyLock(String clusterId, String lockName, ReservationType reservationType, DistributedLock lock) {
+        coordinationServiceCache.removeLock(clusterId, lockName, reservationType, lock);
     }
 
     /**
@@ -203,6 +217,12 @@ class ZkReservationManager {
                     } else {
                         logger.info("Acquired:  ownerId={}; lockType={}; acquiredLockPath={}", new Object[] { ownerId,
                                 reservationType, acquiredLockPath });
+
+                        // set watch on lock node so that we are notified if it
+                        // is deleted outside of framework and can notify any
+                        // lock observers
+                        zkClient.exists(acquiredLockPath, true);
+
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -218,9 +238,10 @@ class ZkReservationManager {
             } while (!this.shutdown && acquiredLockPath == null
                     && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs > System.currentTimeMillis()));
 
+            // log that we could not acquire in given time
             if (acquiredLockPath == null) {
-                logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}", new Object[] { ownerId,
-                        reservationType, lockPath });
+                logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
+                        new Object[] { ownerId, reservationType, lockPath, waitTimeoutMs });
             }
 
             return acquiredLockPath;
@@ -342,8 +363,8 @@ class ZkReservationManager {
                     && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs > System.currentTimeMillis()));
 
             if (acquiredLockPath == null) {
-                logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}", new Object[] { ownerId,
-                        reservationType, lockPath });
+                logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
+                        new Object[] { ownerId, reservationType, lockPath, waitTimeoutMs });
             }
 
             return acquiredLockPath;

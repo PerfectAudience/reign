@@ -56,4 +56,13 @@ public enum ReservationType {
 
     public abstract String prefix();
 
+    public static ReservationType fromCategory(String category) {
+        for (ReservationType rt : ReservationType.values()) {
+            if (rt.category().equals(category)) {
+                return rt;
+            }
+        }
+        return null;
+    }
+
 }

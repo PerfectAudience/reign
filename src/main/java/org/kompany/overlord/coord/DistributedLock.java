@@ -9,4 +9,7 @@ import java.util.concurrent.locks.Lock;
  */
 public interface DistributedLock extends Lock {
 
+    public String getLockId();
+
+    public void destroy();
 }

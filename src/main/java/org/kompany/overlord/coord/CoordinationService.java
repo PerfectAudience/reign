@@ -3,7 +3,6 @@ package org.kompany.overlord.coord;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReadWriteLock;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.ACL;
@@ -38,18 +37,22 @@ public class CoordinationService extends AbstractActiveService implements Observ
 
     private final ServiceObserverManager<CoordObserverWrapper> observerManager = new ServiceObserverManager<CoordObserverWrapper>();
 
+    private final CoordinationServiceCache coordinationServiceCache;
+
     public CoordinationService() {
         super();
+
+        coordinationServiceCache = new CoordinationServiceCache();
 
         // by default, check/clean-up locks every minute
         this.setExecutionIntervalMillis(60000);
     }
 
-    public void observeLock(String clusterId, String relativeLockPath, LockObserver observer) {
+    public void observeLock(String clusterId, String lockName, LockObserver observer) {
 
     }
 
-    public void observeSemaphore(String clusterId, String relativeSemaphorePath, SemaphoreObserver observer) {
+    public void observeSemaphore(String clusterId, String semaphoreName, SemaphoreObserver observer) {
 
     }
 
@@ -74,8 +77,12 @@ public class CoordinationService extends AbstractActiveService implements Observ
      */
     public DistributedReentrantLock getReentrantLock(String ownerId, String clusterId, String lockName,
             List<ACL> aclList) {
-        return new ZkReentrantLock(zkReservationManager, ownerId, PathContext.USER, clusterId, lockName,
-                ReservationType.LOCK_EXCLUSIVE, aclList);
+
+        DistributedLock lock = new ZkReentrantLock(zkReservationManager, ownerId, PathContext.USER, clusterId,
+                lockName, ReservationType.LOCK_EXCLUSIVE, aclList);
+        this.coordinationServiceCache.putLock(clusterId, lockName, ReservationType.LOCK_EXCLUSIVE, lock);
+
+        return (DistributedReentrantLock) lock;
     }
 
     /**
@@ -98,8 +105,13 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @return
      */
     public DistributedLock getLock(String ownerId, String clusterId, String lockName, List<ACL> aclList) {
-        return new ZkLock(zkReservationManager, ownerId, PathContext.USER, clusterId, lockName,
+
+        DistributedLock lock = new ZkLock(zkReservationManager, ownerId, PathContext.USER, clusterId, lockName,
                 ReservationType.LOCK_EXCLUSIVE, aclList);
+        this.coordinationServiceCache.putLock(clusterId, lockName, ReservationType.LOCK_EXCLUSIVE, lock);
+
+        return lock;
+
     }
 
     /**
@@ -108,7 +120,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param relativeLockPath
      * @return
      */
-    public ReadWriteLock getReadWriteLock(String ownerId, String clusterId, String lockName) {
+    public DistributedReadWriteLock getReadWriteLock(String ownerId, String clusterId, String lockName) {
         return getReadWriteLock(ownerId, clusterId, lockName, Sovereign.DEFAULT_ACL_LIST);
     }
 
@@ -119,8 +131,20 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param aclList
      * @return
      */
-    public ReadWriteLock getReadWriteLock(String ownerId, String clusterId, String lockName, List<ACL> aclList) {
-        return new ZkReadWriteLock(zkReservationManager, ownerId, PathContext.USER, clusterId, lockName, aclList);
+    public DistributedReadWriteLock getReadWriteLock(String ownerId, String clusterId, String lockName,
+            List<ACL> aclList) {
+
+        // write lock
+        DistributedLock writeLock = new ZkReentrantLock(zkReservationManager, ownerId, PathContext.USER, clusterId,
+                lockName, ReservationType.LOCK_EXCLUSIVE, aclList);
+        this.coordinationServiceCache.putLock(clusterId, lockName, ReservationType.LOCK_EXCLUSIVE, writeLock);
+
+        // read lock
+        DistributedLock readLock = new ZkReentrantLock(zkReservationManager, ownerId, PathContext.USER, clusterId,
+                lockName, ReservationType.LOCK_SHARED, aclList);
+        this.coordinationServiceCache.putLock(clusterId, lockName, ReservationType.LOCK_SHARED, readLock);
+
+        return new ZkReadWriteLock(readLock, writeLock);
     }
 
     /**
@@ -177,15 +201,23 @@ public class CoordinationService extends AbstractActiveService implements Observ
          * create permit pool size function and add observer to adjust as
          * necessary
          **/
-        final VariablePermitPoolSize pps = new VariablePermitPoolSize(permitPoolSize);
-        Map<String, String> semaphoreConf = getSemaphoreConf(clusterId, semaphoreName,
-                new ConfObserver<Map<String, String>>() {
-                    @Override
-                    public void updated(Map<String, String> data) {
-                        int permitPoolSize = Integer.parseInt(data.get("permitPoolSize"));
-                        pps.set(permitPoolSize);
-                    }
-                });
+        Map<String, String> semaphoreConf = null;
+        PermitPoolSize pps = null;
+        pps = coordinationServiceCache.getPermitPoolSize(clusterId, semaphoreName);
+        if (pps == null) {
+            pps = new ConfiguredPermitPoolSize(permitPoolSize);
+            pps = coordinationServiceCache.putOrReturnCachedPermitPoolSize(clusterId, semaphoreName, pps);
+        } else {
+            // should not happen
+            if (!(pps instanceof ConfiguredPermitPoolSize)) {
+                throw new IllegalStateException("PermitPoolSize already exists but is not of type "
+                        + ConfiguredPermitPoolSize.class.getName() + ":  clusterId=" + clusterId + "; semaphoreName="
+                        + semaphoreName);
+            }
+        }
+
+        // we have previous created observer so just read config
+        semaphoreConf = getSemaphoreConf(clusterId, semaphoreName, (ConfiguredPermitPoolSize) pps);
 
         /** check existing config **/
         if (semaphoreConf == null || semaphoreConf.get("permitPoolSize") == null) {
@@ -208,9 +240,49 @@ public class CoordinationService extends AbstractActiveService implements Observ
                     new Object[] { clusterId, semaphoreName, permitPoolSize });
         }
 
-        return getSemaphore(ownerId, clusterId, semaphoreName, pps, aclList);
+        /** create and cache **/
+        DistributedSemaphore semaphore = getSemaphore(ownerId, clusterId, semaphoreName, pps, aclList);
+        coordinationServiceCache.putSemaphore(clusterId, semaphoreName, semaphore);
+
+        return semaphore;
     }
 
+    /**
+     * @param ownerId
+     * @param relativeSemaphorePath
+     * @param permitPoolSizeFunction
+     * @param aclList
+     * @return
+     */
+    public DistributedSemaphore getSemaphore(String ownerId, String clusterId, String semaphoreName,
+            PermitPoolSize permitPoolSize, List<ACL> aclList) {
+
+        // check to see if permit pool size is already in cache
+        PermitPoolSize pps = coordinationServiceCache.getPermitPoolSize(clusterId, semaphoreName);
+        if (pps == null) {
+            pps = coordinationServiceCache.putOrReturnCachedPermitPoolSize(clusterId, semaphoreName, permitPoolSize);
+        } else {
+            if (pps.getClass() != permitPoolSize.getClass()) {
+                throw new IllegalStateException("PermitPoolSize already exists but is not of type "
+                        + permitPoolSize.getClass().getName() + ":  clusterId=" + clusterId + "; semaphoreName="
+                        + semaphoreName);
+            }
+        }
+
+        // create and put in cache
+        DistributedSemaphore semaphore = new ZkSemaphore(zkReservationManager, ownerId, PathContext.USER, clusterId,
+                semaphoreName, aclList, pps);
+        coordinationServiceCache.putSemaphore(clusterId, semaphoreName, semaphore);
+
+        return semaphore;
+    }
+
+    /**
+     * 
+     * @param clusterId
+     * @param semaphoreName
+     * @param permitPoolSize
+     */
     public void setSemaphoreConf(String clusterId, String semaphoreName, int permitPoolSize) {
         setSemaphoreConf(clusterId, semaphoreName, permitPoolSize, Sovereign.DEFAULT_ACL_LIST);
     }
@@ -228,6 +300,12 @@ public class CoordinationService extends AbstractActiveService implements Observ
                 confSerializer, aclList);
     }
 
+    /**
+     * 
+     * @param clusterId
+     * @param semaphoreName
+     * @return
+     */
     public Map<String, String> getSemaphoreConf(String clusterId, String semaphoreName) {
         return getSemaphoreConf(clusterId, semaphoreName, null);
     }
@@ -241,19 +319,6 @@ public class CoordinationService extends AbstractActiveService implements Observ
                 clusterId, getPathScheme().join(ReservationType.SEMAPHORE.category(), semaphoreName), confSerializer,
                 confObserver, true);
         return semaphoreConf;
-    }
-
-    /**
-     * @param ownerId
-     * @param relativeSemaphorePath
-     * @param permitPoolSizeFunction
-     * @param aclList
-     * @return
-     */
-    public DistributedSemaphore getSemaphore(String ownerId, String clusterId, String semaphoreName,
-            PermitPoolSize permitPoolSizeFunction, List<ACL> aclList) {
-        return new ZkSemaphore(zkReservationManager, ownerId, PathContext.USER, clusterId, semaphoreName, aclList,
-                permitPoolSizeFunction);
     }
 
     public long getMaxLockHoldTimeMillis() {
@@ -284,7 +349,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
 
     @Override
     public void init() {
-        zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), getPathCache());
+        zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), getPathCache(),
+                coordinationServiceCache);
 
     }
 
@@ -308,7 +374,15 @@ public class CoordinationService extends AbstractActiveService implements Observ
 
     @Override
     public boolean filterWatchedEvent(WatchedEvent event) {
-        return !observerManager.isBeingObserved(event.getPath());
+        // original path
+        String path1 = event.getPath();
+
+        // check with last token stripped out since it may be a reservation
+        // node, but observers are registered to the parent lock, semaphore,
+        // barrier, etc. node
+        String path2 = path1.substring(0, path1.lastIndexOf('/'));
+
+        return !observerManager.isBeingObserved(path1) || !observerManager.isBeingObserved(path2);
 
     }
 
@@ -320,6 +394,22 @@ public class CoordinationService extends AbstractActiveService implements Observ
     @Override
     public void nodeChildrenChanged(WatchedEvent event) {
         observerManager.signal(event.getPath(), null);
+    }
+
+    @Override
+    public void nodeDeleted(WatchedEvent event) {
+        String path = event.getPath();
+        String[] tokens = getPathScheme().tokenizePath(path);
+
+        // see if it is the primary lock, semaphore, barrier node that has been
+        // deleted
+        if (tokens.length > 1 && ReservationType.fromCategory(tokens[tokens.length - 1]) != null) {
+            // primary node was deleted so state is unknown
+            observerManager.signalStateUnknown(null);
+        }
+
+        // check to see if we need to signal that a lock holder was deleted
+
     }
 
     private static abstract class CoordObserverWrapper<T extends ServiceObserver> extends ServiceObserverWrapper<T> {

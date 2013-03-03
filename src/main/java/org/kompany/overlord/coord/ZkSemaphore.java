@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.data.ACL;
@@ -31,11 +32,11 @@ public class ZkSemaphore implements DistributedSemaphore {
     private final PathContext pathContext;
     private final String clusterId;
     private final String semaphoreName;
-    // private final ReservationType lockType;
     private final List<ACL> aclList;
     private final PermitPoolSize permitPoolSizeFunction;
 
-    private final Set<String> acquiredPermitIds = new HashSet<String>(16, 0.9f);
+    private final Set<String> acquiredPermitIds = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>(16,
+            0.9f, 2));
 
     public ZkSemaphore(ZkReservationManager zkReservationManager, String ownerId, PathContext pathContext,
             String clusterId, String semaphoreName, List<ACL> aclList, PermitPoolSize permitPoolSizeFunction) {
@@ -49,17 +50,30 @@ public class ZkSemaphore implements DistributedSemaphore {
         this.permitPoolSizeFunction = permitPoolSizeFunction;
     }
 
-    public synchronized Collection<String> getAcquiredPermits() {
+    @Override
+    public void destroy() {
+        logger.info("destroy() called");
+        zkReservationManager.destroySemaphore(clusterId, semaphoreName, this, permitPoolSizeFunction);
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        destroy();
+    }
+
+    @Override
+    public Collection<String> getAcquiredPermitIds() {
         return Collections.unmodifiableSet(acquiredPermitIds);
     }
 
     @Override
-    public synchronized int permitPoolSize() {
+    public int permitPoolSize() {
         return this.permitPoolSizeFunction.get();
     }
 
     @Override
-    public synchronized String acquire() throws InterruptedException {
+    public String acquire() throws InterruptedException {
         String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, pathContext, clusterId,
                 semaphoreName, ReservationType.SEMAPHORE, permitPoolSize(), aclList, -1, true);
         if (acquiredPermitPath != null) {
@@ -70,7 +84,7 @@ public class ZkSemaphore implements DistributedSemaphore {
     }
 
     @Override
-    public synchronized Collection<String> acquire(int permits) throws InterruptedException {
+    public Collection<String> acquire(int permits) throws InterruptedException {
         List<String> tmpAcquiredPermits = new ArrayList<String>(permits);
 
         try {
@@ -97,19 +111,19 @@ public class ZkSemaphore implements DistributedSemaphore {
     }
 
     @Override
-    public synchronized boolean isValid(String permitId) {
+    public boolean isValid(String permitId) {
         return acquiredPermitIds.contains(permitId);
     }
 
     @Override
-    public synchronized void release(String permitId) {
+    public void release(String permitId) {
         if (zkReservationManager.relinquish(permitId)) {
             acquiredPermitIds.remove(permitId);
         }
     }
 
     @Override
-    public synchronized void release(Collection<String> permitIds) {
+    public void release(Collection<String> permitIds) {
         int permitsReleased = 0;
         for (String permitId : permitIds) {
             if (zkReservationManager.relinquish(permitId)) {
@@ -125,7 +139,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         }
     }
 
-    public synchronized void acquireUninterruptibly() {
+    public void acquireUninterruptibly() {
         // keep acquiring permit until done and then interrupt current thread if
         // necessary
         boolean interrupted = false;
@@ -146,7 +160,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         }
     }
 
-    public synchronized void acquireUninterruptibly(int permits) {
+    public void acquireUninterruptibly(int permits) {
         // keep acquiring permits until done and then interrupt current thread
         // if necessary
         boolean interrupted = false;
@@ -172,7 +186,7 @@ public class ZkSemaphore implements DistributedSemaphore {
     }
 
     @Override
-    public synchronized int availablePermits() {
+    public int availablePermits() {
         int currentlyAvailable = permitPoolSize() - getAllPermitRequests().size();
         return currentlyAvailable < 0 ? 0 : currentlyAvailable;
 
@@ -185,7 +199,7 @@ public class ZkSemaphore implements DistributedSemaphore {
      * 
      * @return
      */
-    public synchronized int drainPermits() {
+    public int drainPermits() {
         if (!isPermitAllocationAvailable(1)) {
             return 0;
         }
@@ -224,22 +238,22 @@ public class ZkSemaphore implements DistributedSemaphore {
      * @return the current list of permit holders and those waiting for a
      *         permit.
      */
-    protected synchronized List<String> getAllPermitRequests() {
+    protected List<String> getAllPermitRequests() {
         return zkReservationManager.getReservationList(pathContext, clusterId, semaphoreName,
                 ReservationType.SEMAPHORE, true);
     }
 
-    public synchronized boolean isFair() {
+    public boolean isFair() {
         return true;
     }
 
     @Override
-    public synchronized void release() {
+    public void release() {
         release(1);
     }
 
     @Override
-    public synchronized void release(int permitsToRelease) {
+    public void release(int permitsToRelease) {
         if (permitsToRelease < 0) {
             throw new IllegalArgumentException("Argument permitsToRelease cannot be less than zero.");
         }
@@ -268,7 +282,7 @@ public class ZkSemaphore implements DistributedSemaphore {
     }
 
     @Override
-    public synchronized String toString() {
+    public String toString() {
         // TODO Auto-generated method stub
         return super.toString();
     }
@@ -279,7 +293,7 @@ public class ZkSemaphore implements DistributedSemaphore {
      * 
      * @return
      */
-    public synchronized boolean tryAcquire() {
+    public boolean tryAcquire() {
         if (!isPermitAllocationAvailable(1)) {
             return false;
         }
@@ -299,7 +313,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         }
     }
 
-    public synchronized boolean tryAcquire(int permits, long wait, TimeUnit timeUnit) throws InterruptedException {
+    public boolean tryAcquire(int permits, long wait, TimeUnit timeUnit) throws InterruptedException {
         if (!isPermitAllocationAvailable(permits)) {
             return false;
         }
@@ -343,7 +357,7 @@ public class ZkSemaphore implements DistributedSemaphore {
 
     }
 
-    public synchronized boolean tryAcquire(int permits) {
+    public boolean tryAcquire(int permits) {
         if (!isPermitAllocationAvailable(permits)) {
             return false;
         }
@@ -381,7 +395,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         }
     }
 
-    public synchronized boolean tryAcquire(long wait, TimeUnit timeUnit) throws InterruptedException {
+    public boolean tryAcquire(long wait, TimeUnit timeUnit) throws InterruptedException {
         if (!isPermitAllocationAvailable(1)) {
             return false;
         }
@@ -400,7 +414,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         return true;
     }
 
-    synchronized boolean isPermitAllocationAvailable(int permits) {
+    boolean isPermitAllocationAvailable(int permits) {
         if (permits < 0) {
             throw new IllegalArgumentException("Argument permits cannot be less than zero.");
         }

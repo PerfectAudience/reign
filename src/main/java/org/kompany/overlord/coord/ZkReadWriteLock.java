@@ -1,30 +1,26 @@
 package org.kompany.overlord.coord;
 
-import java.util.List;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 
-import org.apache.zookeeper.data.ACL;
-import org.kompany.overlord.PathContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
  * @author ypai
  * 
  */
-public class ZkReadWriteLock implements ReadWriteLock {
+public class ZkReadWriteLock implements DistributedReadWriteLock {
 
-    private final Lock readLock;
-    private final Lock writeLock;
+    private static final Logger logger = LoggerFactory.getLogger(ZkReadWriteLock.class);
 
-    public ZkReadWriteLock(ZkReservationManager zkLockManager, String ownerId, PathContext pathContext, String clusterId,
-            String lockName, List<ACL> aclList) {
+    private final DistributedLock readLock;
+    private final DistributedLock writeLock;
+
+    public ZkReadWriteLock(DistributedLock readLock, DistributedLock writeLock) {
         super();
-
-        writeLock = new ZkLock(zkLockManager, ownerId, PathContext.USER, clusterId, lockName,
-                ReservationType.LOCK_EXCLUSIVE, aclList);
-        readLock = new ZkLock(zkLockManager, ownerId, PathContext.USER, clusterId, lockName,
-                ReservationType.LOCK_SHARED, aclList);
+        this.readLock = readLock;
+        this.writeLock = writeLock;
     }
 
     @Override
@@ -35,6 +31,19 @@ public class ZkReadWriteLock implements ReadWriteLock {
     @Override
     public Lock writeLock() {
         return writeLock;
+    }
+
+    @Override
+    public void destroy() {
+        logger.info("destroy() called");
+        readLock.destroy();
+        writeLock.destroy();
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        destroy();
     }
 
 }

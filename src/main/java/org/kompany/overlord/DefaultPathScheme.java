@@ -70,6 +70,7 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public String[] tokenizePath(String path) {
+        path = path.replaceFirst("^/", "");
         return PATTERN_PATH_TOKENIZER.split(path);
     }
 

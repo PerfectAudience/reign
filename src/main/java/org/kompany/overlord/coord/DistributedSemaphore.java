@@ -23,7 +23,12 @@ public interface DistributedSemaphore {
 
     public void release(int permitsToRelease);
 
+    public Collection<String> getAcquiredPermitIds();
+
     public int permitPoolSize();
 
     public int availablePermits();
+
+    public void destroy();
+
 }
