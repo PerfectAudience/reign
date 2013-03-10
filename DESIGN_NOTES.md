@@ -1,3 +1,5 @@
+Names:  Herald (service discovery), Magistrate (configuration), Council (coordination), 
+
 Task service 
 
 Assumption:  

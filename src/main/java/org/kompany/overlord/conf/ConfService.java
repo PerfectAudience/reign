@@ -16,7 +16,7 @@ import org.kompany.overlord.PathType;
 import org.kompany.overlord.ServiceObserverManager;
 import org.kompany.overlord.ServiceObserverWrapper;
 import org.kompany.overlord.Sovereign;
-import org.kompany.overlord.util.PathCache.PathCacheEntry;
+import org.kompany.overlord.util.PathCacheEntry;
 import org.kompany.overlord.util.ZkClientUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

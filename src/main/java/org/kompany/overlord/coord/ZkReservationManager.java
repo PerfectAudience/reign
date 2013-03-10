@@ -11,7 +11,7 @@ import org.apache.zookeeper.data.Stat;
 import org.kompany.overlord.PathScheme;
 import org.kompany.overlord.ZkClient;
 import org.kompany.overlord.util.PathCache;
-import org.kompany.overlord.util.PathCache.PathCacheEntry;
+import org.kompany.overlord.util.PathCacheEntry;
 import org.kompany.overlord.util.ZkClientUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -17,17 +17,24 @@
 	<dependencies>
 
 		<!-- getopt for args parsing -->
-		<dependency>
-			<groupId>urbanophile</groupId>
-			<artifactId>java-getopt</artifactId>
-			<version>1.0.9</version>
-		</dependency>
+		<!-- <dependency> -->
+		<!-- <groupId>urbanophile</groupId> -->
+		<!-- <artifactId>java-getopt</artifactId> -->
+		<!-- <version>1.0.9</version> -->
+		<!-- </dependency> -->
 
-		<!-- For reflection toString convenience method (good for debugging) -->
+		<!-- for various utils -->
 		<dependency>
 			<groupId>commons-lang</groupId>
 			<artifactId>commons-lang</artifactId>
 			<version>2.5</version>
+		</dependency>
+
+		<!-- Netty -->
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty</artifactId>
+			<version>3.5.8.Final</version>
 		</dependency>
 
 		<!-- Logging -->

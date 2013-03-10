@@ -3,7 +3,6 @@ package org.kompany.overlord.examples;
 import java.util.Properties;
 
 import org.kompany.overlord.Sovereign;
-import org.kompany.overlord.SovereignBuilder;
 import org.kompany.overlord.conf.ConfObserver;
 import org.kompany.overlord.conf.ConfProperties;
 import org.kompany.overlord.conf.ConfPropertiesSerializer;
@@ -23,12 +22,36 @@ public class ConfServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start sovereign using builder **/
-        Sovereign sovereign = (new SovereignBuilder()).zkConfig("localhost:2181", 15000).pathCache(1024, 8)
+        final Sovereign sovereign = Sovereign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8)
                 .allCoreServices().build();
-        sovereign.start();
+        // sovereign.start();
 
         /** conf service example **/
-        confServiceExample(sovereign);
+        Thread t1 = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    confServiceExample(sovereign);
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        };
+        t1.start();
+        Thread t2 = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    confServiceExample(sovereign);
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        };
+        t2.start();
+        logger.info("DONE");
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(60000);
@@ -41,6 +64,8 @@ public class ConfServiceExample {
     }
 
     public static void confServiceExample(Sovereign sovereign) throws Exception {
+        sovereign.start();
+
         // this is how you would normally get a service
         ConfService confService = (ConfService) sovereign.getService("conf");
 
@@ -51,14 +76,14 @@ public class ConfServiceExample {
                     @Override
                     public void updated(ConfProperties conf) {
                         if (conf != null) {
-                            logger.info("Observer:  conf={}", conf);
+                            logger.info("***** Observer:  conf={}", conf);
 
                         } else {
-                            logger.info("Observer:  conf deleted");
+                            logger.info("***** Observer:  conf deleted");
                         }
                     }
                 });
-        logger.debug("loadedConf={}", loadedConf);
+        logger.info("loadedConf={}", loadedConf);
 
         // save the configuration that we were trying to access above; the
         // observer will be notified of the change

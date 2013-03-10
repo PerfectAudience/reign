@@ -6,7 +6,6 @@ import java.util.Map;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.kompany.overlord.Sovereign;
-import org.kompany.overlord.SovereignBuilder;
 import org.kompany.overlord.presence.NodeInfo;
 import org.kompany.overlord.presence.PresenceObserver;
 import org.kompany.overlord.presence.PresenceService;
@@ -26,7 +25,7 @@ public class PresenceServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start sovereign using builder **/
-        Sovereign sovereign = (new SovereignBuilder()).zkConfig("localhost:2181", 15000).pathCache(1024, 8)
+        Sovereign sovereign = Sovereign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8)
                 .allCoreServices().build();
         sovereign.start();
 
@@ -34,7 +33,7 @@ public class PresenceServiceExample {
         presenceServiceExample(sovereign);
 
         /** sleep to allow examples to run for a bit **/
-        Thread.sleep(60000);
+        Thread.sleep(120000);
 
         /** shutdown sovereign **/
         sovereign.stop();
@@ -55,10 +54,10 @@ public class PresenceServiceExample {
                     @Override
                     public void updated(ServiceInfo info) {
                         if (info != null) {
-                            logger.info("Observer:  serviceInfo={}",
+                            logger.info("***** Observer:  serviceInfo={}",
                                     ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
                         } else {
-                            logger.info("Observer:  serviceInfo deleted");
+                            logger.info("***** Observer:  serviceInfo deleted");
                         }
                     }
                 });
@@ -72,11 +71,11 @@ public class PresenceServiceExample {
                     @Override
                     public void updated(NodeInfo info) {
                         if (info != null) {
-                            logger.info("Observer:  nodeInfo={}",
+                            logger.info("***** Observer:  nodeInfo={}",
                                     ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
 
                         } else {
-                            logger.info("Observer:  nodeInfo deleted");
+                            logger.info("***** Observer:  nodeInfo deleted");
                         }
                     }
                 });

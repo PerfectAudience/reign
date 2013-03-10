@@ -1,6 +1,5 @@
 package org.kompany.overlord;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,7 +17,7 @@ import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
 import org.kompany.overlord.util.PathCache;
-import org.kompany.overlord.zookeeper.ResilientZooKeeper;
+import org.kompany.overlord.util.SimplePathCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +45,11 @@ public class Sovereign implements Watcher {
     private final ServiceDirectory serviceDirectory = new ServiceDirectory() {
         @Override
         public Service getService(String serviceName) {
+            if (shutdown) {
+                throw new IllegalStateException("Already shutdown:  cannot get service.");
+            }
+            waitForInitializationIfNecessary();
+
             ServiceWrapper serviceWrapper = serviceMap.get(serviceName);
             if (serviceWrapper != null) {
                 return serviceWrapper.getService();
@@ -73,22 +77,29 @@ public class Sovereign implements Watcher {
     /** List to ensure Watcher(s) are called in a specific order */
     private final List<Watcher> watcherList = new ArrayList<Watcher>();
 
-    public Sovereign() {
+    public static SovereignBuilder builder() {
+        return new SovereignBuilder();
     }
 
-    public Sovereign(String zkConnectString, int zkSessionTimeout) {
-        this(zkConnectString, zkSessionTimeout, 1024, 8);
-    }
+    // public Sovereign() {
+    // }
 
-    public Sovereign(String zkConnectString, int zkSessionTimeout, int pathCacheSize, int pathCacheConcurrencyLevel) {
-        this();
-        try {
-            zkClient = new ResilientZooKeeper(zkConnectString, zkSessionTimeout);
-        } catch (IOException e) {
-            throw new IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
-        }
+    // public Sovereign(String zkConnectString, int zkSessionTimeout) {
+    // ZkClient zkClient = null;
+    // try {
+    // zkClient = new ResilientZooKeeper(zkConnectString, zkSessionTimeout);
+    // } catch (IOException e) {
+    // throw new
+    // IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
+    // }
+    // this.pathCache = new SimplePathCache(1024, 4, zkClient);
+    // }
 
-        this.pathCache = new PathCache(pathCacheSize, pathCacheConcurrencyLevel, zkClient);
+    public Sovereign(ZkClient zkClient, PathCache pathCache) {
+        this.zkClient = zkClient;
+
+        // initialize cache instance
+        this.pathCache = pathCache;
     }
 
     @Override
@@ -131,7 +142,7 @@ public class Sovereign implements Watcher {
         return pathCache;
     }
 
-    public void setPathCache(PathCache pathCache) {
+    public void setPathCache(SimplePathCache pathCache) {
         if (started) {
             throw new IllegalStateException("Cannot set pathCache once started!");
         }
@@ -158,6 +169,7 @@ public class Sovereign implements Watcher {
     // }
 
     public Service getService(String serviceName) {
+        // waitForInitializationIfNecessary();
         return serviceDirectory.getService(serviceName);
     }
 
@@ -210,6 +222,7 @@ public class Sovereign implements Watcher {
 
     public synchronized void start() {
         if (started) {
+            logger.debug("start():  already started...");
             return;
         }
 
@@ -228,8 +241,10 @@ public class Sovereign implements Watcher {
         // register self as watcher
         this.zkClient.register(this);
 
-        // pathCache should be first in list
-        this.watcherList.add(0, pathCache);
+        // pathCache should be first in list if it is a Watcher
+        if (pathCache instanceof Watcher) {
+            this.watcherList.add(0, (Watcher) pathCache);
+        }
 
         /** init executor **/
         logger.info("START:  initializing executor");
@@ -256,11 +271,17 @@ public class Sovereign implements Watcher {
         adminThread.start();
 
         started = true;
+
+        /** notify any waiters **/
+        logger.info("START:  notifying all waiters");
+        this.notifyAll();
+
         logger.info("START:  done");
     }
 
     public synchronized void stop() {
         if (shutdown) {
+            logger.debug("stop():  already stopped...");
             return;
         }
         shutdown = true;
@@ -298,6 +319,23 @@ public class Sovereign implements Watcher {
         this.zkClient.close();
 
         logger.info("SHUTDOWN:  done");
+    }
+
+    private void waitForInitializationIfNecessary() {
+        if (!started) {
+            try {
+                logger.info("Waiting for notification of start() completion");
+                synchronized (Sovereign.this) {
+                    Sovereign.this.wait(10000);
+                }
+            } catch (InterruptedException e) {
+                logger.warn("Interrupted while waiting for start:  " + e, e);
+            }
+            if (!started) {
+                throw new IllegalStateException("Not yet initialized:  check environment and ZK settings.");
+            }
+            logger.info("Received notification of start() completion");
+        }// if
     }
 
     /**

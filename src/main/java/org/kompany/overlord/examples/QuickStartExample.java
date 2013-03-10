@@ -1,7 +1,6 @@
 package org.kompany.overlord.examples;
 
 import org.kompany.overlord.Sovereign;
-import org.kompany.overlord.SovereignBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +16,7 @@ public class QuickStartExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start sovereign using builder **/
-        Sovereign sovereign = (new SovereignBuilder()).zkConfig("localhost:2181", 15000).pathCache(1024, 8)
+        Sovereign sovereign = Sovereign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8)
                 .allCoreServices().build();
         sovereign.start();
 

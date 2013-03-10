@@ -422,6 +422,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
     @Override
     public void nodeDataChanged(WatchedEvent event) {
         String path = event.getPath();
+        logger.info("nodeDataChanged():  path={}", path);
     }
 
     // @Override
