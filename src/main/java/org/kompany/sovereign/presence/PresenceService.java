@@ -18,6 +18,8 @@ import org.kompany.sovereign.PathContext;
 import org.kompany.sovereign.PathType;
 import org.kompany.sovereign.ServiceObserverManager;
 import org.kompany.sovereign.ServiceObserverWrapper;
+import org.kompany.sovereign.coord.CoordinationService;
+import org.kompany.sovereign.coord.DistributedLock;
 import org.kompany.sovereign.util.PathCacheEntry;
 import org.kompany.sovereign.util.ZkClientUtil;
 import org.slf4j.Logger;
@@ -33,6 +35,8 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     private static final Logger logger = LoggerFactory.getLogger(PresenceService.class);
 
+    public static final int DEFAULT_ZOMBIE_CHECK_INTERVAL_MILLIS = 300000;
+
     public static final int DEFAULT_HEARTBEAT_INTERVAL_MILLIS = 30000;
 
     public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
@@ -42,6 +46,8 @@ public class PresenceService extends AbstractActiveService implements Observable
     private int concurrencyLevel = 8;
 
     private int heartbeatIntervalMillis = DEFAULT_HEARTBEAT_INTERVAL_MILLIS;
+
+    private int zombieCheckIntervalMillis = DEFAULT_ZOMBIE_CHECK_INTERVAL_MILLIS;
 
     private NodeAttributeSerializer nodeAttributeSerializer = new JsonNodeAttributeSerializer();
 
@@ -54,6 +60,8 @@ public class PresenceService extends AbstractActiveService implements Observable
     private final ServiceObserverManager<PresenceObserverWrapper> observerManager = new ServiceObserverManager<PresenceObserverWrapper>();
 
     private final ZkClientUtil zkUtil = new ZkClientUtil();
+
+    private volatile long lastZombieCheckTimestamp = System.currentTimeMillis();
 
     public List<String> getAvailableServices(String clusterId) {
         /** get node data from zk **/
@@ -500,7 +508,56 @@ public class PresenceService extends AbstractActiveService implements Observable
             }// if
         }// for
 
-        // TODO: zombie node check?
+        /** do zombie node check every 5 minutes **/
+        if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
+            // get exclusive leader lock to perform maintenance duties
+            CoordinationService coordinationService = getServiceDirectory().getService("coord");
+            DistributedLock adminLock = coordinationService.getLock(PathContext.INTERNAL, getSovereignId(), "presence",
+                    "zombie-checker", getDefaultAclList());
+            logger.info("Checking for zombie nodes...");
+            if (adminLock.tryLock()) {
+                try {
+                    List<String> clusterIdList = getZkClient().getChildren(
+                            getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE), false);
+                    for (String clusterId : clusterIdList) {
+                        List<String> serviceIdList = getAvailableServices(clusterId);
+                        for (String serviceId : serviceIdList) {
+                            // service path
+                            String servicePath = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE,
+                                    clusterId, serviceId);
+
+                            // get children of each service
+                            List<String> serviceChildren = getZkClient().getChildren(servicePath, false);
+
+                            // check stat and make sure mtime of each child is
+                            // within 4x heartbeatIntervalMillis; if not, delete
+                            for (String child : serviceChildren) {
+                                String serviceChildPath = getPathScheme().join(servicePath, child);
+                                logger.info("Checking for service zombie child nodes:  path={}", servicePath);
+                                Stat stat = getZkClient().exists(serviceChildPath, false);
+                                long timeDiff = System.currentTimeMillis() - stat.getMtime();
+                                if (timeDiff > this.heartbeatIntervalMillis * 4) {
+                                    logger.warn(
+                                            "Found service zombie child node:  deleting:  path={}; currentTime-stat.mtime={}",
+                                            serviceChildPath, timeDiff);
+                                    getZkClient().delete(serviceChildPath, -1);
+                                }
+                            }
+
+                        }// for
+                    }// for
+
+                    // update last check timestamp
+                    lastZombieCheckTimestamp = System.currentTimeMillis();
+                } catch (Exception e) {
+                    logger.warn("Error while checking for and removing zombie nodes:  " + e, e);
+                } finally {
+                    adminLock.unlock();
+                    adminLock.destroy();
+                }
+            }// if tryLock
+
+        }// if
     }
 
     @Override
@@ -630,6 +687,18 @@ public class PresenceService extends AbstractActiveService implements Observable
                     + heartbeatIntervalMillis);
         }
         this.heartbeatIntervalMillis = heartbeatIntervalMillis;
+    }
+
+    public int getZombieCheckIntervalMillis() {
+        return zombieCheckIntervalMillis;
+    }
+
+    public void setZombieCheckIntervalMillis(int zombieCheckIntervalMillis) {
+        if (zombieCheckIntervalMillis < 1000) {
+            throw new IllegalArgumentException("zombieCheckIntervalMillis is too short:  zombieCheckIntervalMillis="
+                    + zombieCheckIntervalMillis);
+        }
+        this.zombieCheckIntervalMillis = zombieCheckIntervalMillis;
     }
 
     private static class PresenceObserverWrapper<T> extends ServiceObserverWrapper<PresenceObserver<T>> {

@@ -2,7 +2,6 @@ package org.kompany.sovereign.coord;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.ACL;
@@ -274,7 +273,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
     @Override
     public void perform() {
         /** get exclusive leader lock to perform maintenance duties **/
-        Lock adminLock = getLock(PathContext.INTERNAL, getSovereignId(), "coord", "admin", getDefaultAclList());
+        DistributedLock adminLock = getLock(PathContext.INTERNAL, getSovereignId(), "coord", "admin",
+                getDefaultAclList());
         adminLock.lock();
         logger.info("Performing administrative maintenance...");
         try {
@@ -297,6 +297,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
             /** barrier maintenance **/
         } finally {
             adminLock.unlock();
+            adminLock.destroy();
         }
     }
 
