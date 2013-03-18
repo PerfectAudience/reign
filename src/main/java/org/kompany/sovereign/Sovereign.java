@@ -428,7 +428,7 @@ public class Sovereign implements Watcher {
             ipAddress = "UNKNOWN_IP_ADDRESS";
         }
 
-        return "PID_" + pid + "@" + hostname + "[" + ipAddress + "]";
+        return "pid_" + pid + "@" + hostname + "[" + ipAddress + "]";
     }
 
     /**

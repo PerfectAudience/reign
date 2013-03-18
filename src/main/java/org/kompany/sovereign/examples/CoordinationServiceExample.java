@@ -29,10 +29,10 @@ public class CoordinationServiceExample {
 
         /** coordination service example **/
         coordinationServiceExclusiveLockExample(sovereign);
-        // coordinationServiceReentrantLockExample(sovereign);
-        // coordinationServiceReadWriteLockExample(sovereign);
-        // coordinationServiceFixedSemaphoreExample(sovereign);
-        // coordinationServiceConfiguredSemaphoreExample(sovereign);
+        coordinationServiceReentrantLockExample(sovereign);
+        coordinationServiceReadWriteLockExample(sovereign);
+        coordinationServiceFixedSemaphoreExample(sovereign);
+        coordinationServiceConfiguredSemaphoreExample(sovereign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down Sovereign...");
