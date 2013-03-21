@@ -48,14 +48,7 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     @Override
     public void destroy() {
         logger.info("destroy() called");
-        unlock();
         zkReservationManager.destroyLock(entityPath, reservationType, this);
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        destroy();
     }
 
     @Override

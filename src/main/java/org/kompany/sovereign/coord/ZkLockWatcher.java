@@ -34,14 +34,16 @@ public class ZkLockWatcher implements Watcher {
         this.lockReservationPath = lockReservationPath;
 
         if (logger.isDebugEnabled()) {
-            logger.debug("LockWatcher created:  instancesOutstanding={}; lockName={}; lockReservation={}",
-                    new Object[] { instancesOutstanding.get(), lockPath, lockReservationPath });
+            logger.debug("Created:  instancesOutstanding={}; lockName={}; lockReservation={}", new Object[] {
+                    instancesOutstanding.get(), lockPath, lockReservationPath });
         }
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
+    public void destroy() {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Destroyed:  instancesOutstanding={}; lockName={}; lockReservation={}", new Object[] {
+                    instancesOutstanding.get(), lockPath, lockReservationPath });
+        }
         instancesOutstanding.decrementAndGet();
     }
 

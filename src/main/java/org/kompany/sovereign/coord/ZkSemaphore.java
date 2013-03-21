@@ -54,14 +54,7 @@ public class ZkSemaphore implements DistributedSemaphore {
     @Override
     public void destroy() {
         logger.info("destroy() called");
-        release(Integer.MAX_VALUE);
         zkReservationManager.destroySemaphore(entityPath, this, permitPoolSizeFunction);
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        destroy();
     }
 
     @Override

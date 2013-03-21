@@ -44,15 +44,8 @@ public class ZkLock implements DistributedLock {
 
     @Override
     public void destroy() {
-        logger.info("destroy() called");
-        unlock();
+        logger.trace("destroy() called");
         zkReservationManager.destroyLock(entityPath, reservationType, this);
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        destroy();
     }
 
     @Override

@@ -51,11 +51,13 @@ class ZkReservationManager {
     }
 
     public void destroySemaphore(String entityPath, DistributedSemaphore semaphore, PermitPoolSize permitPoolSize) {
+        semaphore.release(Integer.MAX_VALUE);
         coordinationServiceCache.removeSemaphore(entityPath, semaphore);
         coordinationServiceCache.removePermitPoolSize(entityPath, permitPoolSize);
     }
 
     public void destroyLock(String entityPath, ReservationType reservationType, DistributedLock lock) {
+        lock.unlock();
         coordinationServiceCache.removeLock(entityPath, reservationType, lock);
     }
 
@@ -200,7 +202,12 @@ class ZkReservationManager {
             } while (!this.shutdown && acquiredPath == null
                     && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs > System.currentTimeMillis()));
 
-            // log that we could not acquire in given time
+            // clean up lock watcher as necessary
+            if (lockReservationWatcher != null) {
+                lockReservationWatcher.destroy();
+            }
+
+            // log if not acquired
             if (acquiredPath == null) {
                 logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
                         new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs });
@@ -336,6 +343,12 @@ class ZkReservationManager {
             } while (!this.shutdown && acquiredPath == null
                     && (waitTimeoutMs == -1 || startTimestamp + waitTimeoutMs > System.currentTimeMillis()));
 
+            // clean up lock watcher as necessary
+            if (lockReservationWatcher != null) {
+                lockReservationWatcher.destroy();
+            }
+
+            // log if not acquired
             if (acquiredPath == null) {
                 logger.info("Could not acquire:  ownerId={}; lockType={}; entityPath={}; waitTimeoutMillis={}",
                         new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs });
