@@ -20,6 +20,7 @@ import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
+import org.kompany.sovereign.ZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,10 +39,10 @@ public class MockZkClient implements ZkClient {
     public static class ZkNode {
         private byte[] data;
         private Stat stat = new Stat();
-        private Map<String, ZkNode> children = new HashMap<String, ZkNode>(8);
-        private AtomicInteger sequence = new AtomicInteger(0);
-        private ZkNode parent;
-        private String name;
+        private final Map<String, ZkNode> children = new HashMap<String, ZkNode>(8);
+        private final AtomicInteger sequence = new AtomicInteger(0);
+        private final ZkNode parent;
+        private final String name;
         private CreateMode createMode;
 
         public ZkNode(ZkNode parent, String name, CreateMode createMode) {
@@ -114,11 +115,11 @@ public class MockZkClient implements ZkClient {
         }
     };
 
-    private ZkNode rootNode = new ZkNode(null, "", CreateMode.PERSISTENT);
+    private final ZkNode rootNode = new ZkNode(null, "", CreateMode.PERSISTENT);
 
-    private Set<Watcher> watcherSet = new HashSet<Watcher>(8, 0.9f);
+    private final Set<Watcher> watcherSet = new HashSet<Watcher>(8, 0.9f);
 
-    private ConcurrentMap<String, Set<Watcher>> watchedNodeMap = new ConcurrentHashMap<String, Set<Watcher>>();
+    private final ConcurrentMap<String, Set<Watcher>> watchedNodeMap = new ConcurrentHashMap<String, Set<Watcher>>();
 
     private void watchNode(String path, Watcher watcher) {
         Set<Watcher> watcherSet = this.watchedNodeMap.get(path);
@@ -173,6 +174,15 @@ public class MockZkClient implements ZkClient {
             }
         }
         return false;
+    }
+
+    @Override
+    public Stat exists(final String path, Watcher watcher) throws KeeperException, InterruptedException {
+        if (watcher != null) {
+            watchNode(path, watcher);
+        }
+        ZkNode node = findNode(path);
+        return node != null ? node.getStat() : null;
     }
 
     @Override
