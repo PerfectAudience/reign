@@ -1,14 +1,11 @@
 package org.kompany.sovereign;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
@@ -20,7 +17,6 @@ import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
-import org.kompany.sovereign.ZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +40,7 @@ public class MockZkClient implements ZkClient {
         private final ZkNode parent;
         private final String name;
         private CreateMode createMode;
+        private final Set<Watcher> watcherSet = new HashSet<Watcher>();
 
         public ZkNode(ZkNode parent, String name, CreateMode createMode) {
             this.parent = parent;
@@ -106,6 +103,10 @@ public class MockZkClient implements ZkClient {
             return this.children.remove(name);
         }
 
+        public Set<Watcher> getWatcherSet() {
+            return watcherSet;
+        }
+
     }
 
     private static final Watcher DEFAULT_WATCHER = new Watcher() {
@@ -119,28 +120,37 @@ public class MockZkClient implements ZkClient {
 
     private final Set<Watcher> watcherSet = new HashSet<Watcher>(8, 0.9f);
 
-    private final ConcurrentMap<String, Set<Watcher>> watchedNodeMap = new ConcurrentHashMap<String, Set<Watcher>>();
-
     private void watchNode(String path, Watcher watcher) {
-        Set<Watcher> watcherSet = this.watchedNodeMap.get(path);
-        if (watcherSet == null) {
-            Set<Watcher> newWatcherSet = Collections.newSetFromMap(new ConcurrentHashMap<Watcher, Boolean>());
-            watcherSet = this.watchedNodeMap.putIfAbsent(path, newWatcherSet);
-            if (watcherSet == null) {
-                watcherSet = newWatcherSet;
+        ZkNode node = findNode(path);
+        node.getWatcherSet().add(watcher);
+    }
+
+    void emitWatchedEvent(String path, EventType eventType, KeeperState keeperState) {
+        WatchedEvent event = new WatchedEvent(eventType, keeperState, path);
+        ZkNode node = findNode(path);
+        if (node != null) {
+            for (Watcher watcher : node.getWatcherSet()) {
+                watcher.process(event);
             }
         }
-        watcherSet.add(watcher);
-    }
 
-    private void emitWatchedEvent(String path, EventType eventType, KeeperState keeperState) {
-        WatchedEvent event = new WatchedEvent(eventType, keeperState, path);
-        for (Watcher watcher : watcherSet) {
-            watcher.process(event);
+        // alert all watchers for this event type
+        if (eventType == EventType.None) {
+            for (Watcher watcher : watcherSet) {
+                watcher.process(event);
+            }
         }
     }
 
-    private ZkNode findNode(String path) {
+    ZkNode findNode(String path) {
+        if (path == null) {
+            return null;
+        }
+
+        if (!path.startsWith("/")) {
+            throw new IllegalArgumentException("Paths must start with /");
+        }
+
         String[] tokens = PATTERN_PATH_TOKENIZER.split(path);
         ZkNode currentNode = rootNode;
         for (String token : tokens) {
