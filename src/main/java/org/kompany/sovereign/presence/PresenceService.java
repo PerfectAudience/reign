@@ -378,8 +378,8 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     /**
-     * This method only has to be called once per service node and/or when node
-     * data changes. Announcements happen asynchronously.
+     * This method only has to be called once per service node and/or when node data changes. Announcements happen
+     * asynchronously.
      * 
      * @param clusterId
      * @param serviceId
@@ -537,12 +537,11 @@ public class PresenceService extends AbstractActiveService implements Observable
                                 Stat stat = getZkClient().exists(serviceChildPath, false);
                                 long timeDiff = System.currentTimeMillis() - stat.getMtime();
                                 if (timeDiff > this.heartbeatIntervalMillis * 4) {
-                                    logger.warn(
-                                            "Found service zombie child node:  deleting:  path={}; currentTime-stat.mtime={}",
+                                    logger.warn("Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
                                             serviceChildPath, timeDiff);
                                     getZkClient().delete(serviceChildPath, -1);
                                 }
-                            }
+                            }// for
 
                         }// for
                     }// for
