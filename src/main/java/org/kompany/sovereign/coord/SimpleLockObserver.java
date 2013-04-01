@@ -5,12 +5,12 @@ package org.kompany.sovereign.coord;
  * @author ypai
  * 
  */
-public interface LockObserver {
+public abstract class SimpleLockObserver extends CoordObserver<DistributedLock> {
 
     /**
      * @param lock
      *            the acquired lock that was revoked.
      */
-    public void revoked(DistributedLock lock, String reservationId);
+    public abstract void revoked(DistributedLock lock, String reservationId);
 
 }

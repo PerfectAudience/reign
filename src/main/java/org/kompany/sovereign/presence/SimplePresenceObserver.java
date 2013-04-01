@@ -1,4 +1,4 @@
-package org.kompany.sovereign.coord;
+package org.kompany.sovereign.presence;
 
 import org.kompany.sovereign.ServiceObserver;
 
@@ -8,16 +8,18 @@ import org.kompany.sovereign.ServiceObserver;
  * 
  * @param <T>
  */
-public abstract class CoordObserver<T> implements ServiceObserver {
+public abstract class SimplePresenceObserver<T> implements ServiceObserver, PresenceObserver<T> {
+
+    @Override
+    public abstract void updated(T info);
+
     @Override
     public void stateReset(Object o) {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     public void stateUnknown(Object o) {
-        // TODO Auto-generated method stub
 
     }
 }

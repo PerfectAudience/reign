@@ -44,21 +44,21 @@ public class CoordinationService extends AbstractActiveService implements Observ
         this.setExecutionIntervalMillis(60000);
     }
 
-    public void observe(String clusterId, String lockName, LockObserver observer) {
+    public void observe(String clusterId, String lockName, SimpleLockObserver observer) {
         observe(PathContext.USER, clusterId, lockName, observer);
     }
 
-    public void observe(String clusterId, String semaphoreName, SemaphoreObserver observer) {
+    public void observe(String clusterId, String semaphoreName, SimpleSemaphoreObserver observer) {
         observe(PathContext.USER, clusterId, semaphoreName, observer);
     }
 
-    public void observe(PathContext pathContext, String clusterId, String lockName, LockObserver observer) {
+    public void observe(PathContext pathContext, String clusterId, String lockName, SimpleLockObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), pathContext, PathType.COORD,
                 clusterId, ReservationType.LOCK_EXCLUSIVE, lockName);
         observerManager.put(entityPath, new LockObserverWrapper(entityPath, observer, coordinationServiceCache));
     }
 
-    public void observe(PathContext pathContext, String clusterId, String semaphoreName, SemaphoreObserver observer) {
+    public void observe(PathContext pathContext, String clusterId, String semaphoreName, SimpleSemaphoreObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), pathContext, PathType.COORD,
                 clusterId, ReservationType.SEMAPHORE, semaphoreName);
         observerManager.put(entityPath, new SemaphoreObserverWrapper(entityPath, observer, coordinationServiceCache,
@@ -385,9 +385,9 @@ public class CoordinationService extends AbstractActiveService implements Observ
 
     }
 
-    private static class LockObserverWrapper extends CoordObserverWrapper<LockObserver> {
+    private static class LockObserverWrapper extends CoordObserverWrapper<SimpleLockObserver> {
 
-        public LockObserverWrapper(String entityPath, LockObserver observer,
+        public LockObserverWrapper(String entityPath, SimpleLockObserver observer,
                 CoordinationServiceCache coordinationServiceCache) {
             super(entityPath, coordinationServiceCache);
             this.setObserver(observer);
@@ -418,11 +418,11 @@ public class CoordinationService extends AbstractActiveService implements Observ
         }
     }// class
 
-    private static class SemaphoreObserverWrapper extends CoordObserverWrapper<SemaphoreObserver> {
+    private static class SemaphoreObserverWrapper extends CoordObserverWrapper<SimpleSemaphoreObserver> {
 
         private final PathScheme pathScheme;
 
-        public SemaphoreObserverWrapper(String entityPath, SemaphoreObserver observer,
+        public SemaphoreObserverWrapper(String entityPath, SimpleSemaphoreObserver observer,
                 CoordinationServiceCache coordinationServiceCache, PathScheme pathScheme) {
             super(entityPath, coordinationServiceCache);
             this.setObserver(observer);

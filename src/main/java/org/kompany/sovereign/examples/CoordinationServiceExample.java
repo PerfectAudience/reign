@@ -8,8 +8,8 @@ import org.kompany.sovereign.coord.DistributedLock;
 import org.kompany.sovereign.coord.DistributedReadWriteLock;
 import org.kompany.sovereign.coord.DistributedReentrantLock;
 import org.kompany.sovereign.coord.DistributedSemaphore;
-import org.kompany.sovereign.coord.LockObserver;
-import org.kompany.sovereign.coord.SemaphoreObserver;
+import org.kompany.sovereign.coord.SimpleLockObserver;
+import org.kompany.sovereign.coord.SimpleSemaphoreObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +51,7 @@ public class CoordinationServiceExample {
 
         final int lockHoldTimeMillis = 5000;
 
-        coordService.observe("examples-cluster", "exclusive_lock1", new LockObserver() {
+        coordService.observe("examples-cluster", "exclusive_lock1", new SimpleLockObserver() {
             @Override
             public void revoked(DistributedLock lock, String reservationId) {
                 logger.info("***** Observer:  lock REVOKED:  reservationId={}", reservationId);
@@ -139,7 +139,7 @@ public class CoordinationServiceExample {
         // configure semaphore
         ConfiguredPermitPoolSize.setSemaphoreConf(confService, "examples-cluster", "semaphore2", 5);
 
-        coordService.observe("examples-cluster", "semaphore2", new SemaphoreObserver() {
+        coordService.observe("examples-cluster", "semaphore2", new SimpleSemaphoreObserver() {
             @Override
             public void revoked(DistributedSemaphore semaphore, String reservationId) {
                 logger.info("***** Observer:  permit REVOKED:  reservationId={}", reservationId);

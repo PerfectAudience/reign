@@ -1,4 +1,4 @@
-package org.kompany.sovereign.coord;
+package org.kompany.sovereign.conf;
 
 import org.kompany.sovereign.ServiceObserver;
 
@@ -6,18 +6,20 @@ import org.kompany.sovereign.ServiceObserver;
  * 
  * @author ypai
  * 
- * @param <T>
  */
-public abstract class CoordObserver<T> implements ServiceObserver {
+public abstract class SimpleConfObserver<T> implements ServiceObserver, ConfObserver<T> {
+
+    @Override
+    public abstract void updated(T data);
+
     @Override
     public void stateReset(Object o) {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     public void stateUnknown(Object o) {
-        // TODO Auto-generated method stub
 
     }
+
 }

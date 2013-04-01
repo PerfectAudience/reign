@@ -23,7 +23,7 @@ public class SovereignBuilder {
     private int zkSessionTimeout = -1;
 
     private int pathCacheMaxSize = 1024;
-    private int pathCacheMaxConcurrencyLevel = 4;
+    private int pathCacheMaxConcurrencyLevel = 2;
 
     private PathCache pathCache = null;
     private ZkClient zkClient = null;

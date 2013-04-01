@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
  * @author ypai
  * 
  */
-public class TimeUnitUtils {
+public class TimeUnitUtil {
 
     public static long toMillis(long interval, TimeUnit timeUnit) {
         // convert wait to millis
