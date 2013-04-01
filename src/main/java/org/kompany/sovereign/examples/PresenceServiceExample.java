@@ -44,7 +44,7 @@ public class PresenceServiceExample {
 
     public static void presenceServiceExample(Sovereign sovereign) throws Exception {
         // get presence service
-        final PresenceService presenceService = (PresenceService) sovereign.getService("presence");
+        final PresenceService presenceService = sovereign.getService("presence");
 
         // separate thread to exercise waitUntilAvailable for ServiceInfo
         Thread t1 = new Thread() {
