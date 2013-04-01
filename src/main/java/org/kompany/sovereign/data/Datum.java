@@ -7,8 +7,8 @@ package org.kompany.sovereign.data;
  */
 public interface Datum {
 
-    public <T> SimpleDataItem<T> getDataItem(String key);
+    public <T extends DataItem<?>> T getDataItem(String key);
 
-    public <T> void setDataItem(String key, SimpleDataItem<T> value);
+    public void setDataItem(String key, DataItem<?> value);
 
 }

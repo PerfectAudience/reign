@@ -9,10 +9,11 @@ public class SimpleDataItem<T> extends AbstractDataItem<T> {
 
     private T value;
 
-    public SimpleDataItem(String key, T value, Aggregation aggregation) {
+    public SimpleDataItem(String key, T value, Aggregation aggregation, Integer aggregationIntervalSecs) {
         super();
         setKey(key);
         this.value = value;
+        setAggregationIntervalSecs(aggregationIntervalSecs);
         setAggregation(aggregation);
     }
 

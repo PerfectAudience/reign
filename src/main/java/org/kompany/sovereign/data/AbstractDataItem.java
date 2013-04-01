@@ -11,6 +11,8 @@ public abstract class AbstractDataItem<T> implements DataItem<T> {
 
     private Aggregation aggregation;
 
+    private Integer aggregationIntervalSecs;
+
     @Override
     public String getKey() {
         return key;
@@ -27,6 +29,15 @@ public abstract class AbstractDataItem<T> implements DataItem<T> {
 
     public void setAggregation(Aggregation aggregation) {
         this.aggregation = aggregation;
+    }
+
+    @Override
+    public Integer getAggregationIntervalSecs() {
+        return aggregationIntervalSecs;
+    }
+
+    public void setAggregationIntervalSecs(Integer aggregationIntervalSecs) {
+        this.aggregationIntervalSecs = aggregationIntervalSecs;
     }
 
 }

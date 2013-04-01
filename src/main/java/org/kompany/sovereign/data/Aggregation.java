@@ -7,5 +7,5 @@ package org.kompany.sovereign.data;
  */
 public enum Aggregation {
 
-    SUM, MIN, MAX, OR, AND;
+    SUM, MIN, MAX, OR, AND, NONE;
 }

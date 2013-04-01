@@ -65,7 +65,7 @@ public class Sovereign implements Watcher {
 
     private final Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
 
-    private PathScheme pathScheme = new DefaultPathScheme("/sovereign/user", "/sovereign/internal");
+    private PathScheme pathScheme;
 
     private PathCache pathCache;
 
@@ -92,9 +92,10 @@ public class Sovereign implements Watcher {
     public Sovereign() {
     }
 
-    public Sovereign(ZkClient zkClient, PathCache pathCache) {
-        this.sovereignId = sovereignId;
+    public Sovereign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache) {
         this.zkClient = zkClient;
+
+        this.pathScheme = pathScheme;
 
         // initialize cache instance
         this.pathCache = pathCache;
@@ -251,7 +252,7 @@ public class Sovereign implements Watcher {
 
         /** generate sovereign id if necessary **/
         if (sovereignId == null) {
-            sovereignId = generateSovereignId();
+            sovereignId = defaultSovereignId();
             logger.info("START:  using default sovereignId:  {}", sovereignId);
             for (ServiceWrapper serviceWrapper : serviceMap.values()) {
                 serviceWrapper.getService().setSovereignId(sovereignId);
@@ -401,7 +402,7 @@ public class Sovereign implements Watcher {
         return adminThread;
     }
 
-    private static String generateSovereignId() {
+    public static String defaultSovereignId() {
         // get pid
         String jvmName = ManagementFactory.getRuntimeMXBean().getName();
         String[] ids = jvmName.split("@");
@@ -428,7 +429,7 @@ public class Sovereign implements Watcher {
             ipAddress = "UNKNOWN_IP_ADDRESS";
         }
 
-        return "pid_" + pid + "@" + hostname + "[" + ipAddress + "]";
+        return "PID_" + pid + "@" + hostname + "[" + ipAddress + "]";
     }
 
     /**

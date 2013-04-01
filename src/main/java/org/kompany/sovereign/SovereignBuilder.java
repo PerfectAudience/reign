@@ -28,6 +28,8 @@ public class SovereignBuilder {
     private PathCache pathCache = null;
     private ZkClient zkClient = null;
 
+    private PathScheme pathScheme = null;
+
     private String sovereignId = null;
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
@@ -86,7 +88,16 @@ public class SovereignBuilder {
         if (pathCache == null) {
             pathCache = defaultPathCache();
         }
-        s = new Sovereign(zkClient, pathCache);
+        if (pathScheme == null) {
+            pathScheme = defaultPathScheme();
+        }
+        if (sovereignId != null) {
+            if (!pathScheme.isValidPathToken(sovereignId)) {
+                throw new IllegalArgumentException(
+                        "sovereignId must be a valid path according to pathScheme.isValidPathToken(arg) check.");
+            }
+        }
+        s = new Sovereign(zkClient, pathScheme, pathCache);
         s.setSovereignId(sovereignId);
         s.registerServices(serviceMap);
         return s;
@@ -113,5 +124,9 @@ public class SovereignBuilder {
         }
 
         return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel, zkClient);
+    }
+
+    PathScheme defaultPathScheme() {
+        return new DefaultPathScheme("/sovereign/user", "/sovereign/internal");
     }
 }

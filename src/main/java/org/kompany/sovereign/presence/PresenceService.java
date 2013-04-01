@@ -106,12 +106,12 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public ServiceInfo waitUntilAvailable(String clusterId, String serviceId, long timeoutMillis) {
-        return waitUntilAvailable(clusterId, serviceId, null, null, true, timeoutMillis);
+        return waitUntilAvailable(clusterId, serviceId, null, nodeAttributeSerializer, true, timeoutMillis);
     }
 
     public ServiceInfo waitUntilAvailable(String clusterId, String serviceId,
             SimplePresenceObserver<ServiceInfo> observer, long timeoutMillis) {
-        return waitUntilAvailable(clusterId, serviceId, observer, null, true, timeoutMillis);
+        return waitUntilAvailable(clusterId, serviceId, observer, nodeAttributeSerializer, true, timeoutMillis);
     }
 
     /**
@@ -379,8 +379,8 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     /**
-     * This method only has to be called once per service node and/or when node data changes. Announcements happen
-     * asynchronously.
+     * This method only has to be called once per service node and/or when node
+     * data changes. Announcements happen asynchronously.
      * 
      * @param clusterId
      * @param serviceId
