@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 
 import org.apache.zookeeper.data.ACL;
-import org.kompany.sovereign.util.TimeUnitUtils;
+import org.kompany.sovereign.util.TimeUnitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,7 +141,7 @@ public class ZkLock implements DistributedLock {
     public boolean tryLock(long wait, TimeUnit timeUnit) throws InterruptedException {
         if (acquiredLockPath == null) {
             // convert wait to millis
-            long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
+            long timeWaitMillis = TimeUnitUtil.toMillis(wait, timeUnit);
 
             // attempt to acquire lock
             acquiredLockPath = zkReservationManager.acquire(ownerId, entityPath, reservationType, aclList,

@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.data.ACL;
-import org.kompany.sovereign.util.TimeUnitUtils;
+import org.kompany.sovereign.util.TimeUnitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -327,7 +327,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         // attempt to acquire all permits, returning all temporarily acquired
         // permits if we to get desired number of permits quickly
         Set<String> tmpAcquiredPermitPathSet = new HashSet<String>(permits, 0.9f);
-        long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
+        long timeWaitMillis = TimeUnitUtil.toMillis(wait, timeUnit);
         long startTimestamp = System.currentTimeMillis();
         try {
             for (int i = 0; i < permits && System.currentTimeMillis() - startTimestamp < timeWaitMillis; i++) {
@@ -406,7 +406,7 @@ public class ZkSemaphore implements DistributedSemaphore {
             return false;
         }
 
-        long timeWaitMillis = TimeUnitUtils.toMillis(wait, timeUnit);
+        long timeWaitMillis = TimeUnitUtil.toMillis(wait, timeUnit);
 
         String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, entityPath,
                 ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis, false);

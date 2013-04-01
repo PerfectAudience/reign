@@ -54,7 +54,7 @@ public class ConfService extends AbstractService implements ObservableService {
      * @return
      */
     public <T> T getConf(String clusterId, String relativeConfPath, DataSerializer<T> confSerializer,
-            ConfObserver<T> observer) {
+            SimpleConfObserver<T> observer) {
         return getConfAbsolutePath(PathContext.USER, PathType.CONF, clusterId, relativeConfPath, confSerializer,
                 observer, true);
 
@@ -120,7 +120,7 @@ public class ConfService extends AbstractService implements ObservableService {
      * @return
      */
     public <T> T getConfAbsolutePath(PathContext pathContext, PathType pathType, String clusterId,
-            String relativeConfPath, DataSerializer<T> confSerializer, ConfObserver<T> observer, boolean useCache) {
+            String relativeConfPath, DataSerializer<T> confSerializer, SimpleConfObserver<T> observer, boolean useCache) {
         String absolutePath = getPathScheme().getAbsolutePath(pathContext, pathType,
                 getPathScheme().join(clusterId, relativeConfPath));
         return getConfAbsolutePath(absolutePath, confSerializer, observer, useCache);
@@ -136,7 +136,7 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param useCache
      * @return
      */
-    <T> T getConfAbsolutePath(String absolutePath, DataSerializer<T> confSerializer, ConfObserver<T> observer,
+    <T> T getConfAbsolutePath(String absolutePath, DataSerializer<T> confSerializer, SimpleConfObserver<T> observer,
             boolean useCache) {
         boolean error = false;
         byte[] bytes = null;
@@ -243,7 +243,7 @@ public class ConfService extends AbstractService implements ObservableService {
     @Override
     public void nodeDataChanged(WatchedEvent event) {
         String path = event.getPath();
-        ConfObserverWrapper<ConfObserver> observerWrapper = observerManager.getObserverWrapperSet(path).iterator()
+        ConfObserverWrapper<SimpleConfObserver> observerWrapper = observerManager.getObserverWrapperSet(path).iterator()
                 .next();
         Object newValue = getConfAbsolutePath(path, observerWrapper.getDataSerializer(), null, true);
         if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
@@ -279,7 +279,7 @@ public class ConfService extends AbstractService implements ObservableService {
     public void destroy() {
     }
 
-    private static class ConfObserverWrapper<T> extends ServiceObserverWrapper<ConfObserver<T>> {
+    private static class ConfObserverWrapper<T> extends ServiceObserverWrapper<SimpleConfObserver<T>> {
 
         // private String path;
 
@@ -287,7 +287,7 @@ public class ConfService extends AbstractService implements ObservableService {
 
         private volatile T currentValue;
 
-        public ConfObserverWrapper(String path, ConfObserver<T> observer, DataSerializer<T> dataSerializer,
+        public ConfObserverWrapper(String path, SimpleConfObserver<T> observer, DataSerializer<T> dataSerializer,
                 T currentValue) {
             // from super class
             this.observer = observer;

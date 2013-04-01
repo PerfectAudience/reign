@@ -9,7 +9,7 @@ import org.kompany.sovereign.DataSerializer;
 import org.kompany.sovereign.JsonDataSerializer;
 import org.kompany.sovereign.PathContext;
 import org.kompany.sovereign.PathType;
-import org.kompany.sovereign.conf.ConfObserver;
+import org.kompany.sovereign.conf.SimpleConfObserver;
 import org.kompany.sovereign.conf.ConfService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class ConfiguredPermitPoolSize extends ConfObserver<Map<String, String>> implements PermitPoolSize {
+public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, String>> implements PermitPoolSize {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfiguredPermitPoolSize.class);
 
@@ -131,7 +131,7 @@ public class ConfiguredPermitPoolSize extends ConfObserver<Map<String, String>> 
     }
 
     public static Map<String, String> getSemaphoreConf(ConfService confService, PathContext pathContext,
-            String clusterId, String semaphoreName, ConfObserver<Map<String, String>> confObserver) {
+            String clusterId, String semaphoreName, SimpleConfObserver<Map<String, String>> confObserver) {
         // read configuration
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         Map<String, String> semaphoreConf = confService.getConfAbsolutePath(pathContext, PathType.COORD, clusterId,

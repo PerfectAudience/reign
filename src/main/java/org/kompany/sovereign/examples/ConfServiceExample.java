@@ -3,7 +3,7 @@ package org.kompany.sovereign.examples;
 import java.util.Properties;
 
 import org.kompany.sovereign.Sovereign;
-import org.kompany.sovereign.conf.ConfObserver;
+import org.kompany.sovereign.conf.SimpleConfObserver;
 import org.kompany.sovereign.conf.ConfProperties;
 import org.kompany.sovereign.conf.ConfPropertiesSerializer;
 import org.kompany.sovereign.conf.ConfService;
@@ -72,7 +72,7 @@ public class ConfServiceExample {
         // load a configuration which will not be immediately available but pass
         // observer to be notified of changes in configuration
         Properties loadedConf = confService.getConf("examples-cluster", "config1.properties",
-                new ConfPropertiesSerializer<ConfProperties>(false), new ConfObserver<ConfProperties>() {
+                new ConfPropertiesSerializer<ConfProperties>(false), new SimpleConfObserver<ConfProperties>() {
                     @Override
                     public void updated(ConfProperties conf) {
                         if (conf != null) {

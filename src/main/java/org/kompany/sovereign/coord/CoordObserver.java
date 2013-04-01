@@ -8,7 +8,7 @@ import org.kompany.sovereign.ServiceObserver;
  * 
  * @param <T>
  */
-public abstract class CoordObserver<T> implements ServiceObserver<T> {
+public abstract class CoordObserver<T> implements ServiceObserver {
     @Override
     public void stateReset(Object o) {
         // TODO Auto-generated method stub

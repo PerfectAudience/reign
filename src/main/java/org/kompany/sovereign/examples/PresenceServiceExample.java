@@ -7,7 +7,7 @@ import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.kompany.sovereign.Sovereign;
 import org.kompany.sovereign.presence.NodeInfo;
-import org.kompany.sovereign.presence.PresenceObserver;
+import org.kompany.sovereign.presence.SimplePresenceObserver;
 import org.kompany.sovereign.presence.PresenceService;
 import org.kompany.sovereign.presence.ServiceInfo;
 import org.slf4j.Logger;
@@ -51,7 +51,7 @@ public class PresenceServiceExample {
             @Override
             public void run() {
                 ServiceInfo serviceInfo = presenceService.waitUntilAvailable("examples-cluster", "service1",
-                        new PresenceObserver<ServiceInfo>() {
+                        new SimplePresenceObserver<ServiceInfo>() {
                             @Override
                             public void updated(ServiceInfo info) {
                                 if (info != null) {
@@ -73,7 +73,7 @@ public class PresenceServiceExample {
             @Override
             public void run() {
                 NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples-cluster", "service1", "node1",
-                        new PresenceObserver<NodeInfo>() {
+                        new SimplePresenceObserver<NodeInfo>() {
                             @Override
                             public void updated(NodeInfo info) {
                                 if (info != null) {
@@ -94,7 +94,7 @@ public class PresenceServiceExample {
             @Override
             public void run() {
                 NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples-cluster", "service1", "node1",
-                        new PresenceObserver<NodeInfo>() {
+                        new SimplePresenceObserver<NodeInfo>() {
                             @Override
                             public void updated(NodeInfo info) {
                                 if (info != null) {
@@ -117,7 +117,7 @@ public class PresenceServiceExample {
         // available); include observer to be notified of changes in service
         // info
         ServiceInfo serviceInfo = presenceService.lookup("examples-cluster", "service1",
-                new PresenceObserver<ServiceInfo>() {
+                new SimplePresenceObserver<ServiceInfo>() {
                     @Override
                     public void updated(ServiceInfo info) {
                         if (info != null) {
@@ -134,7 +134,7 @@ public class PresenceServiceExample {
         // available); include observer to be notified of changes in node
         // info
         NodeInfo nodeInfo = presenceService.lookup("examples-cluster", "service2", "node1",
-                new PresenceObserver<NodeInfo>() {
+                new SimplePresenceObserver<NodeInfo>() {
                     @Override
                     public void updated(NodeInfo info) {
                         if (info != null) {

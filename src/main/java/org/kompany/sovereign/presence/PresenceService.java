@@ -54,7 +54,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     private final ConcurrentMap<String, Announcement> announcementMap = new ConcurrentHashMap<String, Announcement>(8,
             0.9f, 2);
 
-    private final ConcurrentMap<String, PresenceObserver> notifyObserverMap = new ConcurrentHashMap<String, PresenceObserver>(
+    private final ConcurrentMap<String, SimplePresenceObserver> notifyObserverMap = new ConcurrentHashMap<String, SimplePresenceObserver>(
             8, 0.9f, 2);
 
     private final ServiceObserverManager<PresenceObserverWrapper> observerManager = new ServiceObserverManager<PresenceObserverWrapper>();
@@ -89,7 +89,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         return children;
     }
 
-    public void observe(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer) {
+    public void observe(String clusterId, String serviceId, SimplePresenceObserver<ServiceInfo> observer) {
         ServiceInfo result = lookup(clusterId, serviceId, observer, nodeAttributeSerializer, true);
         String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, servicePath);
@@ -97,7 +97,7 @@ public class PresenceService extends AbstractActiveService implements Observable
                 nodeAttributeSerializer, result));
     }
 
-    public void observe(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer) {
+    public void observe(String clusterId, String serviceId, String nodeId, SimplePresenceObserver<NodeInfo> observer) {
         NodeInfo result = lookup(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
@@ -109,8 +109,8 @@ public class PresenceService extends AbstractActiveService implements Observable
         return waitUntilAvailable(clusterId, serviceId, null, null, true, timeoutMillis);
     }
 
-    public ServiceInfo waitUntilAvailable(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer,
-            long timeoutMillis) {
+    public ServiceInfo waitUntilAvailable(String clusterId, String serviceId,
+            SimplePresenceObserver<ServiceInfo> observer, long timeoutMillis) {
         return waitUntilAvailable(clusterId, serviceId, observer, null, true, timeoutMillis);
     }
 
@@ -125,13 +125,14 @@ public class PresenceService extends AbstractActiveService implements Observable
      *            set to <0 to wait indefinitely
      * @return
      */
-    public ServiceInfo waitUntilAvailable(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer,
-            NodeAttributeSerializer nodeAttributeSerializer, boolean useCache, long timeoutMillis) {
+    public ServiceInfo waitUntilAvailable(String clusterId, String serviceId,
+            SimplePresenceObserver<ServiceInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
+            boolean useCache, long timeoutMillis) {
         ServiceInfo result = lookup(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
         if (result == null) {
             String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
             String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, servicePath);
-            PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(path);
+            SimplePresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(path);
             this.observerManager.put(path, new PresenceObserverWrapper<ServiceInfo>(clusterId, serviceId, null,
                     notifyObserver, nodeAttributeSerializer, result));
             synchronized (notifyObserver) {
@@ -155,11 +156,11 @@ public class PresenceService extends AbstractActiveService implements Observable
         return result;
     }
 
-    <T> PresenceObserver<T> getNotifyObserver(final String path) {
+    <T> SimplePresenceObserver<T> getNotifyObserver(final String path) {
         // create announcement if necessary
-        PresenceObserver<T> observer = notifyObserverMap.get(path);
+        SimplePresenceObserver<T> observer = notifyObserverMap.get(path);
         if (observer == null) {
-            PresenceObserver<T> newObserver = new PresenceObserver<T>() {
+            SimplePresenceObserver<T> newObserver = new SimplePresenceObserver<T>() {
                 @Override
                 public void updated(T info) {
                     logger.debug("Notifying all waiters [{}]:  path={}", this.hashCode(), path);
@@ -181,11 +182,11 @@ public class PresenceService extends AbstractActiveService implements Observable
         return lookup(clusterId, serviceId, null, nodeAttributeSerializer, true);
     }
 
-    public ServiceInfo lookup(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer) {
+    public ServiceInfo lookup(String clusterId, String serviceId, SimplePresenceObserver<ServiceInfo> observer) {
         return lookup(clusterId, serviceId, observer, nodeAttributeSerializer, true);
     }
 
-    public ServiceInfo lookup(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer,
+    public ServiceInfo lookup(String clusterId, String serviceId, SimplePresenceObserver<ServiceInfo> observer,
             NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
         /** get node data from zk **/
         String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
@@ -249,7 +250,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId,
-            PresenceObserver<NodeInfo> observer, long timeoutMillis) {
+            SimplePresenceObserver<NodeInfo> observer, long timeoutMillis) {
         return waitUntilAvailable(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true, timeoutMillis);
     }
 
@@ -266,13 +267,13 @@ public class PresenceService extends AbstractActiveService implements Observable
      * @return
      */
     public NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId,
-            PresenceObserver<NodeInfo> observer, NodeAttributeSerializer nodeAttributeSerializer, boolean useCache,
-            long timeoutMillis) {
+            SimplePresenceObserver<NodeInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
+            boolean useCache, long timeoutMillis) {
         NodeInfo result = lookup(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, useCache);
         if (result == null) {
             String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
             String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
-            PresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(path);
+            SimplePresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(path);
             this.observerManager.put(path, new PresenceObserverWrapper<NodeInfo>(clusterId, serviceId, nodeId,
                     notifyObserver, nodeAttributeSerializer, result));
             synchronized (notifyObserver) {
@@ -301,12 +302,12 @@ public class PresenceService extends AbstractActiveService implements Observable
         return lookup(clusterId, serviceId, nodeId, null, nodeAttributeSerializer, true);
     }
 
-    public NodeInfo lookup(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer) {
+    public NodeInfo lookup(String clusterId, String serviceId, String nodeId, SimplePresenceObserver<NodeInfo> observer) {
         return lookup(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
     }
 
-    public NodeInfo lookup(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer,
-            NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
+    public NodeInfo lookup(String clusterId, String serviceId, String nodeId,
+            SimplePresenceObserver<NodeInfo> observer, NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
         /** get node data from zk **/
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
@@ -700,7 +701,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         this.zombieCheckIntervalMillis = zombieCheckIntervalMillis;
     }
 
-    private static class PresenceObserverWrapper<T> extends ServiceObserverWrapper<PresenceObserver<T>> {
+    private static class PresenceObserverWrapper<T> extends ServiceObserverWrapper<SimplePresenceObserver<T>> {
 
         private final String clusterId;
         private final String serviceId;
@@ -710,8 +711,8 @@ public class PresenceService extends AbstractActiveService implements Observable
 
         private volatile T currentValue;
 
-        public PresenceObserverWrapper(String clusterId, String serviceId, String nodeId, PresenceObserver<T> observer,
-                NodeAttributeSerializer nodeAttributeSerializer, T currentValue) {
+        public PresenceObserverWrapper(String clusterId, String serviceId, String nodeId,
+                SimplePresenceObserver<T> observer, NodeAttributeSerializer nodeAttributeSerializer, T currentValue) {
             // from super class
             this.observer = observer;
 

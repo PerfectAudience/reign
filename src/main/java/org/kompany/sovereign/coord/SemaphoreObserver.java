@@ -5,12 +5,11 @@ package org.kompany.sovereign.coord;
  * @author ypai
  * 
  */
-public abstract class SemaphoreObserver extends CoordObserver<DistributedSemaphore> {
+public interface SemaphoreObserver {
     /**
      * @param semaphore
      * @param permitId
      *            the acquired permit that was revoked.
      */
-    public abstract void revoked(DistributedSemaphore semaphore, String reservationId);
-
+    public void revoked(DistributedSemaphore semaphore, String reservationId);
 }
