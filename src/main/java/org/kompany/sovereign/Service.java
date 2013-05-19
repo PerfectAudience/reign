@@ -27,7 +27,7 @@ public interface Service {
 
     public void setDefaultAclList(List<ACL> defaultAclList);
 
-    public void setSovereignId(String sovereignId);
+    public void setCanonicalId(String canonicalId);
 
     /**
      * 

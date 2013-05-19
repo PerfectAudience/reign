@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.kompany.sovereign.CanonicalServiceId;
-
 /**
  * 
  * @author ypai
@@ -32,10 +30,6 @@ public class ServiceInfo {
         } else {
             this.nodeIdList = Collections.EMPTY_LIST;
         }
-    }
-
-    public CanonicalServiceId getCanonicalServiceId() {
-        return new CanonicalServiceId(clusterId, serviceId);
     }
 
     public String getClusterId() {

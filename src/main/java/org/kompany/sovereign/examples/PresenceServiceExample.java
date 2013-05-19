@@ -7,9 +7,9 @@ import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.kompany.sovereign.Sovereign;
 import org.kompany.sovereign.presence.NodeInfo;
-import org.kompany.sovereign.presence.SimplePresenceObserver;
 import org.kompany.sovereign.presence.PresenceService;
 import org.kompany.sovereign.presence.ServiceInfo;
+import org.kompany.sovereign.presence.SimplePresenceObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,12 +149,12 @@ public class PresenceServiceExample {
         logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
 
         // basic service node announcement
-        presenceService.announce("examples-cluster", "service1", "node1");
+        presenceService.announce("examples-cluster", "service1", "node1", true);
 
         // service node announcement with some additional info
         Map<String, String> nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "1234");
-        presenceService.announce("examples-cluster", "service2", "node1", nodeAttributes);
+        presenceService.announce("examples-cluster", "service2", "node1", true, nodeAttributes);
 
         // sleep a bit
         Thread.sleep(10000);
@@ -167,7 +167,7 @@ public class PresenceServiceExample {
         presenceService.unhide("examples-cluster", "service2", "node1");
 
         // new node available in service
-        presenceService.announce("examples-cluster", "service1", "node2");
+        presenceService.announce("examples-cluster", "service1", "node2", true);
 
         // sleep a bit
         Thread.sleep(10000);
@@ -179,7 +179,7 @@ public class PresenceServiceExample {
         // service node announcement with some additional info
         nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "9999");
-        presenceService.announce("examples-cluster", "service2", "node1", nodeAttributes);
+        presenceService.announce("examples-cluster", "service2", "node1", true, nodeAttributes);
 
     }
 }

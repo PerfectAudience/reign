@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.kompany.sovereign.AbstractActiveService;
-import org.kompany.sovereign.CanonicalNodeId;
 import org.kompany.sovereign.DataSerializer;
 import org.kompany.sovereign.JsonDataSerializer;
 import org.kompany.sovereign.PathContext;
@@ -32,20 +31,34 @@ public class DataService extends AbstractActiveService {
     public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 5000;
 
     /** map of data collectors that gather node data to publish to ZK */
-    private final Map<CanonicalNodeId, DataCollector> collectorMap = new ConcurrentHashMap<CanonicalNodeId, DataCollector>(
-            4, 0.9f, 1);
+    private final Map<String, DataCollector> collectorMap = new ConcurrentHashMap<String, DataCollector>(4, 0.9f, 1);
 
     /** set of clusterId(s) for which to perform data aggregation */
     private final Set<String> activeAggregationClusterIds = Collections
             .newSetFromMap(new ConcurrentHashMap<String, Boolean>(4, 0.9f, 1));
 
-    private DataSerializer<Datum> dataSerializer = new JsonDataSerializer<Datum>();
+    private DataSerializer<DataBundle> dataSerializer = new JsonDataSerializer<DataBundle>();
 
-    public Datum getDatum(String clusterId, String serviceId) {
+    /**
+     * Retrieves DataBundle for a given service.
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @return
+     */
+    public DataBundle getDataBundle(String clusterId, String serviceId) {
         return null;
     }
 
-    public Datum getDatum(String clusterId, String serviceId, String nodeId) {
+    /**
+     * Retrieves DataBundle for a given service node.
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param nodeId
+     * @return
+     */
+    public DataBundle getDataBundle(String clusterId, String serviceId, String nodeId) {
         return null;
     }
 
@@ -53,21 +66,21 @@ public class DataService extends AbstractActiveService {
         // add cluster id to set of cluster ids to do aggregation for
         activeAggregationClusterIds.add(clusterId);
 
-        collectorMap.put(new CanonicalNodeId(clusterId, serviceId, nodeId), collector);
+        collectorMap.put(getNodeIdString(clusterId, serviceId, nodeId), collector);
     }
 
     @Override
     public void perform() {
         /** iterate through collectors, serialize, and set in ZK **/
-        Iterator<CanonicalNodeId> keyIter = collectorMap.keySet().iterator();
+        Iterator<String> keyIter = collectorMap.keySet().iterator();
         while (keyIter.hasNext()) {
             try {
-                CanonicalNodeId key = keyIter.next();
+                String key = keyIter.next();
                 DataCollector collector = collectorMap.get(key);
 
                 byte[] data = dataSerializer.serialize(collector.get());
 
-                getZkClient().setData(key.toPathString(getPathScheme()), data, -1);
+                // gather data
 
             } catch (Exception e) {
                 logger.error("Error while serializing data:  " + e, e);
@@ -78,10 +91,11 @@ public class DataService extends AbstractActiveService {
         PresenceService presenceService = getServiceDirectory().getService("presence");
         CoordinationService coordinationService = getServiceDirectory().getService("coord");
         for (String clusterId : activeAggregationClusterIds) {
+            // iterate through available services
             List<String> services = presenceService.getAvailableServices(clusterId);
             for (String serviceId : services) {
                 // get lock to aggregate service node data
-                DistributedLock aggregateLock = coordinationService.getLock(PathContext.INTERNAL, getSovereignId(),
+                DistributedLock aggregateLock = coordinationService.getLock(PathContext.INTERNAL, getCanonicalId(),
                         "data", "aggregate-" + clusterId + "-" + serviceId, getDefaultAclList());
                 aggregateLock.lock();
                 try {
@@ -101,7 +115,7 @@ public class DataService extends AbstractActiveService {
                         byte[] bytes = getZkClient().getData(serviceNodePath, false, null);
 
                         // deserialize
-                        Datum datum = dataSerializer.deserialize(bytes);
+                        DataBundle dataBundle = dataSerializer.deserialize(bytes);
 
                         // aggregate
                     }
@@ -119,9 +133,11 @@ public class DataService extends AbstractActiveService {
 
     @Override
     public void init() {
+        // minimum of 1 second intervals between updating data
         if (this.getExecutionIntervalMillis() < 1000) {
             this.setExecutionIntervalMillis(DEFAULT_EXECUTION_INTERVAL_MILLIS);
         }
+
     }
 
     @Override
@@ -129,12 +145,16 @@ public class DataService extends AbstractActiveService {
 
     }
 
-    public DataSerializer<Datum> getDataSerializer() {
+    public DataSerializer<DataBundle> getDataSerializer() {
         return dataSerializer;
     }
 
-    public void setDataSerializer(DataSerializer<Datum> dataSerializer) {
+    public void setDataSerializer(DataSerializer<DataBundle> dataSerializer) {
         this.dataSerializer = dataSerializer;
+    }
+
+    String getNodeIdString(String clusterId, String serviceId, String nodeId) {
+        return getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
     }
 
 }

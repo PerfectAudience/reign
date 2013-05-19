@@ -1,8 +1,5 @@
 package org.kompany.sovereign;
 
-import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +17,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
+import org.kompany.sovereign.util.IdUtil;
 import org.kompany.sovereign.util.PathCache;
 import org.kompany.sovereign.util.SimplePathCache;
 import org.slf4j.Logger;
@@ -37,10 +35,12 @@ public class Sovereign implements Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(Sovereign.class);
 
-    private static final List<ACL> DEFAULT_ACL_LIST = new ArrayList<ACL>();
+    public static final List<ACL> DEFAULT_ACL_LIST = new ArrayList<ACL>();
     static {
         DEFAULT_ACL_LIST.add(new ACL(ZooDefs.Perms.ALL, new Id("world", "anyone")));
     }
+
+    public static int DEFAULT_MESSAGING_PORT = 33033;
 
     private ZkClient zkClient;
 
@@ -83,7 +83,10 @@ public class Sovereign implements Watcher {
 
     private List<ACL> defaultAclList = DEFAULT_ACL_LIST;
 
-    private volatile String sovereignId;
+    private String canonicalId;
+
+    /** set if messaging between nodes running Sovereign will be enabled */
+    private MessagingProvider messagingProvider = null;
 
     public static SovereignBuilder builder() {
         return new SovereignBuilder();
@@ -101,6 +104,17 @@ public class Sovereign implements Watcher {
         this.pathCache = pathCache;
     }
 
+    public boolean isMessagingEnabled() {
+        return messagingProvider != null;
+    }
+
+    public void setMessagingProvider(MessagingProvider messagingProvider) {
+        if (started) {
+            throw new IllegalStateException("Cannot set messagingProvider once started!");
+        }
+        this.messagingProvider = messagingProvider;
+    }
+
     public List<ACL> getDefaultAclList() {
         return defaultAclList;
     }
@@ -109,16 +123,15 @@ public class Sovereign implements Watcher {
         this.defaultAclList = defaultAclList;
     }
 
-    public String getSovereignId() {
-        return sovereignId;
+    public String getCanonicalId() {
+        return canonicalId;
     }
 
-    public void setSovereignId(String sovereignId) {
+    public void setCanonicalId(String canonicalId) {
         if (started) {
-            throw new IllegalStateException("Cannot set sovereignId once started!");
+            throw new IllegalStateException("Cannot set canonicalId once started!");
         }
-        this.sovereignId = sovereignId;
-
+        this.canonicalId = canonicalId;
     }
 
     @Override
@@ -201,7 +214,7 @@ public class Sovereign implements Watcher {
         service.setPathCache(pathCache);
         service.setServiceDirectory(serviceDirectory);
         service.setDefaultAclList(defaultAclList);
-        service.setSovereignId(sovereignId);
+        service.setCanonicalId(canonicalId);
         service.init();
 
         // add to zkClient's list of watchers if Watcher interface is
@@ -250,12 +263,17 @@ public class Sovereign implements Watcher {
             }
         });
 
-        /** generate sovereign id if necessary **/
-        if (sovereignId == null) {
-            sovereignId = defaultSovereignId();
-            logger.info("START:  using default sovereignId:  {}", sovereignId);
+        /** listen on messaging port if messaging is enabled **/
+        if (this.isMessagingEnabled()) {
+            messagingProvider.start();
+        }
+
+        /** generate canonical id if necessary **/
+        if (canonicalId == null) {
+            canonicalId = defaultCanonicalId();
+            logger.info("START:  using default canonicalId:  {}", canonicalId);
             for (ServiceWrapper serviceWrapper : serviceMap.values()) {
-                serviceWrapper.getService().setSovereignId(sovereignId);
+                serviceWrapper.getService().setCanonicalId(canonicalId);
             }
         }
 
@@ -310,6 +328,11 @@ public class Sovereign implements Watcher {
         shutdown = true;
 
         logger.info("SHUTDOWN:  begin");
+
+        /** shut down messaging provider **/
+        if (messagingProvider != null) {
+            messagingProvider.stop();
+        }
 
         /** cancel all futures **/
         logger.info("SHUTDOWN:  cancelling scheduled service tasks");
@@ -402,21 +425,13 @@ public class Sovereign implements Watcher {
         return adminThread;
     }
 
-    public static String defaultSovereignId() {
+    public static String defaultCanonicalId() {
         // get pid
-        String jvmName = ManagementFactory.getRuntimeMXBean().getName();
-        String[] ids = jvmName.split("@");
-        String pid = ids[0];
+        String pid = IdUtil.getProcessId();
 
         // try to get hostname and ip address
-        String hostname = null;
-        String ipAddress = null;
-        try {
-            hostname = InetAddress.getLocalHost().getCanonicalHostName();
-            ipAddress = InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e) {
-            logger.warn("Could not get hostname:  " + e, e);
-        }
+        String hostname = IdUtil.getHostname();
+        String ipAddress = IdUtil.getHostname();
 
         // fill in unknown values
         if (pid == null) {

@@ -25,7 +25,7 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
 
     private List<ACL> defaultAclList;
 
-    private String sovereignId;
+    private String canonicalId;
 
     public List<ACL> getDefaultAclList() {
         return defaultAclList;
@@ -37,12 +37,12 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
     }
 
     @Override
-    public void setSovereignId(String sovereignId) {
-        this.sovereignId = sovereignId;
+    public void setCanonicalId(String canonicalId) {
+        this.canonicalId = canonicalId;
     }
 
-    public String getSovereignId() {
-        return sovereignId;
+    public String getCanonicalId() {
+        return canonicalId;
     }
 
     public ServiceDirectory getServiceDirectory() {

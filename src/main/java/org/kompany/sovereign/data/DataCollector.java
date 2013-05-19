@@ -9,6 +9,6 @@ package org.kompany.sovereign.data;
  */
 public interface DataCollector {
 
-    public Datum get();
+    public DataBundle get();
 
 }

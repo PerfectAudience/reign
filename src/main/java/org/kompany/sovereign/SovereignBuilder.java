@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.kompany.sovereign.conf.ConfService;
 import org.kompany.sovereign.coord.CoordinationService;
+import org.kompany.sovereign.messaging.websocket.WebSocketsMessagingProvider;
 import org.kompany.sovereign.presence.PresenceService;
 import org.kompany.sovereign.util.PathCache;
 import org.kompany.sovereign.util.SimplePathCache;
@@ -30,7 +31,11 @@ public class SovereignBuilder {
 
     private PathScheme pathScheme = null;
 
-    private String sovereignId = null;
+    private String canonicalId = null;
+
+    private MessagingProvider messagingProvider = null;
+
+    private boolean messagingOff = false;
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
@@ -47,8 +52,8 @@ public class SovereignBuilder {
         return this;
     }
 
-    public SovereignBuilder id(String sovereignId) {
-        this.sovereignId = sovereignId;
+    public SovereignBuilder canonicalId(String canonicalId) {
+        this.canonicalId = canonicalId;
         return this;
     }
 
@@ -80,6 +85,19 @@ public class SovereignBuilder {
         return this;
     }
 
+    public SovereignBuilder messagingProvider(MessagingProvider messagingProvider) {
+        this.messagingProvider = messagingProvider;
+        return this;
+    }
+
+    public SovereignBuilder messagingOff(boolean messagingOff) {
+        this.messagingOff = messagingOff;
+        if (this.messagingOff) {
+            this.messagingProvider = null;
+        }
+        return this;
+    }
+
     public Sovereign build() {
         Sovereign s = null;
         if (zkClient == null) {
@@ -91,14 +109,18 @@ public class SovereignBuilder {
         if (pathScheme == null) {
             pathScheme = defaultPathScheme();
         }
-        if (sovereignId != null) {
-            if (!pathScheme.isValidPathToken(sovereignId)) {
+        if (canonicalId != null) {
+            if (!pathScheme.isValidPathToken(canonicalId)) {
                 throw new IllegalArgumentException(
                         "sovereignId must be a valid path according to pathScheme.isValidPathToken(arg) check.");
             }
         }
+        if (!messagingOff && messagingProvider == null) {
+            messagingProvider = defaultMessagingProvider(Sovereign.DEFAULT_MESSAGING_PORT);
+        }
         s = new Sovereign(zkClient, pathScheme, pathCache);
-        s.setSovereignId(sovereignId);
+        s.setMessagingProvider(!messagingOff ? messagingProvider : null);
+        s.setCanonicalId(canonicalId);
         s.registerServices(serviceMap);
         return s;
     }
@@ -128,5 +150,12 @@ public class SovereignBuilder {
 
     PathScheme defaultPathScheme() {
         return new DefaultPathScheme("/sovereign/user", "/sovereign/internal");
+    }
+
+    MessagingProvider defaultMessagingProvider(int port) {
+        MessagingProvider messagingProvider = new WebSocketsMessagingProvider();
+        messagingProvider.setPort(port);
+        return messagingProvider;
+
     }
 }

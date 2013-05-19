@@ -370,26 +370,29 @@ public class PresenceService extends AbstractActiveService implements Observable
         return result;
     }
 
-    public void announce(String clusterId, String serviceId, String nodeId) {
-        announce(clusterId, serviceId, nodeId, null, null);
+    public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
+        announce(clusterId, serviceId, nodeId, visible, null, null);
     }
 
-    public void announce(String clusterId, String serviceId, String nodeId, Map<String, String> attributeMap) {
-        announce(clusterId, serviceId, nodeId, attributeMap, null);
+    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
+            Map<String, String> attributeMap) {
+        announce(clusterId, serviceId, nodeId, visible, attributeMap, null);
     }
 
     /**
-     * This method only has to be called once per service node and/or when node
-     * data changes. Announcements happen asynchronously.
+     * This method only has to be called once per service node and/or when node data changes. Announcements happen
+     * asynchronously.
      * 
      * @param clusterId
      * @param serviceId
      * @param nodeId
+     * @param visible
+     *            whether or not service node will be initially visible
      * @param attributeMap
      * @param nodeAttributeSerializer
      */
-    public void announce(String clusterId, String serviceId, String nodeId, Map<String, String> attributeMap,
-            NodeAttributeSerializer nodeAttributeSerializer) {
+    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
+            Map<String, String> attributeMap, NodeAttributeSerializer nodeAttributeSerializer) {
         // defaults
         if (nodeAttributeSerializer == null) {
             nodeAttributeSerializer = this.getNodeAttributeSerializer();
@@ -408,7 +411,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         }
 
         // mark as visible
-        announcement.setHidden(false);
+        announcement.setHidden(!visible);
     }
 
     public void hide(String clusterId, String serviceId, String nodeId) {
@@ -513,7 +516,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
             // get exclusive leader lock to perform maintenance duties
             CoordinationService coordinationService = getServiceDirectory().getService("coord");
-            DistributedLock adminLock = coordinationService.getLock(PathContext.INTERNAL, getSovereignId(), "presence",
+            DistributedLock adminLock = coordinationService.getLock(PathContext.INTERNAL, getCanonicalId(), "presence",
                     "zombie-checker", getDefaultAclList());
             logger.info("Checking for zombie nodes...");
             if (adminLock.tryLock()) {

@@ -58,7 +58,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
         observerManager.put(entityPath, new LockObserverWrapper(entityPath, observer, coordinationServiceCache));
     }
 
-    public void observe(PathContext pathContext, String clusterId, String semaphoreName, SimpleSemaphoreObserver observer) {
+    public void observe(PathContext pathContext, String clusterId, String semaphoreName,
+            SimpleSemaphoreObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), pathContext, PathType.COORD,
                 clusterId, ReservationType.SEMAPHORE, semaphoreName);
         observerManager.put(entityPath, new SemaphoreObserverWrapper(entityPath, observer, coordinationServiceCache,
@@ -219,8 +220,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
                 clusterId, ReservationType.SEMAPHORE, semaphoreName);
 
         /**
-         * create permit pool size function and add observer to adjust as
-         * necessary
+         * create permit pool size function and add observer to adjust as necessary
          **/
         ConfService confService = getServiceDirectory().getService("conf");
         PermitPoolSize pps = new ConfiguredPermitPoolSize(confService, pathContext, clusterId, semaphoreName,
@@ -273,7 +273,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
     @Override
     public void perform() {
         /** get exclusive leader lock to perform maintenance duties **/
-        DistributedLock adminLock = getLock(PathContext.INTERNAL, getSovereignId(), "coord", "admin",
+        DistributedLock adminLock = getLock(PathContext.INTERNAL, getCanonicalId(), "coord", "admin",
                 getDefaultAclList());
         adminLock.lock();
         logger.info("Performing administrative maintenance...");

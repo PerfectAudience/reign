@@ -3,9 +3,6 @@ package org.kompany.sovereign.presence;
 import java.util.Collections;
 import java.util.Map;
 
-import org.kompany.sovereign.CanonicalNodeId;
-import org.kompany.sovereign.CanonicalServiceId;
-
 /**
  * 
  * @author ypai
@@ -35,14 +32,6 @@ public class NodeInfo {
         } else {
             this.attributeMap = Collections.EMPTY_MAP;
         }
-    }
-
-    public CanonicalServiceId getCanonicalServiceId() {
-        return new CanonicalServiceId(clusterId, serviceId);
-    }
-
-    public CanonicalNodeId getCanonicalNodeId() {
-        return new CanonicalNodeId(clusterId, serviceId, nodeId);
     }
 
     public String getClusterId() {
