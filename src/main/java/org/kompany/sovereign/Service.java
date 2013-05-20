@@ -3,6 +3,8 @@ package org.kompany.sovereign;
 import java.util.List;
 
 import org.apache.zookeeper.data.ACL;
+import org.kompany.sovereign.messaging.RequestMessage;
+import org.kompany.sovereign.messaging.ResponseMessage;
 import org.kompany.sovereign.util.PathCache;
 
 /**
@@ -40,6 +42,12 @@ public interface Service {
      * @param zkClient
      */
     public void setZkClient(ZkClient zkClient);
+
+    /**
+     * 
+     * @param message
+     */
+    public ResponseMessage handleMessage(RequestMessage message);
 
     /**
      * Initialize the service.

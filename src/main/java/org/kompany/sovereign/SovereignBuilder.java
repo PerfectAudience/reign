@@ -6,11 +6,15 @@ import java.util.Map;
 
 import org.kompany.sovereign.conf.ConfService;
 import org.kompany.sovereign.coord.CoordinationService;
-import org.kompany.sovereign.messaging.websocket.WebSocketsMessagingProvider;
+import org.kompany.sovereign.data.DataService;
+import org.kompany.sovereign.messaging.MessagingProvider;
+import org.kompany.sovereign.messaging.websocket.WebSocketMessagingProvider;
 import org.kompany.sovereign.presence.PresenceService;
 import org.kompany.sovereign.util.PathCache;
 import org.kompany.sovereign.util.SimplePathCache;
 import org.kompany.sovereign.zookeeper.ResilientZooKeeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Convenient way to quickly configure a Sovereign object.
@@ -19,6 +23,8 @@ import org.kompany.sovereign.zookeeper.ResilientZooKeeper;
  * 
  */
 public class SovereignBuilder {
+
+    private static final Logger logger = LoggerFactory.getLogger(SovereignBuilder.class);
 
     private String zkConnectString;
     private int zkSessionTimeout = -1;
@@ -48,6 +54,9 @@ public class SovereignBuilder {
 
         CoordinationService coordService = new CoordinationService();
         serviceMap.put("coord", coordService);
+
+        DataService dataService = new DataService();
+        serviceMap.put("data", dataService);
 
         return this;
     }
@@ -99,6 +108,7 @@ public class SovereignBuilder {
     }
 
     public Sovereign build() {
+
         Sovereign s = null;
         if (zkClient == null) {
             zkClient = defaultZkClient();
@@ -153,7 +163,7 @@ public class SovereignBuilder {
     }
 
     MessagingProvider defaultMessagingProvider(int port) {
-        MessagingProvider messagingProvider = new WebSocketsMessagingProvider();
+        MessagingProvider messagingProvider = new WebSocketMessagingProvider();
         messagingProvider.setPort(port);
         return messagingProvider;
 

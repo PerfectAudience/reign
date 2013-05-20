@@ -66,22 +66,49 @@ import org.jboss.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import org.jboss.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import org.jboss.netty.handler.execution.ExecutionHandler;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
-import org.jboss.netty.logging.InternalLogger;
-import org.jboss.netty.logging.InternalLoggerFactory;
 import org.jboss.netty.util.CharsetUtil;
+import org.kompany.sovereign.Service;
+import org.kompany.sovereign.ServiceDirectory;
+import org.kompany.sovereign.messaging.MessageProtocol;
+import org.kompany.sovereign.messaging.RequestMessage;
+import org.kompany.sovereign.messaging.ResponseMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handles handshakes and messages
  */
 public class WebSocketServerHandler extends ExecutionHandler {
-    private static final InternalLogger logger = InternalLoggerFactory.getInstance(WebSocketServerHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketServerHandler.class);
 
     private static final String WEBSOCKET_PATH = "/websocket";
 
     private WebSocketServerHandshaker handshaker;
 
-    public WebSocketServerHandler() {
-        super(new OrderedMemoryAwareThreadPoolExecutor(4, 1048576, 4 * 1048576));
+    private ServiceDirectory serviceDirectory;
+
+    private MessageProtocol messageProtocol;
+
+    public WebSocketServerHandler(ServiceDirectory serviceDirectory, MessageProtocol messageProtocol) {
+        super(new OrderedMemoryAwareThreadPoolExecutor(8, 1048576, 8 * 1048576));
+        this.serviceDirectory = serviceDirectory;
+        this.messageProtocol = messageProtocol;
+    }
+
+    public ServiceDirectory getServiceDirectory() {
+        return serviceDirectory;
+    }
+
+    public void setServiceDirectory(ServiceDirectory serviceDirectory) {
+        this.serviceDirectory = serviceDirectory;
+    }
+
+    public MessageProtocol getMessageProtocol() {
+        return messageProtocol;
+    }
+
+    public void setMessageProtocol(MessageProtocol messageProtocol) {
+        this.messageProtocol = messageProtocol;
     }
 
     /**
@@ -313,21 +340,67 @@ public class WebSocketServerHandler extends ExecutionHandler {
             ctx.getChannel().write(new PongWebSocketFrame(frame.getBinaryData()));
             return;
         } else if (frame instanceof TextWebSocketFrame) {
+            // could potentially be longer running task, so execute in a separate threadpool
+            final ChannelHandlerContext finalCtx = ctx;
+            final WebSocketFrame finalFrame = frame;
+            this.getExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    String requestText = ((TextWebSocketFrame) finalFrame).getText();
+                    RequestMessage requestMessage = getMessageProtocol().fromTextRequest(requestText);
+                    if (requestMessage != null) {
+                        Service targetService = getServiceDirectory().getService(requestMessage.getTargetService());
+                        if (targetService != null) {
+                            ResponseMessage responseMessage = targetService.handleMessage(requestMessage);
+                            if (responseMessage != null) {
+                                finalCtx.getChannel().write(
+                                        new TextWebSocketFrame(getMessageProtocol().toTextResponse(responseMessage)));
+                            } else {
+                                logger.warn("No response for request:  request='{}'", requestText);
+                            }
+                        } else {
+                            logger.warn(
+                                    "Message targets unknown service:  request='{}'; requestMessage.targetService='{}'",
+                                    requestText, requestMessage.getTargetService());
+                        }// if
+                    } else {
+                        logger.warn("Received poorly formed message:  request='{}'", requestText);
+                        finalCtx.getChannel().close();
+                    }// if
 
-            // Send the uppercase string back.
-            String request = ((TextWebSocketFrame) frame).getText();
-            if (logger.isDebugEnabled()) {
-                logger.debug(String.format("Channel %s received %s", ctx.getChannel().getId(), request));
-            }
-            ctx.getChannel().write(new TextWebSocketFrame(request.toUpperCase()));
+                    // Send the uppercase string back.
+                    // if (logger.isDebugEnabled()) {
+                    // logger.debug(String.format("Channel %s received %s", finalCtx.getChannel().getId(), request));
+                    // }
+                    // finalCtx.getChannel().write(new TextWebSocketFrame(requestText.toUpperCase()));
+                }
+            });
 
         } else if (frame instanceof BinaryWebSocketFrame) {
-            ctx.getChannel().write(
-                    new BinaryWebSocketFrame(frame.isFinalFragment(), frame.getRsv(), frame.getBinaryData()));
+            // could potentially be longer running task, so execute in a separate threadpool
+            final ChannelHandlerContext finalCtx = ctx;
+            final WebSocketFrame finalFrame = frame;
+            this.getExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    finalCtx.getChannel().write(
+                            new BinaryWebSocketFrame(finalFrame.isFinalFragment(), finalFrame.getRsv(), finalFrame
+                                    .getBinaryData()));
+                }
+            });
 
         } else if (frame instanceof ContinuationWebSocketFrame) {
-            ctx.getChannel().write(
-                    new ContinuationWebSocketFrame(frame.isFinalFragment(), frame.getRsv(), frame.getBinaryData()));
+            // could potentially be longer running task, so execute in a separate threadpool
+            final ChannelHandlerContext finalCtx = ctx;
+            final WebSocketFrame finalFrame = frame;
+            this.getExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    finalCtx.getChannel().write(
+                            new ContinuationWebSocketFrame(finalFrame.isFinalFragment(), finalFrame.getRsv(),
+                                    finalFrame.getBinaryData()));
+                }
+            });
 
         } else if (frame instanceof PongWebSocketFrame) {
             // Ignore

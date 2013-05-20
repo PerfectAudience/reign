@@ -3,6 +3,8 @@ package org.kompany.sovereign;
 import java.util.List;
 
 import org.apache.zookeeper.data.ACL;
+import org.kompany.sovereign.messaging.RequestMessage;
+import org.kompany.sovereign.messaging.ResponseMessage;
 import org.kompany.sovereign.util.PathCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,11 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
     private List<ACL> defaultAclList;
 
     private String canonicalId;
+
+    @Override
+    public ResponseMessage handleMessage(RequestMessage message) {
+        return null;
+    }
 
     public List<ACL> getDefaultAclList() {
         return defaultAclList;

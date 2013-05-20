@@ -20,6 +20,11 @@ import java.util.concurrent.Executors;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import org.kompany.sovereign.ServiceDirectory;
+import org.kompany.sovereign.messaging.MessageProtocol;
+import org.kompany.sovereign.util.IdUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A HTTP server which serves Web Socket requests at:
@@ -42,12 +47,19 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
  */
 public class WebSocketServer {
 
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketServer.class);
+
     private final int port;
 
     private ServerBootstrap bootstrap;
 
-    public WebSocketServer(int port) {
+    private final ServiceDirectory serviceDirectory;
+    private final MessageProtocol messageProtocol;
+
+    public WebSocketServer(int port, ServiceDirectory serviceDirectory, MessageProtocol messageProtocol) {
         this.port = port;
+        this.serviceDirectory = serviceDirectory;
+        this.messageProtocol = messageProtocol;
     }
 
     public void start() {
@@ -56,17 +68,20 @@ public class WebSocketServer {
                 Executors.newCachedThreadPool()));
 
         // Set up the event pipeline factory.
-        bootstrap.setPipelineFactory(new WebSocketServerPipelineFactory());
+        bootstrap.setPipelineFactory(new WebSocketServerPipelineFactory(serviceDirectory, messageProtocol));
 
         // Bind and start to accept incoming connections.
         bootstrap.bind(new InetSocketAddress(port));
 
-        System.out.println("Web socket server started at port " + port + '.');
-        System.out.println("Open your browser and navigate to http://localhost:" + port + '/');
+        logger.info("Web socket server started at ws://{}:{}", IdUtil.getHostname(), port);
     }
 
     public void stop() {
-        bootstrap.shutdown();
+        try {
+            bootstrap.shutdown();
+        } finally {
+            bootstrap.releaseExternalResources();
+        }
     }
 
 }

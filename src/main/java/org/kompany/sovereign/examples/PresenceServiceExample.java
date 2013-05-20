@@ -116,7 +116,7 @@ public class PresenceServiceExample {
         // try to retrieve service info (which may not be immediately
         // available); include observer to be notified of changes in service
         // info
-        ServiceInfo serviceInfo = presenceService.lookup("examples-cluster", "service1",
+        ServiceInfo serviceInfo = presenceService.lookupServiceInfo("examples-cluster", "service1",
                 new SimplePresenceObserver<ServiceInfo>() {
                     @Override
                     public void updated(ServiceInfo info) {
@@ -133,7 +133,7 @@ public class PresenceServiceExample {
         // try to retrieve node info (which may not be immediately
         // available); include observer to be notified of changes in node
         // info
-        NodeInfo nodeInfo = presenceService.lookup("examples-cluster", "service2", "node1",
+        NodeInfo nodeInfo = presenceService.lookupNodeInfo("examples-cluster", "service2", "node1",
                 new SimplePresenceObserver<NodeInfo>() {
                     @Override
                     public void updated(NodeInfo info) {

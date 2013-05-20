@@ -23,10 +23,21 @@ import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
+import org.kompany.sovereign.ServiceDirectory;
+import org.kompany.sovereign.messaging.MessageProtocol;
 
 /**
  */
 public class WebSocketServerPipelineFactory implements ChannelPipelineFactory {
+
+    private final ServiceDirectory serviceDirectory;
+    private final MessageProtocol messageProtocol;
+
+    public WebSocketServerPipelineFactory(ServiceDirectory serviceDirectory, MessageProtocol messageProtocol) {
+        this.serviceDirectory = serviceDirectory;
+        this.messageProtocol = messageProtocol;
+    }
+
     @Override
     public ChannelPipeline getPipeline() throws Exception {
         // Create a default pipeline implementation.
@@ -34,7 +45,7 @@ public class WebSocketServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("decoder", new HttpRequestDecoder());
         pipeline.addLast("aggregator", new HttpChunkAggregator(65536));
         pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("handler", new WebSocketServerHandler());
+        pipeline.addLast("handler", new WebSocketServerHandler(serviceDirectory, messageProtocol));
         return pipeline;
     }
 }

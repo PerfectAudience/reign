@@ -17,6 +17,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
+import org.kompany.sovereign.messaging.MessagingProvider;
 import org.kompany.sovereign.util.IdUtil;
 import org.kompany.sovereign.util.PathCache;
 import org.kompany.sovereign.util.SimplePathCache;
@@ -76,7 +77,7 @@ public class Sovereign implements Watcher {
 
     private int threadPoolSize = 3;
 
-    private Thread adminThread = null;
+    // private Thread adminThread = null;
 
     /** List to ensure Watcher(s) are called in a specific order */
     private final List<Watcher> watcherList = new ArrayList<Watcher>();
@@ -263,11 +264,6 @@ public class Sovereign implements Watcher {
             }
         });
 
-        /** listen on messaging port if messaging is enabled **/
-        if (this.isMessagingEnabled()) {
-            messagingProvider.start();
-        }
-
         /** generate canonical id if necessary **/
         if (canonicalId == null) {
             canonicalId = defaultCanonicalId();
@@ -306,10 +302,12 @@ public class Sovereign implements Watcher {
             }// if
         }// for
 
-        /** start main thread **/
-        logger.info("START:  start admin thread");
-        adminThread = this.createAdminThread();
-        adminThread.start();
+        /** listen on messaging port if messaging is enabled **/
+        if (this.isMessagingEnabled()) {
+            logger.info("START:  starting messaging provider");
+            messagingProvider.setServiceDirectory(serviceDirectory);
+            messagingProvider.start();
+        }
 
         started = true;
 
@@ -340,15 +338,15 @@ public class Sovereign implements Watcher {
             future.cancel(false);
         }
 
-        /** stop admin thread **/
-        logger.info("SHUTDOWN:  shutting down admin thread");
-        try {
-            if (adminThread != null) {
-                adminThread.join();
-            }
-        } catch (InterruptedException e) {
-            logger.warn("Interrupted during shutdown:  " + e, e);
-        }
+        // /** stop admin thread **/
+        // logger.info("SHUTDOWN:  shutting down admin thread");
+        // try {
+        // if (adminThread != null) {
+        // adminThread.join();
+        // }
+        // } catch (InterruptedException e) {
+        // logger.warn("Interrupted during shutdown:  " + e, e);
+        // }
 
         /** stop executor **/
         logger.info("SHUTDOWN:  shutting down executor");
@@ -398,31 +396,6 @@ public class Sovereign implements Watcher {
             }
         }
         return new ScheduledThreadPoolExecutor(continuouslyRunningCount + this.getThreadPoolSize());
-    }
-
-    /**
-     * Creates the thread that submits the services for regular execution.
-     * 
-     * @return
-     */
-    private Thread createAdminThread() {
-        Thread adminThread = new Thread() {
-            @Override
-            public void run() {
-                while (!shutdown) {
-                    // TODO: perform any framework maintenance?
-
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        logger.warn("Interrupted while in mainThread:  " + e, e);
-                    }
-                }// while
-            }// run()
-        };
-        adminThread.setName(this.getClass().getSimpleName() + "." + "admin");
-        adminThread.setDaemon(true);
-        return adminThread;
     }
 
     public static String defaultCanonicalId() {

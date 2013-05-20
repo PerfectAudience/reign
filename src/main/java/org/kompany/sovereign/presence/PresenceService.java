@@ -20,6 +20,9 @@ import org.kompany.sovereign.ServiceObserverManager;
 import org.kompany.sovereign.ServiceObserverWrapper;
 import org.kompany.sovereign.coord.CoordinationService;
 import org.kompany.sovereign.coord.DistributedLock;
+import org.kompany.sovereign.messaging.RequestMessage;
+import org.kompany.sovereign.messaging.ResponseMessage;
+import org.kompany.sovereign.messaging.SimpleResponseMessage;
 import org.kompany.sovereign.util.PathCacheEntry;
 import org.kompany.sovereign.util.ZkClientUtil;
 import org.slf4j.Logger;
@@ -41,9 +44,9 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
 
-    private int pathCacheSize = 250;
+    // private int pathCacheSize = 250;
 
-    private int concurrencyLevel = 8;
+    // private int concurrencyLevel = 8;
 
     private int heartbeatIntervalMillis = DEFAULT_HEARTBEAT_INTERVAL_MILLIS;
 
@@ -63,7 +66,32 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     private volatile long lastZombieCheckTimestamp = System.currentTimeMillis();
 
-    public List<String> getAvailableServices(String clusterId) {
+    public List<String> lookupClusters() {
+        /** get node data from zk **/
+        String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE);
+        List<String> children = null;
+        try {
+            Stat stat = new Stat();
+            children = getZkClient().getChildren(path, true, stat);
+
+            getPathCache().put(path, stat, null, children);
+
+        } catch (KeeperException e) {
+            if (e.code() == Code.NONODE) {
+                logger.warn("lookupClusters():  " + e + ":  node does not exist:  path={}", path);
+            } else {
+                logger.warn("lookupClusters():  " + e, e);
+            }
+            return null;
+        } catch (InterruptedException e) {
+            logger.warn("lookupClusters():  " + e, e);
+            return null;
+        }
+
+        return children;
+    }
+
+    public List<String> lookupServices(String clusterId) {
         /** get node data from zk **/
         String clusterPath = getPathScheme().buildRelativePath(clusterId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, clusterPath);
@@ -76,13 +104,13 @@ public class PresenceService extends AbstractActiveService implements Observable
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
-                logger.warn("getAvailableServices():  " + e + ":  node does not exist:  path={}", path);
+                logger.warn("lookupServices():  " + e + ":  node does not exist:  path={}", path);
             } else {
-                logger.warn("getAvailableServices():  " + e, e);
+                logger.warn("lookupServices():  " + e, e);
             }
             return null;
         } catch (InterruptedException e) {
-            logger.warn("getAvailableServices():  " + e, e);
+            logger.warn("lookupServices():  " + e, e);
             return null;
         }
 
@@ -90,7 +118,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public void observe(String clusterId, String serviceId, SimplePresenceObserver<ServiceInfo> observer) {
-        ServiceInfo result = lookup(clusterId, serviceId, observer, nodeAttributeSerializer, true);
+        ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, true);
         String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, servicePath);
         this.observerManager.put(path, new PresenceObserverWrapper<ServiceInfo>(clusterId, serviceId, null, observer,
@@ -98,7 +126,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public void observe(String clusterId, String serviceId, String nodeId, SimplePresenceObserver<NodeInfo> observer) {
-        NodeInfo result = lookup(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
+        NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
         this.observerManager.put(path, new PresenceObserverWrapper<NodeInfo>(clusterId, serviceId, nodeId, observer,
@@ -128,7 +156,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     public ServiceInfo waitUntilAvailable(String clusterId, String serviceId,
             SimplePresenceObserver<ServiceInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
             boolean useCache, long timeoutMillis) {
-        ServiceInfo result = lookup(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
+        ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
         if (result == null) {
             String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
             String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, servicePath);
@@ -148,7 +176,7 @@ public class PresenceService extends AbstractActiveService implements Observable
                     } catch (InterruptedException e) {
                         logger.warn("Interrupted while waiting for ServiceInfo:  " + e, e);
                     }
-                    result = lookup(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
+                    result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
                 }
             }
 
@@ -178,16 +206,18 @@ public class PresenceService extends AbstractActiveService implements Observable
         return observer;
     }
 
-    public ServiceInfo lookup(String clusterId, String serviceId) {
-        return lookup(clusterId, serviceId, null, nodeAttributeSerializer, true);
+    public ServiceInfo lookupServiceInfo(String clusterId, String serviceId) {
+        return lookupServiceInfo(clusterId, serviceId, null, nodeAttributeSerializer, true);
     }
 
-    public ServiceInfo lookup(String clusterId, String serviceId, SimplePresenceObserver<ServiceInfo> observer) {
-        return lookup(clusterId, serviceId, observer, nodeAttributeSerializer, true);
+    public ServiceInfo lookupServiceInfo(String clusterId, String serviceId,
+            SimplePresenceObserver<ServiceInfo> observer) {
+        return lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, true);
     }
 
-    public ServiceInfo lookup(String clusterId, String serviceId, SimplePresenceObserver<ServiceInfo> observer,
-            NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
+    public ServiceInfo lookupServiceInfo(String clusterId, String serviceId,
+            SimplePresenceObserver<ServiceInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
+            boolean useCache) {
         /** get node data from zk **/
         String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, servicePath);
@@ -215,17 +245,18 @@ public class PresenceService extends AbstractActiveService implements Observable
                 try {
                     getZkClient().exists(path, true);
                 } catch (Exception e1) {
-                    logger.error("lookup():  error trying to watch node:  " + e1 + ":  path=" + path, e1);
+                    logger.error("lookupServiceInfo():  error trying to watch node:  " + e1 + ":  path=" + path, e1);
                 }
 
-                logger.debug("lookup():  error trying to fetch service info:  {}:  node does not exist:  path={}",
+                logger.debug(
+                        "lookupServiceInfo():  error trying to fetch service info:  {}:  node does not exist:  path={}",
                         e.getMessage(), path);
             } else {
-                logger.error("lookup():  error trying to fetch service info:  " + e, e);
+                logger.error("lookupServiceInfo():  error trying to fetch service info:  " + e, e);
             }
             error = true;
         } catch (Exception e) {
-            logger.warn("lookup():  error trying to fetch service info:  " + e, e);
+            logger.warn("lookupServiceInfo():  error trying to fetch service info:  " + e, e);
             error = true;
         }
 
@@ -269,7 +300,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     public NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId,
             SimplePresenceObserver<NodeInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
             boolean useCache, long timeoutMillis) {
-        NodeInfo result = lookup(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, useCache);
+        NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, useCache);
         if (result == null) {
             String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
             String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
@@ -289,7 +320,7 @@ public class PresenceService extends AbstractActiveService implements Observable
                     } catch (InterruptedException e) {
                         logger.warn("Interrupted while waiting for NodeInfo:  " + e, e);
                     }
-                    result = lookup(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, useCache);
+                    result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, useCache);
                 }
             }
 
@@ -298,15 +329,16 @@ public class PresenceService extends AbstractActiveService implements Observable
         return result;
     }
 
-    public NodeInfo lookup(String clusterId, String serviceId, String nodeId) {
-        return lookup(clusterId, serviceId, nodeId, null, nodeAttributeSerializer, true);
+    public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId) {
+        return lookupNodeInfo(clusterId, serviceId, nodeId, null, nodeAttributeSerializer, true);
     }
 
-    public NodeInfo lookup(String clusterId, String serviceId, String nodeId, SimplePresenceObserver<NodeInfo> observer) {
-        return lookup(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
+    public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId,
+            SimplePresenceObserver<NodeInfo> observer) {
+        return lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
     }
 
-    public NodeInfo lookup(String clusterId, String serviceId, String nodeId,
+    public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId,
             SimplePresenceObserver<NodeInfo> observer, NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
         /** get node data from zk **/
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
@@ -335,17 +367,17 @@ public class PresenceService extends AbstractActiveService implements Observable
                 try {
                     getZkClient().exists(path, true);
                 } catch (Exception e1) {
-                    logger.error("lookup():  error trying to watch node:  " + e1 + ":  path=" + path, e1);
+                    logger.error("lookupNodeInfo():  error trying to watch node:  " + e1 + ":  path=" + path, e1);
                 }
 
-                logger.debug("lookup():  error trying to fetch node info:  {}:  node does not exist:  path={}",
+                logger.debug("lookupNodeInfo():  error trying to fetch node info:  {}:  node does not exist:  path={}",
                         e.getMessage(), path);
             } else {
-                logger.error("lookup():  error trying to fetch node info:  " + e, e);
+                logger.error("lookupNodeInfo():  error trying to fetch node info:  " + e, e);
             }
             error = true;
         } catch (Exception e) {
-            logger.warn("lookup():  error trying to fetch node info:  " + e, e);
+            logger.warn("lookupNodeInfo():  error trying to fetch node info:  " + e, e);
             error = true;
         }
 
@@ -524,7 +556,7 @@ public class PresenceService extends AbstractActiveService implements Observable
                     List<String> clusterIdList = getZkClient().getChildren(
                             getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE), false);
                     for (String clusterId : clusterIdList) {
-                        List<String> serviceIdList = getAvailableServices(clusterId);
+                        List<String> serviceIdList = lookupServices(clusterId);
                         for (String serviceId : serviceIdList) {
                             // service path
                             String servicePath = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE,
@@ -582,6 +614,66 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     @Override
+    public ResponseMessage handleMessage(RequestMessage requestMessage) {
+        try {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
+                        requestMessage.getBody());
+            }
+
+            /** preprocess request **/
+            String resource = (String) requestMessage.getBody();
+
+            // strip beginning and ending slashes "/"
+            if (resource.startsWith("/")) {
+                resource = resource.substring(1);
+            }
+            if (resource.endsWith("/")) {
+                resource = resource.substring(0, resource.length() - 1);
+            }
+
+            /** get response **/
+            ResponseMessage responseMessage = null;
+
+            // if base path, just return available clusters
+            if (resource.length() == 0) {
+                // list available clusters
+                List<String> clusterList = this.lookupClusters();
+                responseMessage = new SimpleResponseMessage();
+                responseMessage.setBody(clusterList);
+
+            } else {
+                String[] tokens = getPathScheme().tokenizePath(resource);
+                // logger.debug("tokens.length={}", tokens.length);
+
+                if (tokens.length == 1) {
+                    // list available services
+                    List<String> serviceList = this.lookupServices(resource);
+                    responseMessage = new SimpleResponseMessage();
+                    responseMessage.setBody(serviceList);
+
+                } else if (tokens.length == 2) {
+                    // list available nodes for a given service
+                    ServiceInfo serviceInfo = this.lookupServiceInfo(tokens[0], tokens[1]);
+                    responseMessage = new SimpleResponseMessage();
+                    responseMessage.setBody(serviceInfo);
+                } else if (tokens.length == 3) {
+                    // list available nodes for a given service
+                    NodeInfo nodeInfo = this.lookupNodeInfo(tokens[0], tokens[1], tokens[2]);
+                    responseMessage = new SimpleResponseMessage();
+                    responseMessage.setBody(nodeInfo);
+                }
+            }
+
+            return responseMessage;
+        } catch (Exception e) {
+            logger.error("" + e, e);
+        }
+
+        return null;
+    }
+
+    @Override
     public void signalStateReset(Object o) {
         this.observerManager.signalStateReset(o);
     }
@@ -605,7 +697,7 @@ public class PresenceService extends AbstractActiveService implements Observable
             // only service nodes can have children
             observerManager.signal(
                     path,
-                    lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
+                    lookupServiceInfo(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
                             observerWrapper.getNodeAttributeSerializer(), true));
         }
     }
@@ -621,14 +713,14 @@ public class PresenceService extends AbstractActiveService implements Observable
         PresenceObserverWrapper observerWrapper = observerManager.getObserverWrapperSet(path).iterator().next();
         if (observerWrapper.isService()) {
             // call but don't use cache to ensure we re-establish watch
-            ServiceInfo updatedValue = lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
-                    observerWrapper.getNodeAttributeSerializer(), true);
+            ServiceInfo updatedValue = lookupServiceInfo(observerWrapper.getClusterId(),
+                    observerWrapper.getServiceId(), null, observerWrapper.getNodeAttributeSerializer(), true);
             if (updatedValue != null && !updatedValue.equals(observerWrapper.getCurrentValue())) {
                 observerManager.signal(path, updatedValue);
             }
         } else {
             // call but don't use cache to ensure we re-establish watch
-            NodeInfo updatedValue = lookup(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
+            NodeInfo updatedValue = lookupNodeInfo(observerWrapper.getClusterId(), observerWrapper.getServiceId(),
                     observerWrapper.getNodeId(), null, observerWrapper.getNodeAttributeSerializer(), true);
             if (updatedValue != null && !updatedValue.equals(observerWrapper.getCurrentValue())) {
                 observerManager.signal(path, updatedValue);
@@ -656,17 +748,17 @@ public class PresenceService extends AbstractActiveService implements Observable
         this.signalStateUnknown(null);
     }
 
-    public int getConcurrencyLevel() {
-        return concurrencyLevel;
-    }
+    // public int getConcurrencyLevel() {
+    // return concurrencyLevel;
+    // }
+    //
+    // public void setConcurrencyLevel(int concurrencyLevel) {
+    // this.concurrencyLevel = concurrencyLevel;
+    // }
 
-    public void setConcurrencyLevel(int concurrencyLevel) {
-        this.concurrencyLevel = concurrencyLevel;
-    }
-
-    public int getPathCacheSize() {
-        return pathCacheSize;
-    }
+    // public int getPathCacheSize() {
+    // return pathCacheSize;
+    // }
 
     public NodeAttributeSerializer getNodeAttributeSerializer() {
         return nodeAttributeSerializer;
@@ -676,9 +768,9 @@ public class PresenceService extends AbstractActiveService implements Observable
         this.nodeAttributeSerializer = nodeAttributeSerializer;
     }
 
-    public void setPathCacheSize(int pathCacheSize) {
-        this.pathCacheSize = pathCacheSize;
-    }
+    // public void setPathCacheSize(int pathCacheSize) {
+    // this.pathCacheSize = pathCacheSize;
+    // }
 
     public long getHeartbeatIntervalMillis() {
         return this.getExecutionIntervalMillis();

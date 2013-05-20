@@ -14,6 +14,8 @@ import org.kompany.sovereign.PathContext;
 import org.kompany.sovereign.PathType;
 import org.kompany.sovereign.coord.CoordinationService;
 import org.kompany.sovereign.coord.DistributedLock;
+import org.kompany.sovereign.messaging.RequestMessage;
+import org.kompany.sovereign.messaging.ResponseMessage;
 import org.kompany.sovereign.presence.PresenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,7 +94,7 @@ public class DataService extends AbstractActiveService {
         CoordinationService coordinationService = getServiceDirectory().getService("coord");
         for (String clusterId : activeAggregationClusterIds) {
             // iterate through available services
-            List<String> services = presenceService.getAvailableServices(clusterId);
+            List<String> services = presenceService.lookupServices(clusterId);
             for (String serviceId : services) {
                 // get lock to aggregate service node data
                 DistributedLock aggregateLock = coordinationService.getLock(PathContext.INTERNAL, getCanonicalId(),
@@ -151,6 +153,20 @@ public class DataService extends AbstractActiveService {
 
     public void setDataSerializer(DataSerializer<DataBundle> dataSerializer) {
         this.dataSerializer = dataSerializer;
+    }
+
+    @Override
+    public ResponseMessage handleMessage(RequestMessage requestMessage) {
+        if (logger.isTraceEnabled()) {
+            try {
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
+                        requestMessage.getBody());
+            } catch (Exception e) {
+                logger.error("" + e, e);
+            }
+        }
+
+        return null;
     }
 
     String getNodeIdString(String clusterId, String serviceId, String nodeId) {
