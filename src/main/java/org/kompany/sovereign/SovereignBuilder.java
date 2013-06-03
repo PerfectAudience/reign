@@ -37,8 +37,6 @@ public class SovereignBuilder {
 
     private PathScheme pathScheme = null;
 
-    private String canonicalId = null;
-
     private MessagingProvider messagingProvider = null;
 
     private boolean messagingOff = false;
@@ -58,11 +56,6 @@ public class SovereignBuilder {
         DataService dataService = new DataService();
         serviceMap.put("data", dataService);
 
-        return this;
-    }
-
-    public SovereignBuilder canonicalId(String canonicalId) {
-        this.canonicalId = canonicalId;
         return this;
     }
 
@@ -119,18 +112,12 @@ public class SovereignBuilder {
         if (pathScheme == null) {
             pathScheme = defaultPathScheme();
         }
-        if (canonicalId != null) {
-            if (!pathScheme.isValidPathToken(canonicalId)) {
-                throw new IllegalArgumentException(
-                        "sovereignId must be a valid path according to pathScheme.isValidPathToken(arg) check.");
-            }
-        }
+
         if (!messagingOff && messagingProvider == null) {
             messagingProvider = defaultMessagingProvider(Sovereign.DEFAULT_MESSAGING_PORT);
         }
         s = new Sovereign(zkClient, pathScheme, pathCache);
         s.setMessagingProvider(!messagingOff ? messagingProvider : null);
-        s.setCanonicalId(canonicalId);
         s.registerServices(serviceMap);
         return s;
     }
@@ -168,4 +155,5 @@ public class SovereignBuilder {
         return messagingProvider;
 
     }
+
 }

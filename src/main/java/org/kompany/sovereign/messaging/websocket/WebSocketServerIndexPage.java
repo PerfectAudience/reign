@@ -36,7 +36,7 @@ import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.util.CharsetUtil;
 
 /**
- * Generates the demo HTML page which is served at http://localhost:8080/
+ * Generates Sovereign Terminal page.
  */
 public final class WebSocketServerIndexPage {
 
@@ -45,19 +45,24 @@ public final class WebSocketServerIndexPage {
     public static ChannelBuffer getContent(String webSocketLocation) {
         return ChannelBuffers
                 .copiedBuffer(
-                        "<html><head><title>Web Socket Test</title></head>"
+                        "<html><head><title>Sovereign Terminal</title></head>"
                                 + NEWLINE
                                 + "<body>"
                                 + NEWLINE
                                 + "<script type=\"text/javascript\">"
                                 + NEWLINE
-                                + "var socket;"
+                                + "var socket; var socketOpened = false;"
                                 + NEWLINE
+
                                 + "if (!window.WebSocket) {"
                                 + NEWLINE
                                 + "  window.WebSocket = window.MozWebSocket;"
                                 + NEWLINE
                                 + '}'
+                                + NEWLINE
+                                + "function connectWebSocket() {"
+                                + NEWLINE
+                                + "if( socket && socket.readyState!=socket.CLOSED ) return;"
                                 + NEWLINE
                                 + "if (window.WebSocket) {"
                                 + NEWLINE
@@ -66,26 +71,27 @@ public final class WebSocketServerIndexPage {
                                 + "\");"
                                 + NEWLINE
                                 + "  socket.onmessage = function(event) {"
-                                + NEWLINE
-                                + "    var ta = document.getElementById('responseText');"
-                                + NEWLINE
-                                + "    ta.value = ta.value + '\\n' + event.data + '\\n'"
+                                + "    appendDiv('responseText', event.data);"
                                 + NEWLINE
                                 + "  };"
                                 + NEWLINE
                                 + "  socket.onopen = function(event) {"
-                                + NEWLINE
-                                + "    var ta = document.getElementById('responseText');"
-                                + NEWLINE
-                                + "    ta.value = \"Web Socket opened!\\n\";"
+                                + "    socketOpened = true; appendDiv('responseText', 'Web Socket opened.');"
                                 + NEWLINE
                                 + "  };"
                                 + NEWLINE
                                 + "  socket.onclose = function(event) {"
                                 + NEWLINE
-                                + "    var ta = document.getElementById('responseText');"
+                                + "    if( socketOpened ) { appendDiv('responseText', 'Web Socket closed.'); } "
+                                + "    socket = null; socketOpened = false;"
                                 + NEWLINE
-                                + "    ta.value = ta.value + \"Web Socket closed\\n\"; "
+                                + "  };"
+                                + "  socket.onerror = function(event) {"
+                                + NEWLINE
+                                + "    if( socket ) { appendDiv('responseText', 'Web Socket connection error:&nbsp; "
+                                + webSocketLocation
+                                + ".'); } "
+                                + "    socket = null; socketOpened = false;"
                                 + NEWLINE
                                 + "  };"
                                 + NEWLINE
@@ -95,32 +101,53 @@ public final class WebSocketServerIndexPage {
                                 + NEWLINE
                                 + '}'
                                 + NEWLINE
+                                + "} // function"
+                                + NEWLINE
                                 + NEWLINE
                                 + "function send(message) {"
                                 + NEWLINE
                                 + "  if (!window.WebSocket) { return; }"
                                 + NEWLINE
-                                + "  if (socket.readyState == WebSocket.OPEN) {"
+                                + "var waitInterval = 0;"
                                 + NEWLINE
-                                + "    socket.send(message);"
+                                + "  if (!socket || socket.readyState != WebSocket.OPEN) {"
                                 + NEWLINE
-                                + "  } else {"
-                                + NEWLINE
-                                + "    alert(\"The socket is not open.\");"
+                                + "    connectWebSocket(); alert(\"The socket is not open:  reconnecting:  "
+                                + webSocketLocation
+                                + "\"); waitInterval=100;"
                                 + NEWLINE
                                 + "  }"
                                 + NEWLINE
-                                + '}'
+                                + "    setTimeout( function(){ if (socket && socket.readyState == WebSocket.OPEN) {socket.send(message);} }, waitInterval);"
+                                + NEWLINE
+                                + "} // function"
+                                + NEWLINE
+                                + "function appendDiv(divElementId, html ) { var theDiv = document.getElementById(divElementId);"
+                                + NEWLINE
+                                + "var content = document.createElement('p'); content.innerHTML = html;"
+                                + NEWLINE
+                                + "theDiv.appendChild(content); theDiv.scrollTop = theDiv.scrollHeight; }"
+                                + NEWLINE
+                                + NEWLINE
+                                + "function checkKey(e) { if( e && e.keyCode==13) { send(document.getElementById('sendInput').value); } }"
+                                + NEWLINE
+                                + "// setInterval( function() { connectWebSocket(); }, 5000 );"
+                                + NEWLINE
+                                + "window.onload = function () { connectWebSocket(); };"
+                                + NEWLINE
                                 + NEWLINE
                                 + "</script>"
                                 + NEWLINE
                                 + "<form onsubmit=\"return false;\">"
                                 + NEWLINE
-                                + "<input type=\"text\" name=\"message\" value=\"presence:[clusterId]/[serviceId]/[nodeId]\" style=\"width:500px;\"/>"
-                                + "<input type=\"button\" value=\"Send\"" + NEWLINE
-                                + "       onclick=\"send(this.form.message.value)\" />" + NEWLINE + "<h3>Output</h3>"
+                                + "<input type=\"text\" id=\"sendInput\" name=\"message\" onkeypress=\"return checkKey(event);\" value=\"presence:[clusterId]/[serviceId]/[nodeId]\" style=\"width:90%;\"/>"
+                                + "<input type=\"button\" value=\"Send\""
                                 + NEWLINE
-                                + "<textarea id=\"responseText\" style=\"width:500px;height:300px;\"></textarea>"
+                                + "       onclick=\"send(this.form.message.value)\" />"
+                                + NEWLINE
+                                + "<h3>Output</h3>"
+                                + NEWLINE
+                                + "<div id=\"responseText\" style=\"width:90%;height:300px;border:1px solid;font-family:monospace;overflow:scroll;\"></div>"
                                 + NEWLINE + "</form>" + NEWLINE + "</body>" + NEWLINE + "</html>" + NEWLINE,
                         CharsetUtil.UTF_8);
     }

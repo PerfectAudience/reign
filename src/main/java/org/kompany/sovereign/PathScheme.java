@@ -1,11 +1,18 @@
 package org.kompany.sovereign;
 
+import java.util.Map;
+
 /**
  * 
  * @author ypai
  * 
  */
 public interface PathScheme {
+
+    public static final String CANONICAL_ID_PID = "pid";
+    public static final String CANONICAL_ID_IP = "ip";
+    public static final String CANONICAL_ID_HOST = "host";
+    public static final String CANONICAL_ID_PORT = "port";
 
     public String getBasePath(PathContext pathContext);
 
@@ -22,4 +29,16 @@ public interface PathScheme {
     public String buildRelativePath(String... pathTokens);
 
     public boolean isValidPathToken(String pathToken);
+
+    public String getCanonicalId();
+
+    public String getCanonicalId(int port);
+
+    /**
+     * Try to parse input String as canonical ID with some embedded information
+     * 
+     * @param canonicalId
+     * @return Map of values; or null
+     */
+    public Map<String, String> parseCanonicalId(String canonicalId);
 }

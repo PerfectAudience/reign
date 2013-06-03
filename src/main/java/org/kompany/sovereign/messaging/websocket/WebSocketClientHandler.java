@@ -37,6 +37,10 @@ package org.kompany.sovereign.messaging.websocket;
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 //THE SOFTWARE.
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -51,18 +55,40 @@ import org.jboss.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import org.jboss.netty.handler.codec.http.websocketx.WebSocketClientHandshaker;
 import org.jboss.netty.handler.codec.http.websocketx.WebSocketFrame;
 import org.jboss.netty.util.CharsetUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
 
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketClientHandler.class);
+
     private final WebSocketClientHandshaker handshaker;
+
+    private final AtomicLong requestIdSequence = new AtomicLong(1);
+
+    private final ConcurrentMap<Long, Object> responseMap = new ConcurrentHashMap<Long, Object>(32, 0.9f, 2);
 
     public WebSocketClientHandler(WebSocketClientHandshaker handshaker) {
         this.handshaker = handshaker;
     }
 
+    public long getNextRequestId() {
+        return requestIdSequence.get();
+    }
+
+    public Object getResponse(long requestId) {
+        Object response = responseMap.get(requestId);
+        if (response != null) {
+            responseMap.remove(requestId);
+            return response;
+        } else {
+            return null;
+        }
+    }
+
     @Override
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-        System.out.println("WebSocket Client disconnected!");
+        logger.debug("WebSocket Client disconnected!");
     }
 
     @Override
@@ -70,7 +96,7 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
         Channel ch = ctx.getChannel();
         if (!handshaker.isHandshakeComplete()) {
             handshaker.finishHandshake(ch, (HttpResponse) e.getMessage());
-            System.out.println("WebSocket Client connected!");
+            logger.debug("WebSocket Client connected!");
             return;
         }
 
@@ -83,14 +109,22 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
         WebSocketFrame frame = (WebSocketFrame) e.getMessage();
         if (frame instanceof TextWebSocketFrame) {
             TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
-            System.out.println("WebSocket Client received message: " + textFrame.getText());
+
+            logger.debug("WebSocket Client received message: " + textFrame.getText());
+
+            responseMap.put(requestIdSequence.getAndIncrement(), textFrame.getText());
+
         } else if (frame instanceof PongWebSocketFrame) {
-            System.out.println("WebSocket Client received pong");
+            logger.debug("WebSocket Client received pong");
+
         } else if (frame instanceof CloseWebSocketFrame) {
-            System.out.println("WebSocket Client received closing");
+            logger.debug("WebSocket Client received closing");
+
             ch.close();
+
         } else if (frame instanceof PingWebSocketFrame) {
-            System.out.println("WebSocket Client received ping, response with pong");
+            logger.debug("WebSocket Client received ping, response with pong");
+
             ch.write(new PongWebSocketFrame(frame.getBinaryData()));
         }
     }

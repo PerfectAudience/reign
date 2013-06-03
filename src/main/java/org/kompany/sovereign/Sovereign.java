@@ -18,7 +18,7 @@ import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
 import org.kompany.sovereign.messaging.MessagingProvider;
-import org.kompany.sovereign.util.IdUtil;
+import org.kompany.sovereign.presence.PresenceService;
 import org.kompany.sovereign.util.PathCache;
 import org.kompany.sovereign.util.SimplePathCache;
 import org.slf4j.Logger;
@@ -84,8 +84,6 @@ public class Sovereign implements Watcher {
 
     private List<ACL> defaultAclList = DEFAULT_ACL_LIST;
 
-    private String canonicalId;
-
     /** set if messaging between nodes running Sovereign will be enabled */
     private MessagingProvider messagingProvider = null;
 
@@ -124,23 +122,12 @@ public class Sovereign implements Watcher {
         this.defaultAclList = defaultAclList;
     }
 
-    public String getCanonicalId() {
-        return canonicalId;
-    }
-
-    public void setCanonicalId(String canonicalId) {
-        if (started) {
-            throw new IllegalStateException("Cannot set canonicalId once started!");
-        }
-        this.canonicalId = canonicalId;
-    }
-
     @Override
     public void process(WatchedEvent event) {
         // log if DEBUG
         if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}",
-                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+            logger.debug("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
+                    ToStringStyle.DEFAULT_STYLE));
 
         }
 
@@ -215,7 +202,6 @@ public class Sovereign implements Watcher {
         service.setPathCache(pathCache);
         service.setServiceDirectory(serviceDirectory);
         service.setDefaultAclList(defaultAclList);
-        service.setCanonicalId(canonicalId);
         service.init();
 
         // add to zkClient's list of watchers if Watcher interface is
@@ -264,15 +250,6 @@ public class Sovereign implements Watcher {
             }
         });
 
-        /** generate canonical id if necessary **/
-        if (canonicalId == null) {
-            canonicalId = defaultCanonicalId();
-            logger.info("START:  using default canonicalId:  {}", canonicalId);
-            for (ServiceWrapper serviceWrapper : serviceMap.values()) {
-                serviceWrapper.getService().setCanonicalId(canonicalId);
-            }
-        }
-
         /** watcher set-up **/
         logger.info("START:  registering watchers");
         // register self as watcher
@@ -296,8 +273,8 @@ public class Sovereign implements Watcher {
             // execute if not a continuously running service and not shutdown
             if (!this.shutdown && serviceWrapper.isSubmittable()) {
                 logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
-                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper,
-                        serviceWrapper.getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
+                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, serviceWrapper
+                        .getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
                 futureMap.put(serviceName, future);
             }// if
         }// for
@@ -316,6 +293,16 @@ public class Sovereign implements Watcher {
         this.notifyAll();
 
         logger.info("START:  done");
+
+        /** announce messaging availability: must be done after all other start-up tasks are complete **/
+        PresenceService presenceService = serviceDirectory.getService("presence");
+        if (presenceService != null) {
+            logger.info("START:  announcing framework availability via PresenceService");
+            presenceService.announce("sovereign", "messaging", pathScheme.getCanonicalId(messagingProvider.getPort()),
+                    true);
+        } else {
+            logger.warn("START:  could not announcing framework availability via PresenceService!");
+        }
     }
 
     public synchronized void stop() {
@@ -398,28 +385,6 @@ public class Sovereign implements Watcher {
         return new ScheduledThreadPoolExecutor(continuouslyRunningCount + this.getThreadPoolSize());
     }
 
-    public static String defaultCanonicalId() {
-        // get pid
-        String pid = IdUtil.getProcessId();
-
-        // try to get hostname and ip address
-        String hostname = IdUtil.getHostname();
-        String ipAddress = IdUtil.getHostname();
-
-        // fill in unknown values
-        if (pid == null) {
-            pid = "UNKNOWN_PID";
-        }
-        if (hostname == null) {
-            hostname = "UNKNOWN_HOSTNAME";
-        }
-        if (ipAddress == null) {
-            ipAddress = "UNKNOWN_IP_ADDRESS";
-        }
-
-        return "PID_" + pid + "@" + hostname + "[" + ipAddress + "]";
-    }
-
     /**
      * Convenience wrapper providing methods for interpreting service metadata.
      * 
@@ -469,4 +434,5 @@ public class Sovereign implements Watcher {
         }
 
     }
+
 }

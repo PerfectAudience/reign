@@ -1,15 +1,18 @@
 package org.kompany.sovereign.messaging.websocket;
 
+import java.net.URISyntaxException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.kompany.sovereign.ServiceDirectory;
+import org.kompany.sovereign.UnexpectedSovereignException;
 import org.kompany.sovereign.messaging.DefaultMessageProtocol;
 import org.kompany.sovereign.messaging.MessageProtocol;
-import org.kompany.sovereign.messaging.MessageQueue;
 import org.kompany.sovereign.messaging.MessagingProvider;
-import org.kompany.sovereign.messaging.SimpleMessageQueue;
+import org.kompany.sovereign.messaging.RequestMessage;
+import org.kompany.sovereign.messaging.ResponseMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,9 +29,9 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     private WebSocketServer server;
 
-    private MessageQueue requestQueue;
+    // private MessageQueue requestQueue;
 
-    private MessageQueue responseQueue;
+    // private MessageQueue responseQueue;
 
     private volatile boolean shutdown = true;
 
@@ -37,6 +40,33 @@ public class WebSocketMessagingProvider implements MessagingProvider {
     private ServiceDirectory serviceDirectory;
 
     private MessageProtocol messageProtocol;
+
+    private final ConcurrentMap<String, WebSocketClient> clientMap = new ConcurrentHashMap<String, WebSocketClient>(32,
+            0.9f, 2);
+
+    @Override
+    public ResponseMessage sendMessage(String hostOrIpAddress, int port, RequestMessage requestMessage) {
+        String clientEndpoint = "ws://" + hostOrIpAddress + ":" + port;
+        WebSocketClient client = clientMap.get(clientEndpoint);
+        if (client == null) {
+            try {
+                WebSocketClient newClient = new WebSocketClient(clientEndpoint);
+                client = clientMap.putIfAbsent(clientEndpoint, newClient);
+                if (client == null) {
+                    client = newClient;
+                    newClient.connect();
+                }
+            } catch (URISyntaxException e) {
+                throw new UnexpectedSovereignException(e);
+            }
+        }// if
+
+        if (requestMessage.getBody() instanceof String) {
+            return messageProtocol.fromTextResponse(client.write(messageProtocol.toTextRequest(requestMessage)));
+        } else {
+            return messageProtocol.fromBinaryResponse(client.write(messageProtocol.toBinaryRequest(requestMessage)));
+        }
+    }
 
     public MessageProtocol getMessageProtocol() {
         return messageProtocol;
@@ -55,24 +85,7 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         this.serviceDirectory = serviceDirectory;
     }
 
-    public void setRequestQueue(MessageQueue requestQueue) {
-        this.requestQueue = requestQueue;
-    }
-
-    public void setResponseQueue(MessageQueue responseQueue) {
-        this.responseQueue = responseQueue;
-    }
-
     @Override
-    public MessageQueue getRequestQueue() {
-        return requestQueue;
-    }
-
-    @Override
-    public MessageQueue getResponseQueue() {
-        return responseQueue;
-    }
-
     public int getPort() {
         return this.port;
     }
@@ -84,15 +97,11 @@ public class WebSocketMessagingProvider implements MessagingProvider {
     }
 
     @Override
-    public void start() {
-        if (requestQueue == null) {
-            logger.info("START:  using default in-memory queue for request queue");
-            requestQueue = new SimpleMessageQueue();
+    public synchronized void start() {
+        if (!shutdown) {
+            return;
         }
-        if (responseQueue == null) {
-            logger.info("START:  using default in-memory queue for response queue");
-            responseQueue = new SimpleMessageQueue();
-        }
+
         if (messageProtocol == null) {
             logger.info("START:  using default message protocol");
             messageProtocol = new DefaultMessageProtocol();
@@ -102,51 +111,27 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         this.server = new WebSocketServer(port, serviceDirectory, messageProtocol);
         server.start();
 
-        shutdown = false;
-
         logger.info("START:  initializing executor");
         this.executorService = Executors.newFixedThreadPool(2);
 
-        logger.info("START:  starting request servicing runnable");
-        this.executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                while (!shutdown) {
-                    try {
-                        getRequestQueue().poll(3, TimeUnit.SECONDS);
-
-                    } catch (InterruptedException e) {
-                        logger.warn("Interrupted while waiting for requests:  " + e, e);
-                    }
-                }// while
-            }// run()
-        });
-
-        logger.info("START:  starting response servicing runnable");
-        this.executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                while (!shutdown) {
-                    try {
-                        getResponseQueue().poll(3, TimeUnit.SECONDS);
-
-                    } catch (InterruptedException e) {
-                        logger.warn("Interrupted while waiting for responses:  " + e, e);
-                    }
-                }// while
-            }// run()
-        });
+        shutdown = false;
 
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
+        if (shutdown) {
+            return;
+        }
+
         logger.info("STOP:  shutting down websockets server");
         server.stop();
         shutdown = true;
 
         logger.info("STOP:  shutting down executor");
         executorService.shutdown();
+
+        this.shutdown = true;
     }
 
 }

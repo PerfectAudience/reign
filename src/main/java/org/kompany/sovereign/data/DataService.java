@@ -97,8 +97,8 @@ public class DataService extends AbstractActiveService {
             List<String> services = presenceService.lookupServices(clusterId);
             for (String serviceId : services) {
                 // get lock to aggregate service node data
-                DistributedLock aggregateLock = coordinationService.getLock(PathContext.INTERNAL, getCanonicalId(),
-                        "data", "aggregate-" + clusterId + "-" + serviceId, getDefaultAclList());
+                DistributedLock aggregateLock = coordinationService.getLock(PathContext.INTERNAL, getPathScheme()
+                        .getCanonicalId(), "data", "aggregate-" + clusterId + "-" + serviceId, getDefaultAclList());
                 aggregateLock.lock();
                 try {
                     // get service child nodes
@@ -159,8 +159,8 @@ public class DataService extends AbstractActiveService {
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
         if (logger.isTraceEnabled()) {
             try {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
-                        requestMessage.getBody());
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(), requestMessage
+                        .getBody());
             } catch (Exception e) {
                 logger.error("" + e, e);
             }

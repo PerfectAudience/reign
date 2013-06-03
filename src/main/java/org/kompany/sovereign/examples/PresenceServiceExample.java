@@ -55,15 +55,15 @@ public class PresenceServiceExample {
                             @Override
                             public void updated(ServiceInfo info) {
                                 if (info != null) {
-                                    logger.info("***** T1:  Observer:  serviceInfo={}",
-                                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                                    logger.info("***** T1:  Observer:  serviceInfo={}", ReflectionToStringBuilder
+                                            .toString(info, ToStringStyle.DEFAULT_STYLE));
                                 } else {
                                     logger.info("***** T1:  Observer:  serviceInfo deleted");
                                 }
                             }
                         }, -1);
-                logger.info("T1:  serviceInfo={}",
-                        ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
+                logger.info("T1:  serviceInfo={}", ReflectionToStringBuilder.toString(serviceInfo,
+                        ToStringStyle.DEFAULT_STYLE));
             }
         };
         t1.start();
@@ -77,15 +77,15 @@ public class PresenceServiceExample {
                             @Override
                             public void updated(NodeInfo info) {
                                 if (info != null) {
-                                    logger.info("***** T2:  Observer:  nodeInfo={}",
-                                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                                    logger.info("***** T2:  Observer:  nodeInfo={}", ReflectionToStringBuilder
+                                            .toString(info, ToStringStyle.DEFAULT_STYLE));
                                 } else {
                                     logger.info("***** T2:  Observer:  nodeInfo deleted");
                                 }
                             }
                         }, -1);
-                logger.info("T2:  nodeInfo={}",
-                        ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
+                logger.info("T2:  nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo,
+                        ToStringStyle.DEFAULT_STYLE));
             }
         };
         t2.start();
@@ -98,15 +98,15 @@ public class PresenceServiceExample {
                             @Override
                             public void updated(NodeInfo info) {
                                 if (info != null) {
-                                    logger.info("***** T3:  Observer:  nodeInfo={}",
-                                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                                    logger.info("***** T3:  Observer:  nodeInfo={}", ReflectionToStringBuilder
+                                            .toString(info, ToStringStyle.DEFAULT_STYLE));
                                 } else {
                                     logger.info("***** T3:  Observer:  nodeInfo deleted");
                                 }
                             }
                         }, 10000);
-                logger.info("T3:  nodeInfo={}",
-                        ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
+                logger.info("T3:  nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo,
+                        ToStringStyle.DEFAULT_STYLE));
             }
         };
         t3.start();
@@ -121,8 +121,8 @@ public class PresenceServiceExample {
                     @Override
                     public void updated(ServiceInfo info) {
                         if (info != null) {
-                            logger.info("***** Observer:  serviceInfo={}",
-                                    ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                            logger.info("***** Observer:  serviceInfo={}", ReflectionToStringBuilder.toString(info,
+                                    ToStringStyle.DEFAULT_STYLE));
                         } else {
                             logger.info("***** Observer:  serviceInfo deleted");
                         }
@@ -138,8 +138,8 @@ public class PresenceServiceExample {
                     @Override
                     public void updated(NodeInfo info) {
                         if (info != null) {
-                            logger.info("***** Observer:  nodeInfo={}",
-                                    ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                            logger.info("***** Observer:  nodeInfo={}", ReflectionToStringBuilder.toString(info,
+                                    ToStringStyle.DEFAULT_STYLE));
 
                         } else {
                             logger.info("***** Observer:  nodeInfo deleted");
@@ -149,7 +149,7 @@ public class PresenceServiceExample {
         logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
 
         // basic service node announcement
-        presenceService.announce("examples-cluster", "service1", "node1", true);
+        presenceService.announce("examples-cluster", "service1", sovereign.getPathScheme().getCanonicalId(4731), true);
 
         // service node announcement with some additional info
         Map<String, String> nodeAttributes = new HashMap<String, String>();
