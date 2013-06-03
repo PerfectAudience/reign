@@ -4,8 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
+import org.kompany.sovereign.UnexpectedSovereignException;
+import org.kompany.sovereign.util.JacksonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,14 +25,10 @@ public class DefaultMessageProtocol implements MessageProtocol {
     /**
      * Reusable Jackson JSON mapper
      */
-    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    static {
-        OBJECT_MAPPER.getDeserializationConfig().without(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES);
-
-    }
+    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapperInstance();
 
     /**
-     * Simple ASCII protocol: [SERVICE_NAME][SPACE][MESSAGE_PAYLOAD]
+     * Simple ASCII protocol: [SERVICE_NAME][COLON][MESSAGE_PAYLOAD]
      */
     @Override
     public RequestMessage fromTextRequest(String textRequest) {
@@ -75,9 +73,12 @@ public class DefaultMessageProtocol implements MessageProtocol {
 
     @Override
     public ResponseMessage fromTextResponse(String textResponse) {
-        // TODO Auto-generated method stub
-        return null;
-
+        try {
+            return OBJECT_MAPPER.readValue(textResponse, new TypeReference<ResponseMessage>() {
+            });
+        } catch (Exception e) {
+            throw new UnexpectedSovereignException(e);
+        }
     }
 
     @Override
