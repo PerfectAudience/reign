@@ -1,6 +1,6 @@
 Sovereign
 =========
-A suite of lightweight services for distributed systems coordination and messaging based on Zookeeper and Netty.
+A suite of lightweight services for distributed systems coordination and messaging based on Zookeeper, Netty, and Web Sockets.
 
 
 Features
@@ -51,6 +51,18 @@ The default layout in Zookeeper is outlined below.  Custom layouts may be create
 * `/conf` - configuration data for services, etc. are found under this path
 * `/data` - data published by services for consumption by other nodes connected to ZK via the framework is found here
 * `/lock` - data describing distributed locks lives here
+
+
+Web Sockets Protocol
+--------------------
+
+By default, services in Sovereign can receive and response to messages via Web Sockets -- this can be overridden with a custom MessagingProvider.
+
+###Message Format
+`[SOVEREIGN_SERVICE_ID]:[RESOURCE]#[META_COMMAND]`
+
+###Example Messages
+`presence:my_cluster/foo_service#observe` - this message would get information on the `foo_service` and observe the node.  The Web Sockets client would receive a data update should `foo_service` change.
 
 
 Upcoming
