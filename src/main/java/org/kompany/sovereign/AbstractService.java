@@ -27,8 +27,6 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
 
     private List<ACL> defaultAclList;
 
-    private String canonicalId;
-
     @Override
     public ResponseMessage handleMessage(RequestMessage message) {
         return null;
@@ -41,15 +39,6 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
     @Override
     public void setDefaultAclList(List<ACL> defaultAclList) {
         this.defaultAclList = defaultAclList;
-    }
-
-    @Override
-    public void setCanonicalId(String canonicalId) {
-        this.canonicalId = canonicalId;
-    }
-
-    public String getCanonicalId() {
-        return canonicalId;
     }
 
     public ServiceDirectory getServiceDirectory() {

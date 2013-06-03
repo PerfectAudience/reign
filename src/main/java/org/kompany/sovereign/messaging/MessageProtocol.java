@@ -24,6 +24,20 @@ public interface MessageProtocol {
 
     /**
      * 
+     * @param textResponse
+     * @return
+     */
+    public ResponseMessage fromTextResponse(String textResponse);
+
+    /**
+     * 
+     * @param bytes
+     * @return
+     */
+    public ResponseMessage fromBinaryResponse(byte[] bytes);
+
+    /**
+     * 
      * @param responseMessage
      * @return UTF-8 String
      */
@@ -35,5 +49,26 @@ public interface MessageProtocol {
      * @return
      */
     public byte[] toBinaryResponse(ResponseMessage responseMessage);
+
+    /**
+     * 
+     * @param requestMessage
+     * @return
+     */
+    public String toTextRequest(RequestMessage requestMessage);
+
+    /**
+     * 
+     * @param requestMessage
+     * @return
+     */
+    public byte[] toBinaryRequest(RequestMessage requestMessage);
+
+    /**
+     * 
+     * @param responseStatus
+     * @return byte representation of response status for transmission over the wire
+     */
+    public byte getResponseStatusCode(ResponseStatus responseStatus);
 
 }

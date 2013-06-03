@@ -9,9 +9,9 @@ import org.kompany.sovereign.ServiceDirectory;
  */
 public interface MessagingProvider {
 
-    public MessageQueue getRequestQueue();
-
-    public MessageQueue getResponseQueue();
+    // public MessageQueue getRequestQueue();
+    //
+    // public MessageQueue getResponseQueue();
 
     /**
      * Automatically set during bootstrapping.
@@ -20,7 +20,11 @@ public interface MessagingProvider {
      */
     public void setServiceDirectory(ServiceDirectory serviceDirectory);
 
+    public ResponseMessage sendMessage(String hostOrIpAddress, int port, RequestMessage message);
+
     public void setPort(int port);
+
+    public int getPort();
 
     public void start();
 

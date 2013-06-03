@@ -60,14 +60,20 @@ import org.jboss.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import org.jboss.netty.handler.codec.http.websocketx.WebSocketClientHandshaker;
 import org.jboss.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory;
 import org.jboss.netty.handler.codec.http.websocketx.WebSocketVersion;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WebSocketClient {
+
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketClient.class);
 
     private URI uri = null;
 
     private ChannelFuture future;
 
     private Channel channel;
+
+    private WebSocketClientHandler handler;
 
     private ClientBootstrap bootstrap;
 
@@ -89,8 +95,10 @@ public class WebSocketClient {
         final WebSocketClientHandshaker handshaker = new WebSocketClientHandshakerFactory().newHandshaker(uri,
                 WebSocketVersion.V13, null, false, customHeaders);
 
-        bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
-                Executors.newCachedThreadPool()));
+        handler = new WebSocketClientHandler(handshaker);
+
+        bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors
+                .newCachedThreadPool()));
 
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
             @Override
@@ -99,31 +107,42 @@ public class WebSocketClient {
 
                 pipeline.addLast("decoder", new HttpResponseDecoder());
                 pipeline.addLast("encoder", new HttpRequestEncoder());
-                pipeline.addLast("ws-handler", new WebSocketClientHandler(handshaker));
+                pipeline.addLast("ws-handler", handler);
                 return pipeline;
             }
         });
 
-        System.out.println("WebSocket Client connecting");
+        logger.debug("WebSocket Client connecting");
         future = bootstrap.connect(new InetSocketAddress(uri.getHost(), uri.getPort()));
         future.syncUninterruptibly();
         channel = future.getChannel();
     }
 
-    public void write(byte[] bytes) {
+    public String write(String text) {
+        final long requestId = handler.getNextRequestId();
+        ChannelFuture channelFuture = channel.write(new TextWebSocketFrame(text));
+        channelFuture.awaitUninterruptibly();
+        return (String) handler.getResponse(requestId);
+
+    }
+
+    public byte[] write(byte[] bytes) {
+        final long requestId = handler.getNextRequestId();
         BinaryWebSocketFrame binaryWebSocketFrame = new BinaryWebSocketFrame();
         binaryWebSocketFrame.setBinaryData(ChannelBuffers.copiedBuffer(bytes));
-        channel.write(binaryWebSocketFrame);
+        ChannelFuture channelFuture = channel.write(binaryWebSocketFrame);
+        channelFuture.awaitUninterruptibly();
+        return (byte[]) handler.getResponse(requestId);
     }
 
     public void ping() {
-        System.out.println("WebSocket Client sending ping");
+        logger.debug("WebSocket Client sending ping");
         channel.write(new PingWebSocketFrame(ChannelBuffers.copiedBuffer(new byte[] { 1 })));
     }
 
     public void close() {
         try {
-            System.out.println("WebSocket Client sending close");
+            logger.debug("WebSocket Client sending close");
             channel.write(new CloseWebSocketFrame());
 
             // WebSocketClientHandler will close the connection when the server
@@ -137,70 +156,70 @@ public class WebSocketClient {
         bootstrap.releaseExternalResources();
     }
 
-    public void run() throws Exception {
-        ClientBootstrap bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(
-                Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
-
-        Channel ch = null;
-
-        try {
-            String protocol = uri.getScheme();
-            if (!"ws".equals(protocol)) {
-                throw new IllegalArgumentException("Unsupported protocol: " + protocol);
-            }
-
-            HashMap<String, String> customHeaders = new HashMap<String, String>();
-            customHeaders.put("MyHeader", "MyValue");
-
-            // Connect with V13 (RFC 6455 aka HyBi-17). You can change it to V08 or V00.
-            // If you change it to V00, ping is not supported and remember to change
-            // HttpResponseDecoder to WebSocketHttpResponseDecoder in the pipeline.
-            final WebSocketClientHandshaker handshaker = new WebSocketClientHandshakerFactory().newHandshaker(uri,
-                    WebSocketVersion.V13, null, false, customHeaders);
-
-            bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-                @Override
-                public ChannelPipeline getPipeline() throws Exception {
-                    ChannelPipeline pipeline = Channels.pipeline();
-
-                    pipeline.addLast("decoder", new HttpResponseDecoder());
-                    pipeline.addLast("encoder", new HttpRequestEncoder());
-                    pipeline.addLast("ws-handler", new WebSocketClientHandler(handshaker));
-                    return pipeline;
-                }
-            });
-
-            // Connect
-            System.out.println("WebSocket Client connecting");
-            ChannelFuture future = bootstrap.connect(new InetSocketAddress(uri.getHost(), uri.getPort()));
-            future.syncUninterruptibly();
-
-            ch = future.getChannel();
-            handshaker.handshake(ch).syncUninterruptibly();
-
-            // Send 10 messages and wait for responses
-            System.out.println("WebSocket Client sending message");
-            for (int i = 0; i < 1000; i++) {
-                ch.write(new TextWebSocketFrame("Message #" + i));
-            }
-
-            // Ping
-            System.out.println("WebSocket Client sending ping");
-            ch.write(new PingWebSocketFrame(ChannelBuffers.copiedBuffer(new byte[] { 1, 2, 3, 4, 5, 6 })));
-
-            // Close
-            System.out.println("WebSocket Client sending close");
-            ch.write(new CloseWebSocketFrame());
-
-            // WebSocketClientHandler will close the connection when the server
-            // responds to the CloseWebSocketFrame.
-            ch.getCloseFuture().awaitUninterruptibly();
-        } finally {
-            if (ch != null) {
-                ch.close();
-            }
-            bootstrap.releaseExternalResources();
-        }
-    }
+    // public void run() throws Exception {
+    // ClientBootstrap bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors
+    // .newCachedThreadPool(), Executors.newCachedThreadPool()));
+    //
+    // Channel ch = null;
+    //
+    // try {
+    // String protocol = uri.getScheme();
+    // if (!"ws".equals(protocol)) {
+    // throw new IllegalArgumentException("Unsupported protocol: " + protocol);
+    // }
+    //
+    // HashMap<String, String> customHeaders = new HashMap<String, String>();
+    // customHeaders.put("MyHeader", "MyValue");
+    //
+    // // Connect with V13 (RFC 6455 aka HyBi-17). You can change it to V08 or V00.
+    // // If you change it to V00, ping is not supported and remember to change
+    // // HttpResponseDecoder to WebSocketHttpResponseDecoder in the pipeline.
+    // final WebSocketClientHandshaker handshaker = new WebSocketClientHandshakerFactory().newHandshaker(uri,
+    // WebSocketVersion.V13, null, false, customHeaders);
+    //
+    // bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+    // @Override
+    // public ChannelPipeline getPipeline() throws Exception {
+    // ChannelPipeline pipeline = Channels.pipeline();
+    //
+    // pipeline.addLast("decoder", new HttpResponseDecoder());
+    // pipeline.addLast("encoder", new HttpRequestEncoder());
+    // pipeline.addLast("ws-handler", new WebSocketClientHandler(handshaker));
+    // return pipeline;
+    // }
+    // });
+    //
+    // // Connect
+    // logger.debug("WebSocket Client connecting");
+    // ChannelFuture future = bootstrap.connect(new InetSocketAddress(uri.getHost(), uri.getPort()));
+    // future.syncUninterruptibly();
+    //
+    // ch = future.getChannel();
+    // handshaker.handshake(ch).syncUninterruptibly();
+    //
+    // // Send 10 messages and wait for responses
+    // logger.debug("WebSocket Client sending message");
+    // for (int i = 0; i < 1000; i++) {
+    // ch.write(new TextWebSocketFrame("Message #" + i));
+    // }
+    //
+    // // Ping
+    // logger.debug("WebSocket Client sending ping");
+    // ch.write(new PingWebSocketFrame(ChannelBuffers.copiedBuffer(new byte[] { 1, 2, 3, 4, 5, 6 })));
+    //
+    // // Close
+    // logger.debug("WebSocket Client sending close");
+    // ch.write(new CloseWebSocketFrame());
+    //
+    // // WebSocketClientHandler will close the connection when the server
+    // // responds to the CloseWebSocketFrame.
+    // ch.getCloseFuture().awaitUninterruptibly();
+    // } finally {
+    // if (ch != null) {
+    // ch.close();
+    // }
+    // bootstrap.releaseExternalResources();
+    // }
+    // }
 
 }

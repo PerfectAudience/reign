@@ -1,8 +1,12 @@
 package org.kompany.sovereign;
 
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
+import org.codehaus.jackson.type.TypeReference;
+import org.kompany.sovereign.util.IdUtil;
+import org.kompany.sovereign.util.JacksonUtil;
 
 /**
  * Default path scheme.
@@ -18,8 +22,10 @@ public class DefaultPathScheme implements PathScheme {
 
     private String internalBasePath;
 
-    public DefaultPathScheme() {
+    private final String canonicalId;
 
+    public DefaultPathScheme() {
+        this.canonicalId = defaultCanonicalId();
     }
 
     public DefaultPathScheme(String basePath, String internalBasePath) {
@@ -92,6 +98,54 @@ public class DefaultPathScheme implements PathScheme {
     @Override
     public boolean isValidPathToken(String pathToken) {
         return !StringUtils.isBlank(pathToken) && pathToken.indexOf('/') == -1;
+    }
+
+    @Override
+    public String getCanonicalId() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public String getCanonicalId(int port) {
+        StringBuilder sb = new StringBuilder(this.canonicalId);
+        sb.insert(this.canonicalId.length() - 1, ",\"").append(CANONICAL_ID_PORT).append("\":\"").append(port).append(
+                "\"");
+        return sb.toString();
+    }
+
+    @Override
+    public Map<String, String> parseCanonicalId(String canonicalId) {
+        try {
+            return JacksonUtil.getObjectMapperInstance().readValue(canonicalId,
+                    new TypeReference<Map<String, String>>() {
+                    });
+        } catch (Exception e) {
+            throw new UnexpectedSovereignException(e);
+        }
+    }
+
+    static String defaultCanonicalId() {
+        // get pid
+        String pid = IdUtil.getProcessId();
+
+        // try to get hostname and ip address
+        String hostname = IdUtil.getHostname();
+        String ipAddress = IdUtil.getIpAddress();
+
+        // fill in unknown values
+        if (pid == null) {
+            pid = "";
+        }
+        if (hostname == null) {
+            hostname = "";
+        }
+        if (ipAddress == null) {
+            ipAddress = "";
+        }
+
+        return "{\"" + CANONICAL_ID_HOST + "\":\"" + hostname + "\",\"" + CANONICAL_ID_IP + "\":\"" + ipAddress
+                + "\",\"" + CANONICAL_ID_PID + "\":\"" + pid + "\"}";
     }
 
 }

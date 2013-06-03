@@ -29,8 +29,6 @@ public interface Service {
 
     public void setDefaultAclList(List<ACL> defaultAclList);
 
-    public void setCanonicalId(String canonicalId);
-
     /**
      * 
      * @param pathScheme
