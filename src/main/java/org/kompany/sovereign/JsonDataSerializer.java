@@ -1,19 +1,21 @@
 package org.kompany.sovereign;
 
-import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+import org.kompany.sovereign.util.JacksonUtil;
 
+/**
+ * 
+ * @author ypai
+ * 
+ * @param <T>
+ */
 public class JsonDataSerializer<T> implements DataSerializer<T> {
 
     /**
      * Reusable Jackson JSON mapper
      */
-    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    static {
-        OBJECT_MAPPER.getDeserializationConfig().without(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES);
-
-    }
+    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapperInstance();
 
     @Override
     public byte[] serialize(T data) throws Exception {
