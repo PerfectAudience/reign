@@ -109,8 +109,8 @@ public class DefaultPathScheme implements PathScheme {
     @Override
     public String getCanonicalId(int port) {
         StringBuilder sb = new StringBuilder(this.canonicalId);
-        sb.insert(this.canonicalId.length() - 1, ",\"").append(CANONICAL_ID_PORT).append("\":\"").append(port).append(
-                "\"");
+        sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_PORT).insert(sb.length() - 1, "\":\"")
+                .insert(sb.length() - 1, port).insert(sb.length() - 1, "\"");
         return sb.toString();
     }
 
