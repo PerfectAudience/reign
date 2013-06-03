@@ -13,6 +13,8 @@ import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.Stat;
 import org.kompany.sovereign.AbstractActiveService;
+import org.kompany.sovereign.DataSerializer;
+import org.kompany.sovereign.JsonDataSerializer;
 import org.kompany.sovereign.ObservableService;
 import org.kompany.sovereign.PathContext;
 import org.kompany.sovereign.PathType;
@@ -52,7 +54,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     private int zombieCheckIntervalMillis = DEFAULT_ZOMBIE_CHECK_INTERVAL_MILLIS;
 
-    private NodeAttributeSerializer nodeAttributeSerializer = new JsonNodeAttributeSerializer();
+    private DataSerializer<Map<String, String>> nodeAttributeSerializer = new JsonDataSerializer<Map<String, String>>();
 
     private final ConcurrentMap<String, Announcement> announcementMap = new ConcurrentHashMap<String, Announcement>(8,
             0.9f, 2);
@@ -154,7 +156,7 @@ public class PresenceService extends AbstractActiveService implements Observable
      * @return
      */
     public ServiceInfo waitUntilAvailable(String clusterId, String serviceId,
-            SimplePresenceObserver<ServiceInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
+            SimplePresenceObserver<ServiceInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
             boolean useCache, long timeoutMillis) {
         ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
         if (result == null) {
@@ -216,7 +218,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public ServiceInfo lookupServiceInfo(String clusterId, String serviceId,
-            SimplePresenceObserver<ServiceInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
+            SimplePresenceObserver<ServiceInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
             boolean useCache) {
         /** get node data from zk **/
         String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
@@ -298,7 +300,7 @@ public class PresenceService extends AbstractActiveService implements Observable
      * @return
      */
     public NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId,
-            SimplePresenceObserver<NodeInfo> observer, NodeAttributeSerializer nodeAttributeSerializer,
+            SimplePresenceObserver<NodeInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
             boolean useCache, long timeoutMillis) {
         NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, useCache);
         if (result == null) {
@@ -339,7 +341,8 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId,
-            SimplePresenceObserver<NodeInfo> observer, NodeAttributeSerializer nodeAttributeSerializer, boolean useCache) {
+            SimplePresenceObserver<NodeInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
+            boolean useCache) {
         /** get node data from zk **/
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathContext.USER, PathType.PRESENCE, nodePath);
@@ -385,8 +388,8 @@ public class PresenceService extends AbstractActiveService implements Observable
         NodeInfo result = null;
         if (!error) {
             try {
-                result = new NodeInfo(clusterId, serviceId, nodeId, bytes != null ? nodeAttributeSerializer
-                        .deserialize(bytes) : Collections.EMPTY_MAP);
+                result = new NodeInfo(clusterId, serviceId, nodeId,
+                        bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
             } catch (Throwable e) {
                 throw new IllegalStateException(
                         "lookup():  error trying to fetch node info:  path=" + path + ":  " + e, e);
@@ -424,7 +427,7 @@ public class PresenceService extends AbstractActiveService implements Observable
      * @param nodeAttributeSerializer
      */
     public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
-            Map<String, String> attributeMap, NodeAttributeSerializer nodeAttributeSerializer) {
+            Map<String, String> attributeMap, DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         // defaults
         if (nodeAttributeSerializer == null) {
             nodeAttributeSerializer = this.getNodeAttributeSerializer();
@@ -529,8 +532,8 @@ public class PresenceService extends AbstractActiveService implements Observable
                     if (attributeMap.size() > 0) {
                         leafData = announcement.getNodeAttributeSerializer().serialize(attributeMap);
                     }
-                    String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), path, leafData, announcement
-                            .getAclList(), CreateMode.EPHEMERAL, -1);
+                    String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
+                            announcement.getAclList(), CreateMode.EPHEMERAL, -1);
 
                     // set last updated with some randomizer to spread out
                     // requests
@@ -617,8 +620,8 @@ public class PresenceService extends AbstractActiveService implements Observable
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(), requestMessage
-                        .getBody());
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
+                        requestMessage.getBody());
             }
 
             /** preprocess request **/
@@ -695,8 +698,10 @@ public class PresenceService extends AbstractActiveService implements Observable
         PresenceObserverWrapper observerWrapper = observerManager.getObserverWrapperSet(path).iterator().next();
         if (observerWrapper.isService()) {
             // only service nodes can have children
-            observerManager.signal(path, lookupServiceInfo(observerWrapper.getClusterId(), observerWrapper
-                    .getServiceId(), null, observerWrapper.getNodeAttributeSerializer(), true));
+            observerManager.signal(
+                    path,
+                    lookupServiceInfo(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
+                            observerWrapper.getNodeAttributeSerializer(), true));
         }
     }
 
@@ -758,11 +763,11 @@ public class PresenceService extends AbstractActiveService implements Observable
     // return pathCacheSize;
     // }
 
-    public NodeAttributeSerializer getNodeAttributeSerializer() {
+    public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {
         return nodeAttributeSerializer;
     }
 
-    public void setNodeAttributeSerializer(NodeAttributeSerializer nodeAttributeSerializer) {
+    public void setNodeAttributeSerializer(DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         this.nodeAttributeSerializer = nodeAttributeSerializer;
     }
 
@@ -800,12 +805,13 @@ public class PresenceService extends AbstractActiveService implements Observable
         private final String serviceId;
         private final String nodeId;
 
-        private final NodeAttributeSerializer nodeAttributeSerializer;
+        private final DataSerializer<Map<String, String>> nodeAttributeSerializer;
 
         private volatile T currentValue;
 
         public PresenceObserverWrapper(String clusterId, String serviceId, String nodeId,
-                SimplePresenceObserver<T> observer, NodeAttributeSerializer nodeAttributeSerializer, T currentValue) {
+                SimplePresenceObserver<T> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
+                T currentValue) {
             // from super class
             this.observer = observer;
 
@@ -839,7 +845,7 @@ public class PresenceService extends AbstractActiveService implements Observable
             return nodeId;
         }
 
-        public NodeAttributeSerializer getNodeAttributeSerializer() {
+        public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {
             return nodeAttributeSerializer;
         }
 

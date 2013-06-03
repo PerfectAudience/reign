@@ -1,8 +1,10 @@
 package org.kompany.sovereign.presence;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.zookeeper.data.ACL;
+import org.kompany.sovereign.DataSerializer;
 
 /**
  * 
@@ -14,7 +16,7 @@ public class Announcement {
     private volatile boolean hidden = true;
     private volatile NodeInfo nodeInfo;
     private volatile List<ACL> aclList;
-    private volatile NodeAttributeSerializer nodeAttributeSerializer;
+    private volatile DataSerializer<Map<String, String>> nodeAttributeSerializer;
     private volatile long lastUpdated;
 
     public NodeInfo getNodeInfo() {
@@ -41,11 +43,11 @@ public class Announcement {
         this.aclList = aclList;
     }
 
-    public NodeAttributeSerializer getNodeAttributeSerializer() {
+    public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {
         return nodeAttributeSerializer;
     }
 
-    public void setNodeAttributeSerializer(NodeAttributeSerializer nodeAttributeSerializer) {
+    public void setNodeAttributeSerializer(DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         this.nodeAttributeSerializer = nodeAttributeSerializer;
     }
 
