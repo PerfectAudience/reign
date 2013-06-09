@@ -1,6 +1,12 @@
 package org.kompany.sovereign.examples;
 
+import java.util.Map;
+
 import org.kompany.sovereign.Sovereign;
+import org.kompany.sovereign.messaging.MessagingService;
+import org.kompany.sovereign.messaging.ResponseMessage;
+import org.kompany.sovereign.messaging.SimpleRequestMessage;
+import org.kompany.sovereign.presence.PresenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +40,13 @@ public class MessagingExample {
     }
 
     public static void messagingExample(Sovereign sovereign) throws Exception {
+        PresenceService presenceService = sovereign.getService("presence");
+        presenceService.waitUntilAvailable("sovereign", "messaging", 30000);
 
+        MessagingService messagingService = sovereign.getService("messaging");
+        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("sovereign", "messaging",
+                new SimpleRequestMessage("presence", "/"));
+
+        logger.info("responseMap={}", responseMap);
     }
 }

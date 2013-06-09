@@ -11,8 +11,6 @@ import org.kompany.sovereign.UnexpectedSovereignException;
 import org.kompany.sovereign.messaging.DefaultMessageProtocol;
 import org.kompany.sovereign.messaging.MessageProtocol;
 import org.kompany.sovereign.messaging.MessagingProvider;
-import org.kompany.sovereign.messaging.RequestMessage;
-import org.kompany.sovereign.messaging.ResponseMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,10 +27,6 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     private WebSocketServer server;
 
-    // private MessageQueue requestQueue;
-
-    // private MessageQueue responseQueue;
-
     private volatile boolean shutdown = true;
 
     private ExecutorService executorService;
@@ -45,33 +39,25 @@ public class WebSocketMessagingProvider implements MessagingProvider {
             0.9f, 2);
 
     @Override
-    public ResponseMessage sendMessage(String hostOrIpAddress, int port, RequestMessage requestMessage) {
-        String clientEndpoint = "ws://" + hostOrIpAddress + ":" + port;
-        WebSocketClient client = clientMap.get(clientEndpoint);
-        if (client == null) {
-            try {
-                WebSocketClient newClient = new WebSocketClient(clientEndpoint);
-                client = clientMap.putIfAbsent(clientEndpoint, newClient);
-                if (client == null) {
-                    client = newClient;
-                    newClient.connect();
-                }
-            } catch (URISyntaxException e) {
-                throw new UnexpectedSovereignException(e);
-            }
-        }// if
-
-        if (requestMessage.getBody() instanceof String) {
-            return messageProtocol.fromTextResponse(client.write(messageProtocol.toTextRequest(requestMessage)));
-        } else {
-            return messageProtocol.fromBinaryResponse(client.write(messageProtocol.toBinaryRequest(requestMessage)));
-        }
+    public String sendMessage(String hostOrIpAddress, int port, String message) {
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port;
+        WebSocketClient client = getClient(endpointUri);
+        return client.write(message);
     }
 
+    @Override
+    public byte[] sendMessage(String hostOrIpAddress, int port, byte[] message) {
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port;
+        WebSocketClient client = getClient(endpointUri);
+        return client.write(message);
+    }
+
+    @Override
     public MessageProtocol getMessageProtocol() {
         return messageProtocol;
     }
 
+    @Override
     public void setMessageProtocol(MessageProtocol messageProtocol) {
         this.messageProtocol = messageProtocol;
     }
@@ -94,6 +80,23 @@ public class WebSocketMessagingProvider implements MessagingProvider {
     public void setPort(int port) {
         this.port = port;
 
+    }
+
+    WebSocketClient getClient(String endpointUri) {
+        WebSocketClient client = clientMap.get(endpointUri);
+        if (client == null) {
+            try {
+                WebSocketClient newClient = new WebSocketClient(endpointUri);
+                client = clientMap.putIfAbsent(endpointUri, newClient);
+                if (client == null) {
+                    client = newClient;
+                    newClient.connect();
+                }
+            } catch (URISyntaxException e) {
+                throw new UnexpectedSovereignException(e);
+            }
+        }// if
+        return client;
     }
 
     @Override

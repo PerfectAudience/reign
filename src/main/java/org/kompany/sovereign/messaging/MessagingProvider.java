@@ -20,7 +20,13 @@ public interface MessagingProvider {
      */
     public void setServiceDirectory(ServiceDirectory serviceDirectory);
 
-    public ResponseMessage sendMessage(String hostOrIpAddress, int port, RequestMessage message);
+    public String sendMessage(String hostOrIpAddress, int port, String message);
+
+    public byte[] sendMessage(String hostOrIpAddress, int port, byte[] message);
+
+    public void setMessageProtocol(MessageProtocol messageProtocol);
+
+    public MessageProtocol getMessageProtocol();
 
     public void setPort(int port);
 

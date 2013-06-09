@@ -1,5 +1,6 @@
 package org.kompany.sovereign;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -102,8 +103,7 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public String getCanonicalId() {
-        // TODO Auto-generated method stub
-        return null;
+        return this.canonicalId;
     }
 
     @Override
@@ -121,7 +121,7 @@ public class DefaultPathScheme implements PathScheme {
                     new TypeReference<Map<String, String>>() {
                     });
         } catch (Exception e) {
-            throw new UnexpectedSovereignException(e);
+            return Collections.EMPTY_MAP;
         }
     }
 

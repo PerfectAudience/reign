@@ -17,7 +17,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
-import org.kompany.sovereign.messaging.MessagingProvider;
+import org.kompany.sovereign.messaging.MessagingService;
 import org.kompany.sovereign.presence.PresenceService;
 import org.kompany.sovereign.util.PathCache;
 import org.kompany.sovereign.util.SimplePathCache;
@@ -84,8 +84,8 @@ public class Sovereign implements Watcher {
 
     private List<ACL> defaultAclList = DEFAULT_ACL_LIST;
 
-    /** set if messaging between nodes running Sovereign will be enabled */
-    private MessagingProvider messagingProvider = null;
+    // /** set if messaging between nodes running Sovereign will be enabled */
+    // private MessagingProvider messagingProvider = null;
 
     public static SovereignBuilder builder() {
         return new SovereignBuilder();
@@ -103,16 +103,16 @@ public class Sovereign implements Watcher {
         this.pathCache = pathCache;
     }
 
-    public boolean isMessagingEnabled() {
-        return messagingProvider != null;
-    }
-
-    public void setMessagingProvider(MessagingProvider messagingProvider) {
-        if (started) {
-            throw new IllegalStateException("Cannot set messagingProvider once started!");
-        }
-        this.messagingProvider = messagingProvider;
-    }
+    // public boolean isMessagingEnabled() {
+    // return messagingProvider != null;
+    // }
+    //
+    // public void setMessagingProvider(MessagingProvider messagingProvider) {
+    // if (started) {
+    // throw new IllegalStateException("Cannot set messagingProvider once started!");
+    // }
+    // this.messagingProvider = messagingProvider;
+    // }
 
     public List<ACL> getDefaultAclList() {
         return defaultAclList;
@@ -126,8 +126,8 @@ public class Sovereign implements Watcher {
     public void process(WatchedEvent event) {
         // log if DEBUG
         if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
-                    ToStringStyle.DEFAULT_STYLE));
+            logger.debug("***** Received ZooKeeper Event:  {}",
+                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
 
@@ -273,18 +273,18 @@ public class Sovereign implements Watcher {
             // execute if not a continuously running service and not shutdown
             if (!this.shutdown && serviceWrapper.isSubmittable()) {
                 logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
-                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, serviceWrapper
-                        .getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
+                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper,
+                        serviceWrapper.getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
                 futureMap.put(serviceName, future);
             }// if
         }// for
 
-        /** listen on messaging port if messaging is enabled **/
-        if (this.isMessagingEnabled()) {
-            logger.info("START:  starting messaging provider");
-            messagingProvider.setServiceDirectory(serviceDirectory);
-            messagingProvider.start();
-        }
+        // /** listen on messaging port if messaging is enabled **/
+        // if (this.isMessagingEnabled()) {
+        // logger.info("START:  starting messaging provider");
+        // messagingProvider.setServiceDirectory(serviceDirectory);
+        // messagingProvider.start();
+        // }
 
         started = true;
 
@@ -296,9 +296,10 @@ public class Sovereign implements Watcher {
 
         /** announce messaging availability: must be done after all other start-up tasks are complete **/
         PresenceService presenceService = serviceDirectory.getService("presence");
-        if (presenceService != null) {
+        MessagingService messagingService = serviceDirectory.getService("messaging");
+        if (presenceService != null && messagingService != null) {
             logger.info("START:  announcing framework availability via PresenceService");
-            presenceService.announce("sovereign", "messaging", pathScheme.getCanonicalId(messagingProvider.getPort()),
+            presenceService.announce("sovereign", "messaging", pathScheme.getCanonicalId(messagingService.getPort()),
                     true);
         } else {
             logger.warn("START:  could not announcing framework availability via PresenceService!");
@@ -313,11 +314,6 @@ public class Sovereign implements Watcher {
         shutdown = true;
 
         logger.info("SHUTDOWN:  begin");
-
-        /** shut down messaging provider **/
-        if (messagingProvider != null) {
-            messagingProvider.stop();
-        }
 
         /** cancel all futures **/
         logger.info("SHUTDOWN:  cancelling scheduled service tasks");

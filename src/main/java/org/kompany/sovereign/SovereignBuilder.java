@@ -8,6 +8,7 @@ import org.kompany.sovereign.conf.ConfService;
 import org.kompany.sovereign.coord.CoordinationService;
 import org.kompany.sovereign.data.DataService;
 import org.kompany.sovereign.messaging.MessagingProvider;
+import org.kompany.sovereign.messaging.MessagingService;
 import org.kompany.sovereign.messaging.websocket.WebSocketMessagingProvider;
 import org.kompany.sovereign.presence.PresenceService;
 import org.kompany.sovereign.util.PathCache;
@@ -37,9 +38,9 @@ public class SovereignBuilder {
 
     private PathScheme pathScheme = null;
 
-    private MessagingProvider messagingProvider = null;
+    // private MessagingProvider messagingProvider = null;
 
-    private boolean messagingOff = false;
+    // private final boolean messagingOff = false;
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
@@ -55,6 +56,9 @@ public class SovereignBuilder {
 
         DataService dataService = new DataService();
         serviceMap.put("data", dataService);
+
+        MessagingService messagingService = new MessagingService();
+        serviceMap.put("messaging", messagingService);
 
         return this;
     }
@@ -87,18 +91,18 @@ public class SovereignBuilder {
         return this;
     }
 
-    public SovereignBuilder messagingProvider(MessagingProvider messagingProvider) {
-        this.messagingProvider = messagingProvider;
-        return this;
-    }
-
-    public SovereignBuilder messagingOff(boolean messagingOff) {
-        this.messagingOff = messagingOff;
-        if (this.messagingOff) {
-            this.messagingProvider = null;
-        }
-        return this;
-    }
+    // public SovereignBuilder messagingProvider(MessagingProvider messagingProvider) {
+    // this.messagingProvider = messagingProvider;
+    // return this;
+    // }
+    //
+    // public SovereignBuilder messagingOff(boolean messagingOff) {
+    // this.messagingOff = messagingOff;
+    // if (this.messagingOff) {
+    // this.messagingProvider = null;
+    // }
+    // return this;
+    // }
 
     public Sovereign build() {
 
@@ -113,11 +117,11 @@ public class SovereignBuilder {
             pathScheme = defaultPathScheme();
         }
 
-        if (!messagingOff && messagingProvider == null) {
-            messagingProvider = defaultMessagingProvider(Sovereign.DEFAULT_MESSAGING_PORT);
-        }
+        // if (!messagingOff && messagingProvider == null) {
+        // messagingProvider = defaultMessagingProvider(Sovereign.DEFAULT_MESSAGING_PORT);
+        // }
         s = new Sovereign(zkClient, pathScheme, pathCache);
-        s.setMessagingProvider(!messagingOff ? messagingProvider : null);
+        // s.setMessagingProvider(!messagingOff ? messagingProvider : null);
         s.registerServices(serviceMap);
         return s;
     }

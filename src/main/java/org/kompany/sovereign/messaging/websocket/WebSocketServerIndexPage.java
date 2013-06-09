@@ -147,7 +147,7 @@ public final class WebSocketServerIndexPage {
                                 + NEWLINE
                                 + "<h3>Output</h3>"
                                 + NEWLINE
-                                + "<div id=\"responseText\" style=\"width:90%;height:300px;border:1px solid;font-family:monospace;overflow:scroll;\"></div>"
+                                + "<div id=\"responseText\" style=\"width:90%;height:80%;border:1px solid;font-family:monospace;overflow:scroll;\"></div>"
                                 + NEWLINE + "</form>" + NEWLINE + "</body>" + NEWLINE + "</html>" + NEWLINE,
                         CharsetUtil.UTF_8);
     }
