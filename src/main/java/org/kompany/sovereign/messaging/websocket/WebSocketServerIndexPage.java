@@ -108,17 +108,13 @@ public final class WebSocketServerIndexPage {
                                 + NEWLINE
                                 + "  if (!window.WebSocket) { return; }"
                                 + NEWLINE
-                                + "var waitInterval = 0;"
-                                + NEWLINE
                                 + "  if (!socket || socket.readyState != WebSocket.OPEN) {"
                                 + NEWLINE
                                 + "    connectWebSocket(); alert(\"The socket is not open:  reconnecting:  "
                                 + webSocketLocation
-                                + "\"); waitInterval=100;"
+                                + "\"); setTimeout( function(){ if (socket && socket.readyState == WebSocket.OPEN) {socket.send(message);} }, 200);"
                                 + NEWLINE
-                                + "  }"
-                                + NEWLINE
-                                + "    setTimeout( function(){ if (socket && socket.readyState == WebSocket.OPEN) {socket.send(message);} }, waitInterval);"
+                                + "  } else { socket.send(message); }"
                                 + NEWLINE
                                 + "} // function"
                                 + NEWLINE
