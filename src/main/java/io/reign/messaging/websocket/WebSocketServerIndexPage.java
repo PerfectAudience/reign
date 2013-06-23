@@ -45,7 +45,7 @@ public final class WebSocketServerIndexPage {
     public static ChannelBuffer getContent(String webSocketLocation) {
         return ChannelBuffers
                 .copiedBuffer(
-                        "<html><head><title>Sovereign Terminal</title></head>"
+                        "<html><head><title>Reign :: Terminal</title></head>"
                                 + NEWLINE
                                 + "<body>"
                                 + NEWLINE
@@ -76,7 +76,9 @@ public final class WebSocketServerIndexPage {
                                 + "  };"
                                 + NEWLINE
                                 + "  socket.onopen = function(event) {"
-                                + "    socketOpened = true; appendDiv('responseText', 'Web Socket opened.');"
+                                + "    socketOpened = true; appendDiv('responseText', 'Web Socket opened:  "
+                                + webSocketLocation
+                                + "');"
                                 + NEWLINE
                                 + "  };"
                                 + NEWLINE
@@ -143,7 +145,7 @@ public final class WebSocketServerIndexPage {
                                 + NEWLINE
                                 + "<h3>Output</h3>"
                                 + NEWLINE
-                                + "<div id=\"responseText\" style=\"width:90%;height:80%;border:1px solid;font-family:monospace;overflow:scroll;\"></div>"
+                                + "<div id=\"responseText\" style=\"width:90%;height:80%;padding:1em;border:1px solid;font-family:monospace;overflow:scroll;\"></div>"
                                 + NEWLINE + "</form>" + NEWLINE + "</body>" + NEWLINE + "</html>" + NEWLINE,
                         CharsetUtil.UTF_8);
     }

@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Wrapper service to make messaging capabilities available to other services via ServiceDirectory.
+ * Wrapper service to make messaging capabilities available to other services via context.
  * 
  * @author ypai
  * 
@@ -39,7 +39,7 @@ public class MessagingService extends AbstractService {
         }
 
         // get port
-        String portString = canonicalIdMap.get(PathScheme.CANONICAL_ID_PORT);
+        String portString = canonicalIdMap.get(PathScheme.CANONICAL_ID_MESSAGING_PORT);
 
         if (hostOrIpAddress == null || portString == null) {
             return null;
@@ -54,12 +54,12 @@ public class MessagingService extends AbstractService {
         }
 
         if (requestMessage.getBody() instanceof String) {
-            String textResponse = this.messagingProvider.sendMessage(hostOrIpAddress, port,
-                    messageProtocol.toTextRequest(requestMessage));
+            String textResponse = this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol
+                    .toTextRequest(requestMessage));
             return this.messageProtocol.fromTextResponse(textResponse);
         } else {
-            byte[] binaryResponse = this.messagingProvider.sendMessage(hostOrIpAddress, port,
-                    messageProtocol.toBinaryRequest(requestMessage));
+            byte[] binaryResponse = this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol
+                    .toBinaryRequest(requestMessage));
             return this.messageProtocol.fromBinaryResponse(binaryResponse);
         }
 
@@ -74,8 +74,10 @@ public class MessagingService extends AbstractService {
         Map<String, ResponseMessage> responseMap = new HashMap<String, ResponseMessage>(serviceInfo.getNodeIdList()
                 .size());
         for (String nodeId : serviceInfo.getNodeIdList()) {
-            logger.info("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}", new Object[] {
-                    clusterId, serviceId, nodeId, requestMessage });
+            if (logger.isTraceEnabled()) {
+                logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
+                        new Object[] { clusterId, serviceId, nodeId, requestMessage });
+            }
             ResponseMessage responseMessage = sendMessage(clusterId, serviceId, nodeId, requestMessage);
             responseMap.put(getPathScheme().buildRelativePath(clusterId, serviceId, nodeId), responseMessage);
         }

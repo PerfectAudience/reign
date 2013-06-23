@@ -41,9 +41,7 @@ public class ReignBuilder {
 
     private String reservedClusterId;
 
-    // private MessagingProvider messagingProvider = null;
-
-    // private final boolean messagingOff = false;
+    private Integer messagingPort = null;
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
@@ -62,6 +60,7 @@ public class ReignBuilder {
 
         MessagingService messagingService = new MessagingService();
         serviceMap.put("messaging", messagingService);
+        messagingPort = messagingService.getPort();
 
         return this;
     }
@@ -148,7 +147,7 @@ public class ReignBuilder {
     }
 
     PathScheme defaultPathScheme(String reservedClusterId) {
-        return new DefaultPathScheme("/" + reservedClusterId);
+        return new DefaultPathScheme("/" + reservedClusterId, messagingPort);
     }
 
     MessagingProvider defaultMessagingProvider(int port) {

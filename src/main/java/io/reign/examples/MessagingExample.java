@@ -23,31 +23,46 @@ public class MessagingExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start sovereign using builder **/
-        Reign sovereign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8)
-                .allCoreServices().build();
-        sovereign.start();
+        Reign reign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices().build();
+        reign.start();
 
         /** messaging example **/
-        messagingExample(sovereign);
+        messagingExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(120000);
 
         /** shutdown sovereign **/
-        sovereign.stop();
+        reign.stop();
 
         /** sleep a bit to observe observer callbacks **/
         Thread.sleep(10000);
     }
 
-    public static void messagingExample(Reign sovereign) throws Exception {
-        PresenceService presenceService = sovereign.getService("presence");
-        presenceService.waitUntilAvailable("sovereign", "messaging", 30000);
+    public static void messagingExample(Reign reign) throws Exception {
+        PresenceService presenceService = reign.getService("presence");
+        presenceService.announce("examples", "service3", reign.getPathScheme().getCanonicalId(1234), true);
+        presenceService.announce("examples", "service4", reign.getPathScheme().getCanonicalId(4321), true);
 
-        MessagingService messagingService = sovereign.getService("messaging");
-        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("sovereign", "messaging",
+        presenceService.waitUntilAvailable("examples", "service3", 30000);
+
+        Thread.sleep(5000);
+
+        MessagingService messagingService = reign.getService("messaging");
+
+        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service3",
                 new SimpleRequestMessage("presence", "/"));
 
-        logger.info("responseMap={}", responseMap);
+        logger.info("Broadcast#1:  responseMap={}", responseMap);
+
+        responseMap = messagingService.sendMessage("examples", "service4", new SimpleRequestMessage("presence",
+                "/reign/messaging"));
+
+        logger.info("Broadcast#2:  responseMap={}", responseMap);
+
+        responseMap = messagingService.sendMessage("examples", "service3", new SimpleRequestMessage("presence",
+                "/reign"));
+
+        logger.info("Broadcast#3:  responseMap={}", responseMap);
     }
 }

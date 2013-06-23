@@ -23,8 +23,8 @@ public class ConfServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start sovereign using builder **/
-        final Reign sovereign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8)
-                .allCoreServices().build();
+        final Reign sovereign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices()
+                .build();
         // sovereign.start();
 
         /** conf service example **/
@@ -72,7 +72,7 @@ public class ConfServiceExample {
 
         // load a configuration which will not be immediately available but pass
         // observer to be notified of changes in configuration
-        Properties loadedConf = confService.getConf("examples-cluster", "config1.properties",
+        Properties loadedConf = confService.getConf("examples", "config1.properties",
                 new ConfPropertiesSerializer<ConfProperties>(false), new SimpleConfObserver<ConfProperties>() {
                     @Override
                     public void updated(ConfProperties conf) {
@@ -92,8 +92,7 @@ public class ConfServiceExample {
         conf.setProperty("capacity.min", "111");
         conf.setProperty("capacity.max", "999");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples-cluster", "config1.properties", conf, new ConfPropertiesSerializer<Properties>(
-                false));
+        confService.putConf("examples", "config1.properties", conf, new ConfPropertiesSerializer<Properties>(false));
 
         Thread.sleep(10000);
 
@@ -102,12 +101,11 @@ public class ConfServiceExample {
         conf.setProperty("capacity.min", "333");
         conf.setProperty("capacity.max", "1024");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples-cluster", "config1.properties", conf, new ConfPropertiesSerializer<Properties>(
-                false));
+        confService.putConf("examples", "config1.properties", conf, new ConfPropertiesSerializer<Properties>(false));
 
         Thread.sleep(10000);
 
         // remove configuration
-        confService.removeConf("examples-cluster", "config1.properties");
+        confService.removeConf("examples", "config1.properties");
     }
 }

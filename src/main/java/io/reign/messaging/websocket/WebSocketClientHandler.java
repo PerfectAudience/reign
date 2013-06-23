@@ -39,7 +39,6 @@ package io.reign.messaging.websocket;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -64,26 +63,19 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
 
     private final WebSocketClientHandshaker handshaker;
 
-    private final AtomicLong requestIdSequence = new AtomicLong(1);
+    // private final AtomicLong requestIdSequence = new AtomicLong(1);
 
-    private final ConcurrentMap<Long, Object> responseMap = new ConcurrentHashMap<Long, Object>(32, 0.9f, 2);
+    private final ConcurrentMap<Integer, Object> responseHolder = new ConcurrentHashMap<Integer, Object>(64, 0.9f, 8);
 
     public WebSocketClientHandler(WebSocketClientHandshaker handshaker) {
         this.handshaker = handshaker;
     }
 
-    public long getNextRequestId() {
-        return requestIdSequence.get();
-    }
-
-    public Object getResponse(long requestId) {
-        Object response = responseMap.get(requestId);
-        if (response != null) {
-            responseMap.remove(requestId);
-            return response;
-        } else {
-            return null;
+    public Object pollResponse(int requestId) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("responseHolder.size()={}", responseHolder.size());
         }
+        return responseHolder.remove(requestId);
     }
 
     @Override
@@ -110,9 +102,27 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
         if (frame instanceof TextWebSocketFrame) {
             TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
 
-            logger.debug("WebSocket Client received message: " + textFrame.getText());
+            String responseText = textFrame.getText();
 
-            responseMap.put(requestIdSequence.getAndIncrement(), textFrame.getText());
+            if (logger.isTraceEnabled()) {
+                logger.trace("WebSocket Client received message: channelId={}; requestId={}; message='{}'",
+                        new Object[] { ctx.getChannel().getId(), responseText });
+            }
+
+            int indexLeftQuote = responseText.indexOf("\"id\":");
+            int indexRightQuote = responseText.indexOf(",", indexLeftQuote);
+            String requestIdString = responseText.substring(indexLeftQuote + 5, indexRightQuote);
+            int requestId = 0;
+            if (requestIdString != null) {
+                requestId = Integer.parseInt(requestIdString);
+            }
+
+            if (logger.isTraceEnabled()) {
+                logger.trace("WebSocket Client received message: channelId={}; requestId={}; message='{}'",
+                        new Object[] { ctx.getChannel().getId(), requestIdString, responseText });
+            }
+
+            responseHolder.put(requestId, responseText);
 
         } else if (frame instanceof PongWebSocketFrame) {
             logger.debug("WebSocket Client received pong");

@@ -37,23 +37,25 @@ package io.reign.messaging.websocket;
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 //THE SOFTWARE.
 
+import io.reign.messaging.DefaultMessageProtocol;
+
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.http.HttpRequestEncoder;
 import org.jboss.netty.handler.codec.http.HttpResponseDecoder;
-import org.jboss.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import org.jboss.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import org.jboss.netty.handler.codec.http.websocketx.PingWebSocketFrame;
 import org.jboss.netty.handler.codec.http.websocketx.TextWebSocketFrame;
@@ -77,6 +79,8 @@ public class WebSocketClient {
 
     private ClientBootstrap bootstrap;
 
+    private final AtomicInteger messageIdSequence = new AtomicInteger(0);
+
     public WebSocketClient(String uriString) throws URISyntaxException {
         this.uri = new URI(uriString);
     }
@@ -85,15 +89,18 @@ public class WebSocketClient {
         this.uri = uri;
     }
 
-    public void connect() {
-        HashMap<String, String> customHeaders = new HashMap<String, String>();
-        customHeaders.put("MyHeader", "MyValue");
+    public void connect() throws Exception {
+
+        logger.info("Connecting:  uri=" + uri);
+
+        // HashMap<String, String> customHeaders = new HashMap<String, String>();
+        // customHeaders.put("MyHeader", "MyValue");
 
         // Connect with V13 (RFC 6455 aka HyBi-17). You can change it to V08 or V00.
         // If you change it to V00, ping is not supported and remember to change
         // HttpResponseDecoder to WebSocketHttpResponseDecoder in the pipeline.
         final WebSocketClientHandshaker handshaker = new WebSocketClientHandshakerFactory().newHandshaker(uri,
-                WebSocketVersion.V13, null, false, customHeaders);
+                WebSocketVersion.V13, null, false, null);
 
         handler = new WebSocketClientHandler(handshaker);
 
@@ -116,23 +123,52 @@ public class WebSocketClient {
         future = bootstrap.connect(new InetSocketAddress(uri.getHost(), uri.getPort()));
         future.syncUninterruptibly();
         channel = future.getChannel();
+
+        handshaker.handshake(channel).syncUninterruptibly();
     }
 
     public String write(String text) {
-        final long requestId = handler.getNextRequestId();
-        ChannelFuture channelFuture = channel.write(new TextWebSocketFrame(text));
-        channelFuture.awaitUninterruptibly();
-        return (String) handler.getResponse(requestId);
 
+        final int requestId = messageIdSequence.incrementAndGet();
+
+        final ChannelFuture channelFuture = channel.write(new TextWebSocketFrame(text
+                + DefaultMessageProtocol.MESSAGE_ID_DELIMITER + requestId));
+        channelFuture.addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture channelFuture) {
+                synchronized (channelFuture) {
+                    logger.trace("notify() called:  channelFuture.hashCode()={}", channelFuture.hashCode());
+                    channelFuture.notify();
+                }
+            }
+        });
+        channelFuture.awaitUninterruptibly();
+
+        Object response = null;
+        synchronized (channelFuture) {
+            try {
+                int waitMillis = 2;
+                while ((response = handler.pollResponse(requestId)) == null && waitMillis < 4096) {
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("Calling wait({}):  requestId={}; channelFuture.hashCode()={}", new Object[] {
+                                waitMillis, requestId, channelFuture.hashCode() });
+                    }
+                    channelFuture.wait(waitMillis);
+                    waitMillis = waitMillis * 2;
+                }
+            } catch (InterruptedException e) {
+                logger.warn("Interrupted while waiting for response:  " + e, e);
+            }
+        }
+
+        logger.trace("Got response:  requestId={}; channelFuture.hashCode()={}; response={}", new Object[] { requestId,
+                text, response });
+
+        return (String) response;
     }
 
     public byte[] write(byte[] bytes) {
-        final long requestId = handler.getNextRequestId();
-        BinaryWebSocketFrame binaryWebSocketFrame = new BinaryWebSocketFrame();
-        binaryWebSocketFrame.setBinaryData(ChannelBuffers.copiedBuffer(bytes));
-        ChannelFuture channelFuture = channel.write(binaryWebSocketFrame);
-        channelFuture.awaitUninterruptibly();
-        return (byte[]) handler.getResponse(requestId);
+        throw new UnsupportedOperationException("Not yet supported.");
     }
 
     public void ping() {

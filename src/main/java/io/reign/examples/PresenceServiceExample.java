@@ -26,32 +26,31 @@ public class PresenceServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start sovereign using builder **/
-        Reign sovereign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8)
-                .allCoreServices().build();
-        sovereign.start();
+        Reign reign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices().build();
+        reign.start();
 
         /** presence service example **/
-        presenceServiceExample(sovereign);
+        presenceServiceExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(120000);
 
         /** shutdown sovereign **/
-        sovereign.stop();
+        reign.stop();
 
         /** sleep a bit to observe observer callbacks **/
         Thread.sleep(10000);
     }
 
-    public static void presenceServiceExample(Reign sovereign) throws Exception {
+    public static void presenceServiceExample(Reign reign) throws Exception {
         // get presence service
-        final PresenceService presenceService = sovereign.getService("presence");
+        final PresenceService presenceService = reign.getService("presence");
 
         // separate thread to exercise waitUntilAvailable for ServiceInfo
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                ServiceInfo serviceInfo = presenceService.waitUntilAvailable("examples-cluster", "service1",
+                ServiceInfo serviceInfo = presenceService.waitUntilAvailable("examples", "service1",
                         new SimplePresenceObserver<ServiceInfo>() {
                             @Override
                             public void updated(ServiceInfo info) {
@@ -73,7 +72,7 @@ public class PresenceServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples-cluster", "service1", "node1",
+                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1",
                         new SimplePresenceObserver<NodeInfo>() {
                             @Override
                             public void updated(NodeInfo info) {
@@ -94,7 +93,7 @@ public class PresenceServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples-cluster", "service1", "node1",
+                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1",
                         new SimplePresenceObserver<NodeInfo>() {
                             @Override
                             public void updated(NodeInfo info) {
@@ -117,7 +116,7 @@ public class PresenceServiceExample {
         // try to retrieve service info (which may not be immediately
         // available); include observer to be notified of changes in service
         // info
-        ServiceInfo serviceInfo = presenceService.lookupServiceInfo("examples-cluster", "service1",
+        ServiceInfo serviceInfo = presenceService.lookupServiceInfo("examples", "service1",
                 new SimplePresenceObserver<ServiceInfo>() {
                     @Override
                     public void updated(ServiceInfo info) {
@@ -134,7 +133,7 @@ public class PresenceServiceExample {
         // try to retrieve node info (which may not be immediately
         // available); include observer to be notified of changes in node
         // info
-        NodeInfo nodeInfo = presenceService.lookupNodeInfo("examples-cluster", "service2", "node1",
+        NodeInfo nodeInfo = presenceService.lookupNodeInfo("examples", "service2", "node1",
                 new SimplePresenceObserver<NodeInfo>() {
                     @Override
                     public void updated(NodeInfo info) {
@@ -150,37 +149,37 @@ public class PresenceServiceExample {
         logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
 
         // basic service node announcement
-        presenceService.announce("examples-cluster", "service1", sovereign.getPathScheme().getCanonicalId(4731), true);
+        presenceService.announce("examples", "service1", reign.getPathScheme().getCanonicalId(4321), true);
 
         // service node announcement with some additional info
         Map<String, String> nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "1234");
-        presenceService.announce("examples-cluster", "service2", "node1", true, nodeAttributes);
+        presenceService.announce("examples", "service2", "node1", true, nodeAttributes);
 
         // sleep a bit
         Thread.sleep(10000);
 
-        presenceService.hide("examples-cluster", "service2", "node1");
+        presenceService.hide("examples", "service2", "node1");
 
         // sleep a bit
         Thread.sleep(10000);
 
-        presenceService.unhide("examples-cluster", "service2", "node1");
+        presenceService.unhide("examples", "service2", "node1");
 
         // new node available in service
-        presenceService.announce("examples-cluster", "service1", "node2", true);
+        presenceService.announce("examples", "service1", "node2", true);
 
         // sleep a bit
         Thread.sleep(10000);
 
         // new node available in service
-        presenceService.hide("examples-cluster", "service1", "node2");
+        presenceService.hide("examples", "service1", "node2");
 
         // reannounce service with changed attributes
         // service node announcement with some additional info
         nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "9999");
-        presenceService.announce("examples-cluster", "service2", "node1", true, nodeAttributes);
+        presenceService.announce("examples", "service2", "node1", true, nodeAttributes);
 
     }
 }

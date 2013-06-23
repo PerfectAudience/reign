@@ -7,7 +7,9 @@ package io.reign.messaging;
  */
 public interface Message {
 
-    // public Object getGuid();
+    public Integer getId();
+
+    public void setId(Integer id);
 
     public Object getBody();
 

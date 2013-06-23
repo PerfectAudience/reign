@@ -2,6 +2,7 @@ package io.reign.util;
 
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 /**
  * 
@@ -16,6 +17,7 @@ public class JacksonUtil {
     static {
         DEFAULT_OBJECT_MAPPER.getDeserializationConfig().without(
                 DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES);
+        DEFAULT_OBJECT_MAPPER.setSerializationInclusion(Inclusion.NON_NULL);
 
     }
 

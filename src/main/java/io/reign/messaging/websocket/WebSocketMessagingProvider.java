@@ -6,11 +6,9 @@ import io.reign.messaging.DefaultMessageProtocol;
 import io.reign.messaging.MessageProtocol;
 import io.reign.messaging.MessagingProvider;
 
-import java.net.URISyntaxException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,14 +39,14 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     @Override
     public String sendMessage(String hostOrIpAddress, int port, String message) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port;
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/ws";
         WebSocketClient client = getClient(endpointUri);
         return client.write(message);
     }
 
     @Override
     public byte[] sendMessage(String hostOrIpAddress, int port, byte[] message) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port;
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/ws";
         WebSocketClient client = getClient(endpointUri);
         return client.write(message);
     }
@@ -93,7 +91,7 @@ public class WebSocketMessagingProvider implements MessagingProvider {
                     client = newClient;
                     newClient.connect();
                 }
-            } catch (URISyntaxException e) {
+            } catch (Exception e) {
                 throw new UnexpectedReignException(e);
             }
         }// if
@@ -116,7 +114,7 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         server.start();
 
         logger.info("START:  initializing executor");
-        this.executorService = Executors.newFixedThreadPool(2);
+        // this.executorService = Executors.newFixedThreadPool(2);
 
         shutdown = false;
 
@@ -130,10 +128,11 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
         logger.info("STOP:  shutting down websockets server");
         server.stop();
-        shutdown = true;
 
         logger.info("STOP:  shutting down executor");
-        executorService.shutdown();
+        if (this.executorService != null) {
+            executorService.shutdown();
+        }
 
         this.shutdown = true;
     }

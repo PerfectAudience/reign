@@ -1,10 +1,7 @@
 package io.reign.messaging;
 
-import io.reign.UnexpectedReignException;
 import io.reign.util.JacksonUtil;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.codehaus.jackson.map.ObjectMapper;
@@ -23,10 +20,15 @@ public class DefaultMessageProtocol implements MessageProtocol {
 
     private static final Pattern PATTERN_TEXT_REQUEST_SPLITTER = Pattern.compile("\\:");
 
+    public static final String MESSAGE_ID_DELIMITER = "\\";
+
     /**
      * Reusable Jackson JSON mapper
      */
     private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapperInstance();
+
+    private static final ResponseMessage DEFAULT_ERROR_RESPONSE = new SimpleResponseMessage(
+            ResponseStatus.ERROR_UNEXPECTED);
 
     /**
      * Simple ASCII protocol: [SERVICE_NAME][COLON][MESSAGE_PAYLOAD]
@@ -38,7 +40,14 @@ public class DefaultMessageProtocol implements MessageProtocol {
         if (requestTokens.length == 2) {
             RequestMessage requestMessage = new SimpleRequestMessage();
             requestMessage.setTargetService(requestTokens[0]);
-            requestMessage.setBody(requestTokens[1]);
+
+            int messageIdDelimiterIndex = requestTokens[1].lastIndexOf(MESSAGE_ID_DELIMITER);
+            if (messageIdDelimiterIndex == -1) {
+                requestMessage.setBody(requestTokens[1]);
+            } else {
+                requestMessage.setBody(requestTokens[1].substring(0, messageIdDelimiterIndex));
+                requestMessage.setId(Integer.parseInt(requestTokens[1].substring(messageIdDelimiterIndex + 1)));
+            }
             return requestMessage;
         } else {
             logger.warn("Bad message:  message='{}'", textRequest);
@@ -57,10 +66,10 @@ public class DefaultMessageProtocol implements MessageProtocol {
     @Override
     public String toTextResponse(ResponseMessage responseMessage) {
         try {
-            Map<String, Object> responseMap = new HashMap<String, Object>(2);
-            responseMap.put("status", getResponseStatusCode(responseMessage.getStatus()));
-            responseMap.put("body", responseMessage.getBody());
-            return OBJECT_MAPPER.writeValueAsString(responseMap);
+            // Map<String, Object> responseMap = new HashMap<String, Object>(2);
+            // responseMap.put("status", getResponseStatusCode(responseMessage.getStatus()));
+            // responseMap.put("body", responseMessage.getBody());
+            return OBJECT_MAPPER.writeValueAsString(responseMessage);
         } catch (Exception e) {
             logger.error("Error trying to encode response message:  " + e, e);
         }
@@ -75,10 +84,11 @@ public class DefaultMessageProtocol implements MessageProtocol {
     @Override
     public ResponseMessage fromTextResponse(String textResponse) {
         try {
-            return OBJECT_MAPPER.readValue(textResponse, new TypeReference<ResponseMessage>() {
+            return OBJECT_MAPPER.readValue(textResponse, new TypeReference<SimpleResponseMessage>() {
             });
         } catch (Exception e) {
-            throw new UnexpectedReignException(e);
+            logger.error("" + e, e);
+            return DEFAULT_ERROR_RESPONSE;
         }
     }
 

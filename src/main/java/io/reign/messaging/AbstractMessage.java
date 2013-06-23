@@ -7,19 +7,19 @@ package io.reign.messaging;
  */
 public abstract class AbstractMessage implements Message {
 
-    // private Object guid;
+    private Integer id = null;
 
     private Object body;
 
-    // @Override
-    // public Object getGuid() {
-    // return guid;
-    // }
-    //
-    // @Override
-    // public void setGuid(Object guid) {
-    // this.guid = guid;
-    // }
+    @Override
+    public Integer getId() {
+        return id;
+    }
+
+    @Override
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     @Override
     public Object getBody() {

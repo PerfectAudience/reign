@@ -668,6 +668,8 @@ public class PresenceService extends AbstractActiveService implements Observable
                 }
             }
 
+            responseMessage.setId(requestMessage.getId());
+
             return responseMessage;
         } catch (Exception e) {
             logger.error("" + e, e);
@@ -749,18 +751,6 @@ public class PresenceService extends AbstractActiveService implements Observable
         this.signalStateUnknown(null);
     }
 
-    // public int getConcurrencyLevel() {
-    // return concurrencyLevel;
-    // }
-    //
-    // public void setConcurrencyLevel(int concurrencyLevel) {
-    // this.concurrencyLevel = concurrencyLevel;
-    // }
-
-    // public int getPathCacheSize() {
-    // return pathCacheSize;
-    // }
-
     public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {
         return nodeAttributeSerializer;
     }
@@ -768,10 +758,6 @@ public class PresenceService extends AbstractActiveService implements Observable
     public void setNodeAttributeSerializer(DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         this.nodeAttributeSerializer = nodeAttributeSerializer;
     }
-
-    // public void setPathCacheSize(int pathCacheSize) {
-    // this.pathCacheSize = pathCacheSize;
-    // }
 
     public long getHeartbeatIntervalMillis() {
         return this.getExecutionIntervalMillis();

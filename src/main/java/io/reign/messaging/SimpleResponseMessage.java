@@ -19,6 +19,10 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
     public SimpleResponseMessage() {
     }
 
+    public SimpleResponseMessage(ResponseStatus status) {
+        setStatus(status);
+    }
+
     public SimpleResponseMessage(ResponseStatus status, Object body) {
         setStatus(status);
         setBody(body);

@@ -22,7 +22,7 @@ public class DefaultPathScheme implements PathScheme {
 
     private String basePath;
 
-    // private String internalBasePath;
+    private Integer messagingPort;
 
     private final String canonicalId;
 
@@ -33,7 +33,17 @@ public class DefaultPathScheme implements PathScheme {
     public DefaultPathScheme(String basePath) {
         this();
         this.basePath = basePath;
-        // this.internalBasePath = internalBasePath;
+
+    }
+
+    public DefaultPathScheme(String basePath, int messagingPort) {
+        this();
+        this.basePath = basePath;
+        this.messagingPort = messagingPort;
+    }
+
+    public void setMessagingPort(Integer messagingPort) {
+        this.messagingPort = messagingPort;
     }
 
     public void setBasePath(String basePath) {
@@ -108,6 +118,10 @@ public class DefaultPathScheme implements PathScheme {
     @Override
     public String getCanonicalId(int port) {
         StringBuilder sb = new StringBuilder(this.canonicalId);
+        if (this.messagingPort != null) {
+            sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_MESSAGING_PORT).insert(
+                    sb.length() - 1, "\":\"").insert(sb.length() - 1, this.messagingPort).insert(sb.length() - 1, "\"");
+        }
         sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_PORT).insert(sb.length() - 1, "\":\"")
                 .insert(sb.length() - 1, port).insert(sb.length() - 1, "\"");
         return sb.toString();
@@ -124,7 +138,7 @@ public class DefaultPathScheme implements PathScheme {
         }
     }
 
-    static String defaultCanonicalId() {
+    String defaultCanonicalId() {
         // get pid
         String pid = IdUtil.getProcessId();
 

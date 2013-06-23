@@ -1,7 +1,5 @@
 package io.reign;
 
-import io.reign.messaging.MessagingService;
-import io.reign.presence.PresenceService;
 import io.reign.util.PathCache;
 import io.reign.util.SimplePathCache;
 
@@ -174,15 +172,14 @@ public class Reign implements Watcher {
 
         // TODO: this is wrong without synchronization: use putIfAbsent here
 
+        logger.info("Registering service:  serviceName={}", serviceName);
+
         // check that we don't have duplicate services
-        if (serviceMap.get(serviceName) != null) {
+        if (serviceMap.put(serviceName, new ServiceWrapper(service)) != null) {
             throw new IllegalStateException("An existing service already exists under the same name:  serviceName="
                     + serviceName);
         }
 
-        logger.info("Registering service:  serviceName={}", serviceName);
-
-        serviceMap.put(serviceName, new ServiceWrapper(service));
     }
 
     public synchronized void registerServices(Map<String, Service> serviceMap) {
@@ -301,16 +298,16 @@ public class Reign implements Watcher {
 
         logger.info("START:  done");
 
-        /** announce messaging availability: must be done after all other start-up tasks are complete **/
-        PresenceService presenceService = context.getService("presence");
-        MessagingService messagingService = context.getService("messaging");
-        if (presenceService != null && messagingService != null) {
-            logger.info("START:  announcing framework availability via PresenceService");
-            presenceService.announce(this.getReservedClusterId(), "messaging", pathScheme
-                    .getCanonicalId(messagingService.getPort()), true);
-        } else {
-            logger.warn("START:  could not announcing framework availability via PresenceService!");
-        }
+        // /** announce messaging availability: must be done after all other start-up tasks are complete **/
+        // PresenceService presenceService = context.getService("presence");
+        // MessagingService messagingService = context.getService("messaging");
+        // if (presenceService != null && messagingService != null) {
+        // logger.info("START:  announcing framework availability via PresenceService");
+        // presenceService.announce(this.getReservedClusterId(), "messaging", pathScheme
+        // .getCanonicalId(messagingService.getPort()), true);
+        // } else {
+        // logger.warn("START:  could not announcing framework availability via PresenceService!");
+        // }
     }
 
     public synchronized void stop() {
