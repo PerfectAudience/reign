@@ -1,4 +1,4 @@
-Sovereign
+Reign
 =========
 A suite of lightweight services for distributed systems coordination and messaging based on Zookeeper, Netty, and Web Sockets.
 
@@ -6,7 +6,7 @@ A suite of lightweight services for distributed systems coordination and messagi
 Features
 --------
 
-Out of the box, Sovereign provides the following:
+Out of the box, Reign provides the following:
 * Service presence - monitor for nodes coming up and going down in services.
 * Service data publishing - services can publish information for consumption by other services.
 * Distributed locking - support for read/write locks, exclusive locks, barriers, and semaphores.
@@ -20,9 +20,9 @@ Example applications:
 * Application decisioning based on service state - services can publish diagnostic metrics which can be used to change application behavior:  for example, the application may go into \"safety mode\" based on the publish error rates or event counts of one of its services. 
 * Task division amongst \"worker\" nodes - worker nodes can divide work amongst themselves without a centralized coordinator. 
 
-Instrumenting your application with Sovereign quickly provides a high level of cluster-awareness and coordination capabilities:  allowing you to focus your efforts on application functionality, not low level infrastructure.
+Building on top of Reign quickly provides a high level of cluster-awareness and coordination capabilities:  allowing you to focus your efforts on application functionality, not low level infrastructure.
 
-Sovereign features a pluggable programming API which allows additional services to be built on top of or in addition to the included core services.
+Reign features a pluggable programming API which allows additional services to be built on top of or in addition to the included core services.
 
 
 Easy to Use
@@ -40,9 +40,9 @@ The default layout in Zookeeper is outlined below.  Custom layouts may be create
 
 ###Base paths:
 
-* `/sovereign` - the root directory
-* `/sovereign/internal/_TREE_` - data internal to the framework
-* `/sovereign/user/_TREE_` - user-created service data, configuration, locks, etc.
+* `/reign` - the root directory
+* `/reign/internal/_TREE_` - data internal to the framework
+* `/reign/user/_TREE_` - user-created service data, configuration, locks, etc.
 
 
 ###`_TREE_` is defined as follows:

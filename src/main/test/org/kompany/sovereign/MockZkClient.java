@@ -1,5 +1,7 @@
 package org.kompany.sovereign;
 
+import io.reign.ZkClient;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
