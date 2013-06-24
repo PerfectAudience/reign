@@ -208,10 +208,14 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         if (this.zooKeeper != null) {
             try {
                 if (logger.isInfoEnabled()) {
-                    logger.info("Closing ZooKeeper session:  connectString={}", getConnectString());
+                    logger.info("Closing ZooKeeper session:  sessionId={}; connectString={}", currentSessionId,
+                            getConnectString());
                 }
                 this.zooKeeper.close();
                 this.connected = false;
+
+                // notify any waiters
+                this.notifyAll();
             } catch (InterruptedException e) {
                 logger.warn("Sleep interrupted while closing existing ZooKeeper session:  " + e, e);
             } // try
@@ -1058,7 +1062,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * 
      */
     void awaitConnectionInitialization(BackoffStrategy backoffStrategy) {
-        while (zooKeeper == null || !this.connected) {
+        while (!this.shutdown && (zooKeeper == null || !this.connected)) {
             try {
                 logger.debug("Waiting for ZooKeeper connection to be established...");
                 if (backoffStrategy.next() == null) {

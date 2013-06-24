@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Reign Framework</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body {
+        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+      }
+    </style>
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="../assets/js/html5shiv.js"></script>
+    <![endif]-->
+
+    <!-- Fav and touch icons -->
+    <!--
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="../assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
+      <link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
+                    <link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
+                                   <link rel="shortcut icon" href="../assets/ico/favicon.png">
+    -->
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="brand" href="#">Reign Framework</a>
+          <div class="nav-collapse collapse">
+            <ul class="nav" id="nav">              
+              <li><a href="#terminal" data-toggle="tab">Terminal</a></li>
+              <li><a href="#help" data-toggle="tab">Terminal Guide</a></li>
+              <li><a href="#contact" data-toggle="tab">Contact</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+	<div class="tab-content">
+		  
+	  
+	  <div class="tab-pane" id="terminal">
+	       <h1>Terminal</h1>
+	       <form onsubmit="return false;">
+<div class="controls controls-row">
+	<input type="text" id="connectHost" name="message" onkeypress="return checkKey(event);" value="ws://localhost:33033/websocket" class="span8"/>
+	<input class="btn span2" type="button" value="Connect" onclick="connectWebSocket();" />
+</div>
+       
+<div class="controls controls-row">            
+<textarea type="text" id="sendInput" name="message" onkeypress="return checkKey(event);" placeholder="presence:/[clusterId]/[serviceId]/[nodeId]" class="span8"></textarea>
+<input class="btn span2" type="button" value="Send" onclick="send($('#sendInput').val());" />
+</div>
+           </form>
+           
+           <hr/>
+           <div id="responseText" class="pre-scollable"></div>
+	  </div>
+	  
+	   
+      <div class="tab-pane active" id="help">
+          <h1>Terminal Guide</h1>
+          <p>Describe basic terminal commands here...</p>
+      </div>
+	  
+	  <div class="tab-pane" id="contact">
+	      <h1>Contact</h1>
+	      <p><a href="http://github.com/ypai/reign-framework">http://github.com/ypai/reign</a></p>
+	  </div>
+	</div>
+
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="js/jquery-1.10.1.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+
+	<script>
+	   // show first tab
+	   $('#nav li:eq(0) a').tab('show');
+	</script>
+	
+<script type="text/javascript">
+var socket; var socketOpened = false;
+if (!window.WebSocket) {
+  window.WebSocket = window.MozWebSocket;
+}
+function connectWebSocket() {
+if( socket && socket.readyState!=socket.CLOSED ) return;
+if (window.WebSocket) {
+  socket = new WebSocket($('#connectHost').val());
+  socket.onmessage = function(event) {    appendDiv('responseText', event.data);
+  };
+  socket.onopen = function(event) {    socketOpened = true; appendDiv('responseText', 'Web Socket opened:  '+$('#connectHost').val());
+  };
+  socket.onclose = function(event) {
+    if( socketOpened ) { appendDiv('responseText', 'Web Socket closed:&nbsp; '+$('#connectHost').val()); }     socket = null; socketOpened = false;
+  };  socket.onerror = function(event) {
+    if( socket ) { appendDiv('responseText', 'Web Socket connection error:&nbsp; '+$('#connectHost').val()); }     socket = null; socketOpened = false;
+  };
+} else {
+  alert("Your browser does not support Web Socket.");
+}
+} // function
+
+function send(message) {
+    if (!window.WebSocket) { return; }
+    if (!socket || socket.readyState != WebSocket.OPEN) {
+        connectWebSocket(); alert("The socket is not open:  reconnecting:  "+$('#connectHost').val()); setTimeout( function(){ if (socket && socket.readyState == WebSocket.OPEN) {socket.send(message);} }, 200);
+    } else { 
+    	socket.send(message);
+    }
+} // function
+
+var resultCounter=0;
+function appendDiv(divElementId, html) { 
+    //var theDiv = document.getElementById(divElementId);
+    //var contentDiv = document.createElement('div');
+    //var content = document.createElement('pre'); content.innerHTML = html;
+    //contentDiv.appendChild(content);
+    //theDiv.appendChild(contentDiv); 
+    var currentValue = resultCounter++;
+    $('#'+divElementId).append('<div id="termResult'+currentValue+'"><div><pre>'+html+'<a id="termResultClose'+currentValue+'" class="close" href="#">&times;</a></pre></div></div>');
+    $('#termResultClose'+currentValue).on("click", function(event) { $('#termResult'+currentValue).fadeOut('fast', function() {$('#termResult'+currentValue).remove();} ); });
+    //theDiv.scrollTop = theDiv.scrollHeight; 
+} // function
+
+function checkKey(e) { if( e && e.keyCode==13 && $('#sendInput').val().match("^presence:")) { send($('#sendInput').val()); return false; } }
+
+
+</script>
+
+
+  </body>
+</html>
+
