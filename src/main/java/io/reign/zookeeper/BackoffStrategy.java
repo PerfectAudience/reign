@@ -17,15 +17,13 @@ public interface BackoffStrategy {
     /**
      * Increment interval.
      * 
-     * @return the interval after incrementing; or null if there are no more
-     *         iterations.
+     * @return the interval after incrementing; or null if there are no more iterations.
      */
-    public Long next();
+    public Integer next();
 
     /**
      * 
-     * @return the current interval value; or null if there are no more
-     *         iterations.
+     * @return the current interval value; or null if there are no more iterations.
      */
-    public Long get();
+    public Integer get();
 }

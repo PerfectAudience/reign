@@ -22,7 +22,7 @@ public class FailfastBackoffStrategy implements BackoffStrategy {
     /**
      */
     @Override
-    public Long next() {
+    public Integer next() {
         return null;
     }
 
@@ -30,7 +30,7 @@ public class FailfastBackoffStrategy implements BackoffStrategy {
      * 
      */
     @Override
-    public Long get() {
+    public Integer get() {
         return null;
     }
 }

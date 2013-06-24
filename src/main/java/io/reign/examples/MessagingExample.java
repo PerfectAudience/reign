@@ -23,14 +23,15 @@ public class MessagingExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start sovereign using builder **/
-        Reign reign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices().build();
+        Reign reign = Reign.builder().zkClient("dev-rtb-zk01:2181/ypai", 30000).pathCache(1024, 8).allCoreServices()
+                .build();
         reign.start();
 
         /** messaging example **/
         messagingExample(reign);
 
         /** sleep to allow examples to run for a bit **/
-        Thread.sleep(120000);
+        Thread.sleep(600000);
 
         /** shutdown sovereign **/
         reign.stop();
@@ -56,12 +57,12 @@ public class MessagingExample {
         logger.info("Broadcast#1:  responseMap={}", responseMap);
 
         responseMap = messagingService.sendMessage("examples", "service4", new SimpleRequestMessage("presence",
-                "/reign/messaging"));
+                "/examples/service3"));
 
         logger.info("Broadcast#2:  responseMap={}", responseMap);
 
         responseMap = messagingService.sendMessage("examples", "service3", new SimpleRequestMessage("presence",
-                "/reign"));
+                "/examples"));
 
         logger.info("Broadcast#3:  responseMap={}", responseMap);
     }

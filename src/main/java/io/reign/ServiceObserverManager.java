@@ -9,8 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class for managing observers for services. Deals with multiple observers for
- * a single path, etc.
+ * Class for managing observers for services. Deals with multiple observers for a single path, etc.
  * 
  * @author ypai
  * 
@@ -35,12 +34,12 @@ public class ServiceObserverManager<T extends ServiceObserverWrapper> {
         return Collections.unmodifiableSet(wrapperSet);
     }
 
-    public void remove(String path, ServiceObserverWrapper observerWrapper) {
-        Set<T> wrapperSet = getWrapperSet(path, false);
-        wrapperSet.remove(observerWrapper);
-
-        logger.info("Removed observer:  path={}; pathObserverCount={}", path, wrapperSet.size());
-    }
+    // public void remove(String path, ServiceObserverWrapper observerWrapper) {
+    // Set<T> wrapperSet = getWrapperSet(path, false);
+    // wrapperSet.remove(observerWrapper);
+    //
+    // logger.info("Removed observer:  path={}; pathObserverCount={}", path, wrapperSet.size());
+    // }
 
     public void removeAll(String path) {
         wrapperMap.remove(path);

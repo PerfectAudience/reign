@@ -6,14 +6,13 @@ package io.reign.zookeeper;
  * 
  */
 public class ConstantBackoffStrategy implements BackoffStrategy {
-    private long initial;
-    private long currentValue;
-    private long delta;
-    private long max;
-    private boolean loop;
+    private final int initial;
+    private int currentValue;
+    private final int delta;
+    private final int max;
+    private final boolean loop;
 
-    public ConstantBackoffStrategy(long initial, long delta, long max,
-            boolean loop) {
+    public ConstantBackoffStrategy(int initial, int delta, int max, boolean loop) {
         this.initial = initial;
         this.currentValue = initial;
         this.delta = delta;
@@ -27,7 +26,7 @@ public class ConstantBackoffStrategy implements BackoffStrategy {
     }
 
     @Override
-    public Long next() {
+    public Integer next() {
         this.currentValue = this.currentValue + this.delta;
         if (this.currentValue > this.max) {
             if (loop) {
@@ -40,7 +39,7 @@ public class ConstantBackoffStrategy implements BackoffStrategy {
     }
 
     @Override
-    public Long get() {
+    public Integer get() {
         return this.currentValue;
     }
 }

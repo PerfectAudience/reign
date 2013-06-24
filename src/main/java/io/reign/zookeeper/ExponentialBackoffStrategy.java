@@ -6,12 +6,12 @@ package io.reign.zookeeper;
  * 
  */
 public class ExponentialBackoffStrategy implements BackoffStrategy {
-    private long initial;
-    private long currentValue;
-    private long max;
-    private boolean loop;
+    private final int initial;
+    private int currentValue;
+    private final int max;
+    private final boolean loop;
 
-    public ExponentialBackoffStrategy(long initial, long max, boolean loop) {
+    public ExponentialBackoffStrategy(int initial, int max, boolean loop) {
         this.initial = initial;
         this.currentValue = initial;
         this.max = max;
@@ -24,8 +24,8 @@ public class ExponentialBackoffStrategy implements BackoffStrategy {
     }
 
     @Override
-    public Long next() {
-        this.currentValue = this.currentValue * 2l;
+    public Integer next() {
+        this.currentValue = this.currentValue * 2;
         if (this.currentValue > this.max) {
             if (loop) {
                 this.currentValue = this.initial;
@@ -37,7 +37,7 @@ public class ExponentialBackoffStrategy implements BackoffStrategy {
     }
 
     @Override
-    public Long get() {
+    public Integer get() {
         return this.currentValue;
     }
 }

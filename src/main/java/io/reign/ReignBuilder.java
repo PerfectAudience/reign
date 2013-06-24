@@ -29,7 +29,7 @@ public class ReignBuilder {
     private static final Logger logger = LoggerFactory.getLogger(ReignBuilder.class);
 
     private String zkConnectString;
-    private int zkSessionTimeout = -1;
+    private int zkSessionTimeout = 30000;
 
     private int pathCacheMaxSize = 1024;
     private int pathCacheMaxConcurrencyLevel = 2;

@@ -3,10 +3,11 @@ package io.reign.zookeeper;
 import io.reign.ZkClient;
 
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -40,13 +41,37 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(ResilientZooKeeper.class);
 
-    private static final BackoffStrategy DEFAULT_BACKOFF_STRATEGY = new ExponentialBackoffStrategy(2000L, 120000, false);
+    private final BackoffStrategyFactory DEFAULT_BACKOFF_STRATEGY_FACTORY = new ExponentialBackoffStrategyFactory(1000,
+            30000, true);
+
+    private volatile BackoffStrategyFactory backoffStrategyFactory = DEFAULT_BACKOFF_STRATEGY_FACTORY;
+
+    /**
+     * Placeholder for tracking watched paths along with custom Watcher(s) that are passed in.
+     */
+    private static final Watcher DEFAULT_WATCHER = new Watcher() {
+        @Override
+        public void process(WatchedEvent arg0) {
+        }
+    };
+
+    private volatile Long currentSessionId;
+    private volatile byte[] sessionPassword;
 
     private volatile ZooKeeper zooKeeper;
 
     private volatile boolean connected = false;
 
-    private Set<Watcher> watcherSet = new HashSet<Watcher>();
+    /** Map of String path to Set of unique Watcher(s): used to track child watches */
+    private final ConcurrentMap<String, Set<Watcher>> childWatchesMap = new ConcurrentHashMap<String, Set<Watcher>>(
+            256, 0.9f, 2);
+
+    /** Map of String path to Set of unique Watcher(s): used to track data watches */
+    private final ConcurrentMap<String, Set<Watcher>> dataWatchesMap = new ConcurrentHashMap<String, Set<Watcher>>(256,
+            0.9f, 2);
+
+    private final Set<Watcher> watcherSet = Collections.newSetFromMap(new ConcurrentHashMap<Watcher, Boolean>(32, 0.9f,
+            1));
 
     private String connectString;
 
@@ -57,16 +82,15 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     /** when true, we do not attempt reconnect on failure */
     private volatile boolean shutdown = false;
 
-    /** backoff strategy */
-    private BackoffStrategy defaultBackoffStrategy = DEFAULT_BACKOFF_STRATEGY;
-
-    /** object to synchronize on for connection/re-connection attempts */
-    private ReentrantLock connectionLock = new ReentrantLock();
+    // /** object to synchronize on for connection/re-connection attempts */
+    // private final ReentrantLock connectionLock = new ReentrantLock();
 
     public ResilientZooKeeper(String connectString, int sessionTimeoutMillis, long sessionId, byte[] sessionPasswd)
             throws IOException {
         this.connectString = connectString;
         this.sessionTimeoutMillis = sessionTimeoutMillis;
+        this.currentSessionId = sessionId;
+        this.sessionPassword = sessionPasswd;
         this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this, sessionId, sessionPasswd);
     }
 
@@ -76,12 +100,12 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this);
     }
 
-    public BackoffStrategy getDefaultBackoffStrategy() {
-        return defaultBackoffStrategy;
+    public BackoffStrategyFactory getBackoffStrategyFactory() {
+        return backoffStrategyFactory;
     }
 
-    public void setDefaultBackoffStrategy(BackoffStrategy defaultBackoffStrategy) {
-        this.defaultBackoffStrategy = defaultBackoffStrategy;
+    public void setBackoffStrategyFactory(BackoffStrategyFactory backoffStrategyFactory) {
+        this.backoffStrategyFactory = backoffStrategyFactory;
     }
 
     public int getSessionTimeout() {
@@ -105,139 +129,205 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         this.zooKeeper.addAuthInfo(scheme, auth);
     }
 
-    @Override
-    public void close() {
-        this.connectionLock.lock();
-        try {
-            this.shutdown = true;
+    /**
+     * getData() and exists() set data watches.
+     * 
+     * @param path
+     * @param watcher
+     */
+    void trackDataWatch(String path, Watcher watcher) {
+        Set<Watcher> watcherSet = dataWatchesMap.get(path);
+        if (watcherSet == null) {
+            Set<Watcher> newWatcherSet = Collections.newSetFromMap(new ConcurrentHashMap<Watcher, Boolean>(4, 0.9f, 1));
+            watcherSet = dataWatchesMap.putIfAbsent(path, newWatcherSet);
+            if (watcherSet == null) {
+                watcherSet = newWatcherSet;
+            }
+        }
+        watcherSet.add(watcher);
+    }
 
-            if (this.zooKeeper != null) {
+    /**
+     * getChildren() sets child watches
+     * 
+     * @param path
+     * @param watcher
+     */
+    void trackChildWatch(String path, Watcher watcher) {
+        Set<Watcher> watcherSet = childWatchesMap.get(path);
+        if (watcherSet == null) {
+            Set<Watcher> newWatcherSet = Collections.newSetFromMap(new ConcurrentHashMap<Watcher, Boolean>(4, 0.9f, 1));
+            watcherSet = childWatchesMap.putIfAbsent(path, newWatcherSet);
+            if (watcherSet == null) {
+                watcherSet = newWatcherSet;
+            }
+        }
+        watcherSet.add(watcher);
+    }
+
+    /**
+     * Re-establish any existing ZooKeeper watchers after reconnection.
+     */
+    void restoreWatches() {
+        for (String path : dataWatchesMap.keySet()) {
+            logger.info("Restoring data watch(s):  path={}", path);
+            for (Watcher watcher : dataWatchesMap.get(path)) {
                 try {
-                    if (logger.isInfoEnabled()) {
-                        logger.info("Closing ZooKeeper session:  connectString={}", getConnectString());
+                    if (watcher == DEFAULT_WATCHER) {
+                        this.exists(path, true);
+                    } else {
+                        this.exists(path, watcher);
                     }
-                    this.zooKeeper.close();
-                    this.connected = false;
-                } catch (InterruptedException e) {
-                    logger.warn("Sleep interrupted while closing existing ZooKeeper session:  " + e, e);
+                } catch (Exception e) {
+                    logger.warn("Interrupted while restoring watch:  " + e + ":  path=" + path, e);
                 } // try
-            }// if
-        } finally {
-            this.connectionLock.unlock();
+            }// for
+        }// for
+
+        for (String path : childWatchesMap.keySet()) {
+            logger.info("Restoring child watch(s):  path={}", path);
+            for (Watcher watcher : childWatchesMap.get(path)) {
+                try {
+                    if (watcher == DEFAULT_WATCHER) {
+                        this.getChildren(path, true);
+                    } else {
+                        this.getChildren(path, watcher);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Interrupted while restoring watch:  " + e + ":  path=" + path, e);
+                } // try
+            }// for
         }
     }
 
-    public void create(final String path, byte[] data, List<ACL> acl, CreateMode createMode, final StringCallback cb,
-            Object ctx) {
+    @Override
+    public synchronized void close() {
 
-        awaitConnectionInitialization();
+        this.shutdown = true;
 
-        // create a wrapper callback to handle connection errors
-        StringCallback wrapperCallback = new StringCallback() {
+        if (this.zooKeeper != null) {
+            try {
+                if (logger.isInfoEnabled()) {
+                    logger.info("Closing ZooKeeper session:  connectString={}", getConnectString());
+                }
+                this.zooKeeper.close();
+                this.connected = false;
+            } catch (InterruptedException e) {
+                logger.warn("Sleep interrupted while closing existing ZooKeeper session:  " + e, e);
+            } // try
+        }// if
+
+    }
+
+    public void create(final String path, final byte[] data, final List<ACL> acl, final CreateMode createMode,
+            final StringCallback cb, final Object ctx) {
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
             @Override
-            public void processResult(int __rc, String __path, Object __ctx, String __name) {
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.create(path, data, acl, createMode, cb, ctx);
 
-                while (!shutdown) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("create():  path={}; zooKeeper={}", path, zooKeeper);
-                    }
-
-                    KeeperException.Code keeperExceptionCode = KeeperException.Code.get(__rc);
-                    if (keeperExceptionCode != KeeperException.Code.NODEEXISTS
-                            && keeperExceptionCode != KeeperException.Code.NONODE) {
-                        logger.error("create():  KeeperException.Code={}", keeperExceptionCode);
-                    }
-
-                    if (!defaultBackoffStrategy.hasNext()) {
-                        // failfast mode, so we call the callback and allow
-                        // caller to handle error
-                        cb.processResult(__rc, __path, __ctx, __name);
-                        break;
-                    } else if (isZooKeeperSessionError(keeperExceptionCode)) {
-                        // if it is a ZK session error, wait for connection to
-                        // be re-established
-                        awaitSessionRenewal(defaultBackoffStrategy, keeperExceptionCode);
-
-                    } else {
-                        // not ZK session error, so call original callback
-                        cb.processResult(__rc, __path, __ctx, __name);
-                        break;
-                    }// if
-                }// while
-
-            }// processResult
+            }
         };
 
-        // call the async method
-        this.zooKeeper.create(path, data, acl, createMode, wrapperCallback, ctx);
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getData():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getData():  " + e, e);
+        }
+
     }
 
-    public void delete(final String path, int version, final VoidCallback cb, final Object ctx) {
-        awaitConnectionInitialization();
+    public void delete(final String path, final int version, final VoidCallback cb, final Object ctx) {
 
-        // create a wrapper callback to handle connection errors
-        VoidCallback wrapperCallback = new VoidCallback() {
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
             @Override
-            public void processResult(int __rc, String __path, Object __ctx) {
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.delete(path, version, cb, ctx);
 
-                while (!shutdown) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("create():  path={}; zooKeeper={}", path, zooKeeper);
-                    }
-
-                    KeeperException.Code keeperExceptionCode = KeeperException.Code.get(__rc);
-                    if (keeperExceptionCode != KeeperException.Code.NODEEXISTS
-                            && keeperExceptionCode != KeeperException.Code.NONODE) {
-                        logger.error("create():  KeeperException.Code={}", keeperExceptionCode);
-                    }
-
-                    if (!defaultBackoffStrategy.hasNext()) {
-                        // failfast mode, so we call the callback and allow
-                        // caller to handle error
-                        cb.processResult(__rc, path, ctx);
-                        break;
-                    } else if (isZooKeeperSessionError(keeperExceptionCode)) {
-                        // if it is a ZK session error, wait for connection to
-                        // be re-established
-                        awaitSessionRenewal(defaultBackoffStrategy, keeperExceptionCode);
-                    } else {
-                        // not ZK session error, so call original callback
-                        cb.processResult(__rc, path, ctx);
-                        break;
-                    }// if
-                }// while
-
-            }// processResult
+            }
         };
 
-        // call the async method
-        this.zooKeeper.delete(path, version, wrapperCallback, ctx);
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getData():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getData():  " + e, e);
+        }
+
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void exists(String path, boolean watch, StatCallback cb, Object ctx) {
-        this.zooKeeper.exists(path, watch, cb, ctx);
+    public void exists(final String path, final boolean watch, final StatCallback cb, final Object ctx) {
+        if (watch) {
+            trackDataWatch(path, DEFAULT_WATCHER);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.exists(path, watch, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getData():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getData():  " + e, e);
+        }
+
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void exists(String path, Watcher watcher, StatCallback cb, Object ctx) {
-        this.zooKeeper.exists(path, watcher, cb, ctx);
+    public void exists(final String path, final Watcher watcher, final StatCallback cb, final Object ctx) {
+        if (watcher != null) {
+            trackDataWatch(path, watcher);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.exists(path, watcher, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getData():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getData():  " + e, e);
+        }
+
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void getACL(String path, Stat stat, ACLCallback cb, Object ctx) {
-        this.zooKeeper.getACL(path, stat, cb, ctx);
+    public void getACL(final String path, final Stat stat, final ACLCallback cb, final Object ctx) {
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.getACL(path, stat, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getData():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getData():  " + e, e);
+        }
+
     }
 
     public List<ACL> getACL(final String path, final Stat stat) throws KeeperException, InterruptedException {
 
-        ZooKeeperAction<List<ACL>> zkAction = new ZooKeeperAction<List<ACL>>(defaultBackoffStrategy) {
+        ZooKeeperAction<List<ACL>> zkAction = new ZooKeeperAction<List<ACL>>(backoffStrategyFactory.get()) {
             @Override
             public List<ACL> doPerform() throws KeeperException, InterruptedException {
                 return zooKeeper.getACL(path, stat);
@@ -248,25 +338,62 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         return zkAction.perform();
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void getChildren(String path, boolean watch, Children2Callback cb, Object ctx) {
-        this.zooKeeper.getChildren(path, watch, cb, ctx);
+    public void getChildren(final String path, final boolean watch, final Children2Callback cb, final Object ctx) {
+        if (watch) {
+            trackChildWatch(path, DEFAULT_WATCHER);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.getChildren(path, watch, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getChildren():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getChildren():  " + e, e);
+        }
+
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void getChildren(String path, boolean watch, ChildrenCallback cb, Object ctx) {
-        this.zooKeeper.getChildren(path, watch, cb, ctx);
+    public void getChildren(final String path, final boolean watch, final ChildrenCallback cb, final Object ctx) {
+
+        if (watch) {
+            trackChildWatch(path, DEFAULT_WATCHER);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.getChildren(path, watch, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getChildren():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getChildren():  " + e, e);
+        }
+
     }
 
     @Override
     public List<String> getChildren(final String path, final boolean watch, final Stat stat) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(defaultBackoffStrategy) {
+        if (watch) {
+            trackChildWatch(path, DEFAULT_WATCHER);
+        }
+
+        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
                 return zooKeeper.getChildren(path, watch, stat);
@@ -277,24 +404,60 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         return zkAction.perform();
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void getChildren(String path, Watcher watcher, Children2Callback cb, Object ctx) {
-        this.zooKeeper.getChildren(path, watcher, cb, ctx);
+    public void getChildren(final String path, final Watcher watcher, final Children2Callback cb, final Object ctx) {
+        if (watcher != null) {
+            trackChildWatch(path, watcher);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.getChildren(path, watcher, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getChildren():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getChildren():  " + e, e);
+        }
+
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void getChildren(String path, Watcher watcher, ChildrenCallback cb, Object ctx) {
-        this.zooKeeper.getChildren(path, watcher, cb, ctx);
+    public void getChildren(final String path, final Watcher watcher, final ChildrenCallback cb, final Object ctx) {
+        if (watcher != null) {
+            trackChildWatch(path, watcher);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.getChildren(path, watcher, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getChildren():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getChildren():  " + e, e);
+        }
+
     }
 
     public List<String> getChildren(final String path, final Watcher watcher, final Stat stat) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(defaultBackoffStrategy) {
+        if (watcher != null) {
+            trackChildWatch(path, watcher);
+        }
+
+        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
                 return zooKeeper.getChildren(path, watcher, stat);
@@ -305,10 +468,15 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         return zkAction.perform();
     }
 
+    @Override
     public List<String> getChildren(final String path, final Watcher watcher) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(defaultBackoffStrategy) {
+        if (watcher != null) {
+            trackChildWatch(path, watcher);
+        }
+
+        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
                 return zooKeeper.getChildren(path, watcher);
@@ -319,24 +487,62 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         return zkAction.perform();
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void getData(String path, boolean watch, DataCallback cb, Object ctx) {
-        this.zooKeeper.getData(path, watch, cb, ctx);
+    public void getData(final String path, final boolean watch, final DataCallback cb, final Object ctx) {
+
+        if (watch) {
+            trackDataWatch(path, DEFAULT_WATCHER);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.getData(path, watch, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getData():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getData():  " + e, e);
+        }
+
     }
 
-    /**
-     * TODO: make tolerant of ZK connection failures
-     */
-    public void getData(String path, Watcher watcher, DataCallback cb, Object ctx) {
-        this.zooKeeper.getData(path, watcher, cb, ctx);
+    public void getData(final String path, final Watcher watcher, final DataCallback cb, final Object ctx) {
+
+        if (watcher != null) {
+            trackDataWatch(path, watcher);
+        }
+
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
+            @Override
+            public void doPerform() throws KeeperException, InterruptedException {
+                zooKeeper.getData(path, watcher, cb, ctx);
+
+            }
+        };
+
+        try {
+            zkAction.perform();
+        } catch (InterruptedException e) {
+            logger.error("getData():  " + e, e);
+        } catch (KeeperException e) {
+            logger.error("getData():  " + e, e);
+        }
+
     }
 
     public byte[] getData(final String path, final Watcher watcher, final Stat stat) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<byte[]> zkAction = new ZooKeeperAction<byte[]>(defaultBackoffStrategy) {
+        if (watcher != null) {
+            trackDataWatch(path, watcher);
+        }
+
+        ZooKeeperAction<byte[]> zkAction = new ZooKeeperAction<byte[]>(backoffStrategyFactory.get()) {
             @Override
             public byte[] doPerform() throws KeeperException, InterruptedException {
                 return zooKeeper.getData(path, watcher, stat);
@@ -363,7 +569,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public void setACL(final String path, final List<ACL> acl, final int version, final StatCallback cb,
             final Object ctx) {
 
-        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(defaultBackoffStrategy) {
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
             @Override
             public void doPerform() throws KeeperException, InterruptedException {
                 zooKeeper.setACL(path, acl, version, cb, ctx);
@@ -374,9 +580,9 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         try {
             zkAction.perform();
         } catch (InterruptedException e) {
-            logger.error("sync():  " + e, e);
+            logger.error("setACL():  " + e, e);
         } catch (KeeperException e) {
-            logger.error("sync():  " + e, e);
+            logger.error("setACL():  " + e, e);
         }
 
     }
@@ -384,7 +590,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public Stat setACL(final String path, final List<ACL> acl, final int version) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(defaultBackoffStrategy) {
+        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(backoffStrategyFactory.get()) {
             @Override
             public Stat doPerform() throws KeeperException, InterruptedException {
                 return zooKeeper.setACL(path, acl, version);
@@ -404,7 +610,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @param ctx
      */
     public void setData(final String path, final byte[] data, final int version, final StatCallback cb, final Object ctx) {
-        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(defaultBackoffStrategy) {
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
             @Override
             public void doPerform() throws KeeperException, InterruptedException {
                 zooKeeper.setData(path, data, version, cb, ctx);
@@ -415,20 +621,32 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         try {
             zkAction.perform();
         } catch (InterruptedException e) {
-            logger.error("sync():  " + e, e);
+            logger.error("setData():  " + e, e);
         } catch (KeeperException e) {
-            logger.error("sync():  " + e, e);
+            logger.error("setData():  " + e, e);
         }
     }
 
     /**
+     * From ZK docs:
+     * 
+     * Sometimes developers mistakenly assume one other guarantee that ZooKeeper does not in fact make. This is:
+     * 
+     * Simultaneously Conistent Cross-Client Views ZooKeeper does not guarantee that at every instance in time, two
+     * different clients will have identical views of ZooKeeper data. Due to factors like network delays, one client may
+     * perform an update before another client gets notified of the change. Consider the scenario of two clients, A and
+     * B. If client A sets the value of a znode /a from 0 to 1, then tells client B to read /a, client B may read the
+     * old value of 0, depending on which server it is connected to. If it is important that Client A and Client B read
+     * the same value, Client B should should call the sync() method from the ZooKeeper API method before it performs
+     * its read.
+     * 
      * 
      * @param path
      * @param cb
      * @param ctx
      */
     public void sync(final String path, final VoidCallback cb, final Object ctx) {
-        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(defaultBackoffStrategy) {
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
 
             @Override
             public void doPerform() throws KeeperException, InterruptedException {
@@ -462,7 +680,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public String create(final String path, final byte[] data, final List<ACL> acl, final CreateMode createMode)
             throws KeeperException, InterruptedException {
 
-        ZooKeeperAction<String> zkAction = new ZooKeeperAction<String>(defaultBackoffStrategy) {
+        ZooKeeperAction<String> zkAction = new ZooKeeperAction<String>(backoffStrategyFactory.get()) {
 
             @Override
             public String doPerform() throws KeeperException, InterruptedException {
@@ -480,46 +698,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
         return pathCreated;
 
-        // awaitConnectionInitialization();
-        //
-        // String pathCreated = null;
-        //
-        // while (pathCreated == null && !this.shutdown) {
-        // if (logger.isDebugEnabled()) {
-        // logger.debug("create():  path=" + path + "; zooKeeper="
-        // + zooKeeper);
-        // }
-        //
-        // try {
-        // pathCreated = this.zooKeeper
-        // .create(path, data, acl, createMode);
-        //
-        // } catch (KeeperException e) {
-        // KeeperException.Code keeperExceptionCode = e.code();
-        // if (keeperExceptionCode != KeeperException.Code.NODEEXISTS
-        // && keeperExceptionCode != KeeperException.Code.NONODE) {
-        // logger.error("create():  " + e, e);
-        // }
-        //
-        // if (!defaultBackoffStrategy.hasNext()) {
-        // // just throw exception if in fail fast mode
-        // throw e;
-        // } else if (isZooKeeperSessionError(e.code())) {
-        // // if it is a ZK session error, wait for connection to be
-        // // re-established
-        // awaitSessionRenewal(defaultBackoffStrategy, e.code());
-        // } else {
-        // throw e;
-        // }// if
-        // }// try
-        // }// while
-        //
-        // if (logger.isDebugEnabled()) {
-        // logger.debug("create():  Path created:  pathCreated={}",
-        // pathCreated);
-        // }
-        //
-        // return pathCreated;
     }
 
     /**
@@ -528,7 +706,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      */
     public ZooKeeper.States getState() {
 
-        ZooKeeperAction<ZooKeeper.States> zkAction = new ZooKeeperAction<ZooKeeper.States>(defaultBackoffStrategy) {
+        ZooKeeperAction<ZooKeeper.States> zkAction = new ZooKeeperAction<ZooKeeper.States>(backoffStrategyFactory.get()) {
             @Override
             public ZooKeeper.States doPerform() throws KeeperException, InterruptedException {
                 // if we are not connected
@@ -551,22 +729,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
         return state;
 
-        // awaitConnectionInitialization();
-        //
-        // ZooKeeper.States state = null;
-        // if (!this.shutdown) {
-        // try {
-        // state = this.zooKeeper.getState();
-        //
-        // } catch (Exception e) {
-        // logger.error("" + e, e);
-        //
-        // // commenting out for now
-        // // state = ZooKeeper.States.CLOSED;
-        // }// try
-        // }// if
-        //
-        // return state;
     }
 
     /**
@@ -577,9 +739,14 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws KeeperException
      * @throws InterruptedException
      */
+    @Override
     public Stat exists(final String path, final boolean watch) throws KeeperException, InterruptedException {
 
-        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(defaultBackoffStrategy) {
+        if (watch) {
+            trackDataWatch(path, DEFAULT_WATCHER);
+        }
+
+        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(backoffStrategyFactory.get()) {
 
             @Override
             public Stat doPerform() throws KeeperException, InterruptedException {
@@ -589,31 +756,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         };
         return zkAction.perform();
 
-        // awaitConnectionInitialization();
-        //
-        // Stat stat = null;
-        // boolean success = false;
-        // while (!success && !this.shutdown) {
-        // try {
-        // stat = this.zooKeeper.exists(path, watch);
-        // success = true;
-        // } catch (KeeperException e) {
-        // // logger.error("" + e, e);
-        //
-        // if (!defaultBackoffStrategy.hasNext()) {
-        // // just throw exception if in fail fast mode
-        // throw e;
-        // } else if (this.isZooKeeperSessionError(e.code())) {
-        // // if it is a ZK session error, wait for connection to be
-        // // re-established
-        // awaitSessionRenewal(defaultBackoffStrategy, e.code());
-        // } else {
-        // throw e;
-        // }// if
-        // }// try
-        // }// while
-        //
-        // return stat;
     }
 
     /**
@@ -624,10 +766,15 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws KeeperException
      * @throws InterruptedException
      */
+    @Override
     public List<String> getChildren(final String path, final boolean watch) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(defaultBackoffStrategy) {
+        if (watch) {
+            trackDataWatch(path, DEFAULT_WATCHER);
+        }
+
+        ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
 
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
@@ -637,22 +784,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         };
         return zkAction.perform();
 
-        // awaitConnectionInitialization();
-        //
-        // List<String> childList = null;
-        // boolean success = false;
-        // while (!success && !this.shutdown) {
-        // try {
-        // childList = this.zooKeeper.getChildren(path, watch);
-        // success = true;
-        // } catch (KeeperException e) {
-        // // logger.error("" + e, e);
-        //
-        // handleKeeperException(defaultBackoffStrategy, e);
-        // }// try
-        // }// while
-        //
-        // return childList;
     }
 
     /**
@@ -665,7 +796,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     @Override
     public void delete(final String path, final int version) throws InterruptedException, KeeperException {
 
-        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(defaultBackoffStrategy) {
+        VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
 
             @Override
             public void doPerform() throws KeeperException, InterruptedException {
@@ -674,28 +805,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
         };
         zkAction.perform();
-
-        // awaitConnectionInitialization();
-        //
-        // while (!this.shutdown) {
-        // try {
-        // this.zooKeeper.delete(path, version);
-        // break;
-        // } catch (KeeperException e) {
-        // // logger.error("" + e, e);
-        //
-        // if (isFailFast()) {
-        // // just throw exception if in fail fast mode
-        // throw e;
-        // } else if (this.isZooKeeperSessionError(e)) {
-        // // if it is a ZK session error, wait for connection to be
-        // // re-established
-        // awaitSessionRenewal();
-        // } else {
-        // throw e;
-        // }// if
-        // }// try
-        // }// while
 
     }
 
@@ -712,7 +821,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public Stat setData(final String path, final byte[] data, final int version) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(defaultBackoffStrategy) {
+        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(backoffStrategyFactory.get()) {
 
             @Override
             public Stat doPerform() throws KeeperException, InterruptedException {
@@ -723,31 +832,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         };
         return zkAction.perform();
 
-        // awaitConnectionInitialization();
-        //
-        // Stat stat = null;
-        // boolean success = false;
-        // while (!success && !this.shutdown) {
-        // try {
-        // stat = this.zooKeeper.setData(path, data, version);
-        // success = true;
-        // } catch (KeeperException e) {
-        // // logger.error("" + e, e);
-        //
-        // if (isFailFast()) {
-        // // just throw exception if in fail fast mode
-        // throw e;
-        // } else if (this.isZooKeeperSessionError(e)) {
-        // // if it is a ZK session error, wait for connection to be
-        // // re-established
-        // awaitSessionRenewal();
-        // } else {
-        // throw e;
-        // }// if
-        // }// try
-        // }// while
-        //
-        // return stat;
     }
 
     /**
@@ -763,7 +847,11 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public byte[] getData(final String path, final boolean watch, final Stat stat) throws KeeperException,
             InterruptedException {
 
-        ZooKeeperAction<byte[]> zkAction = new ZooKeeperAction<byte[]>(defaultBackoffStrategy) {
+        if (watch) {
+            trackDataWatch(path, DEFAULT_WATCHER);
+        }
+
+        ZooKeeperAction<byte[]> zkAction = new ZooKeeperAction<byte[]>(backoffStrategyFactory.get()) {
 
             @Override
             public byte[] doPerform() throws KeeperException, InterruptedException {
@@ -774,31 +862,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         };
         return zkAction.perform();
 
-        // awaitConnectionInitialization();
-        //
-        // byte[] data = null;
-        // boolean success = false;
-        // while (!success && !this.shutdown) {
-        // try {
-        // data = this.zooKeeper.getData(path, watch, stat);
-        // success = true;
-        // } catch (KeeperException e) {
-        // // logger.error("" + e, e);
-        //
-        // if (isFailFast()) {
-        // // just throw exception if in fail fast mode
-        // throw e;
-        // } else if (this.isZooKeeperSessionError(e)) {
-        // // if it is a ZK session error, wait for connection to be
-        // // re-established
-        // awaitSessionRenewal();
-        // } else {
-        // throw e;
-        // }// if
-        // }// try
-        // }// while
-        //
-        // return data;
     }
 
     /**
@@ -809,8 +872,14 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws KeeperException
      * @throws InterruptedException
      */
+    @Override
     public Stat exists(final String path, final Watcher watcher) throws KeeperException, InterruptedException {
-        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(defaultBackoffStrategy) {
+
+        if (watcher != null) {
+            trackDataWatch(path, watcher);
+        }
+
+        ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(backoffStrategyFactory.get()) {
 
             @Override
             public Stat doPerform() throws KeeperException, InterruptedException {
@@ -821,124 +890,68 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         };
         return zkAction.perform();
 
-        // awaitConnectionInitialization();
-        //
-        // Stat stat = null;
-        // boolean success = false;
-        // while (!success && !this.shutdown) {
-        // try {
-        // stat = this.zooKeeper.exists(path, watcher);
-        // success = true;
-        // } catch (KeeperException e) {
-        // // logger.error("" + e, e);
-        //
-        // if (isFailFast()) {
-        // // just throw exception if in fail fast mode
-        // throw e;
-        // } else if (this.isZooKeeperSessionError(e)) {
-        // // if it is a ZK session error, wait for connection to be
-        // // re-established
-        // awaitSessionRenewal();
-        // } else {
-        // throw e;
-        // }// if
-        // }// try
-        // }// while
-        //
-        // return stat;
     }
 
     /**
      * 
      */
-    protected boolean connect(BackoffStrategy backoffStrategy, boolean force) {
+    synchronized void connect(BackoffStrategy backoffStrategy, boolean force) {
         /**
          * explicitly set connected flag to false so we will close current connection and attempt reconnect
          **/
         if (force) {
             this.connected = false;
+            this.currentSessionId = null;
         }
 
         /** attempt reconnection if necessary **/
-        connectionLock.lock();
-        try {
-            while (!connected && !this.shutdown) {
-
-                // close existing ZK connection if necessary
-                if (this.zooKeeper != null) {
-                    try {
-                        if (logger.isInfoEnabled()) {
-                            logger.info("Closing ZooKeeper session:  connectString=" + getConnectString());
-                        }
-                        this.zooKeeper.close();
-                    } catch (InterruptedException e) {
-                        logger.warn("Sleep interrupted while closing existing ZooKeeper session:  " + e, e);
-                    } // try
-                }
-
-                // reconnect to ZK
+        while (!connected && !this.shutdown) {
+            // close existing ZK connection if necessary
+            if (this.zooKeeper != null) {
                 try {
                     if (logger.isInfoEnabled()) {
-                        logger.info("Connecting to ZooKeeper:  connectString=" + getConnectString());
-                    }
-                    this.zooKeeper = new ZooKeeper(getConnectString(), getSessionTimeout(), this);
-
-                    long waitStartTimestamp = System.currentTimeMillis();
-
-                    if (logger.isInfoEnabled()) {
-                        logger.info("Waiting for establishment of ZooKeeper session:  connectString={}",
-                                getConnectString());
+                        logger.info("Closing ZooKeeper session:  currentSessionId={}; connectString={}",
+                                currentSessionId, getConnectString());
                     }
 
-                    // wait to be notified that the connection was established
-                    synchronized (this) {
-                        this.wait(ASSUME_ERROR_TIMEOUT_MS + 10000);
-                    }
-
-                    // check to see if we waited too long to connect
-                    if (System.currentTimeMillis() - waitStartTimestamp < ASSUME_ERROR_TIMEOUT_MS) {
-                        this.connected = true;
-
-                        if (logger.isInfoEnabled()) {
-                            logger.info("ZooKeeper session established:  connectString=" + getConnectString()
-                                    + "; sessionId=" + this.zooKeeper.getSessionId() + "; sessionTimeout="
-                                    + getSessionTimeout());
-                        }
-                    } else {
-                        // if we waited too long, assume something went wrong
-                        // and try to connect again after closing current
-                        // connection
-                        if (logger.isWarnEnabled()) {
-                            logger.warn("Took too long to reconnect:  assuming error and will try to reconnect again.");
-                        }
-                    }
+                    this.zooKeeper.close();
                 } catch (InterruptedException e) {
-                    if (logger.isWarnEnabled()) {
-                        logger.info("Sleep interrupted while waiting for ZooKeeper session establishment:  connectString="
-                                + getConnectString());
-                    }
-                } catch (Exception e) {
-                    logger.error("Could not reconnect to ZooKeeper (retrying in " + backoffStrategy.get() + " ms):  "
-                            + e, e);
-                    try {
-                        Thread.sleep(backoffStrategy.get());
-                    } catch (InterruptedException e1) {
-                        logger.warn("Sleep interrupted while waiting to reconnect to ZooKeeper:  " + e, e);
-                    }
+                    logger.warn("Sleep interrupted while closing existing ZooKeeper session:  " + e, e);
+                } // try
+            }
 
-                    if (backoffStrategy.next() == null) {
-                        break;
-                    }
-                }// try
-            }// while
+            // reconnect to ZK
+            try {
+                if (logger.isInfoEnabled()) {
+                    logger.info("Connecting to ZooKeeper:  currentSessionId={}; connectString={}", currentSessionId,
+                            getConnectString());
+                }
+                if (currentSessionId == null) {
+                    this.zooKeeper = new ZooKeeper(getConnectString(), getSessionTimeout(), this);
+                } else {
+                    this.zooKeeper = new ZooKeeper(getConnectString(), getSessionTimeout(), this, currentSessionId,
+                            sessionPassword);
+                }
 
-            /**
-             * return current value of connected: in effect tells us whether reconnection was successful
-             **/
-            return this.connected;
-        } finally {
-            connectionLock.unlock();
-        }
+                synchronized (this) {
+                    this.wait(ASSUME_ERROR_TIMEOUT_MS + 10000);
+                }
+
+            } catch (Exception e) {
+                if (backoffStrategy.next() == null) {
+                    break;
+                }
+
+                logger.error("Could not reconnect to ZooKeeper (retrying in " + backoffStrategy.get() + " ms):  " + e,
+                        e);
+
+                try {
+                    Thread.sleep(backoffStrategy.get());
+                } catch (InterruptedException e1) {
+                    logger.warn("Sleep interrupted while sleeping between attempts to reconnect to ZooKeeper:  " + e, e);
+                }
+            }// try
+        }// while
 
     } // connect()
 
@@ -947,8 +960,8 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         /***** log event *****/
         // log if DEBUG
         if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}",
-                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+            logger.debug("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
+                    ToStringStyle.DEFAULT_STYLE));
 
         }
 
@@ -969,26 +982,57 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         case None:
             Event.KeeperState eventState = event.getState();
             if (eventState == Event.KeeperState.SyncConnected) {
-                logger.info("SyncConnected:  notifying all waiters...");
+
+                this.connected = true;
+
+                if (currentSessionId == null) {
+                    if (logger.isInfoEnabled()) {
+                        logger.info(
+                                "Restoring watches as necessary:  sessionId={}; connectString={}; sessionTimeout={}",
+                                new Object[] { this.zooKeeper.getSessionId(), getConnectString(), getSessionTimeout() });
+                    }
+                    restoreWatches();
+                }
+
+                this.currentSessionId = this.zooKeeper.getSessionId();
+
+                logger.info("SyncConnected:  notifying all waiters:  currentSessionId={}; connectString={}",
+                        currentSessionId, getConnectString());
                 synchronized (this) {
                     // notify waiting threads that connection has been
                     // established
                     this.notifyAll();
                 }
-                logger.info("SyncConnected:  notified all waiters");
-            } else if (eventState == Event.KeeperState.Disconnected || eventState == Event.KeeperState.Expired) {
-                // disconnected; close ZK connection and reconnect
+                logger.info("SyncConnected:  notified all waiters:  currentSessionId={}; connectString={}",
+                        currentSessionId, getConnectString());
+
+            } else if (eventState == Event.KeeperState.Disconnected) {
+                this.connected = false;
+
+            } else if (eventState == Event.KeeperState.Expired) {
+                // expired session; close ZK connection and reconnect
                 if (!this.shutdown) {
-                    logger.info("Attempting reconnection...");
-                    connect(defaultBackoffStrategy, true);
-                } else {
-                    // should not get here but notify waiting threads
-                    logger.info("Disconnected:  notifying all waiters...");
-                    synchronized (this) {
-                        this.notifyAll();
-                    }
-                    logger.info("Disconnected:  notified all waiters");
+                    // if session has been expired, clear out the existing ID
+                    logger.info(
+                            "Session has been expired by ZooKeeper cluster:  reconnecting to establish new session:  oldSessionId={}; connectString={}",
+                            currentSessionId, getConnectString());
+
+                    // null out current session ID
+                    this.currentSessionId = null;
+
+                    // do connection in another thread so as to not block the ZK event thread
+                    Thread reconnectThread = new Thread() {
+                        @Override
+                        public void run() {
+                            connect(backoffStrategyFactory.get(), true);
+                        }
+                    };
+                    reconnectThread.setName(this.getClass().getSimpleName() + ".zkConnectThread-"
+                            + reconnectThread.hashCode());
+                    reconnectThread.setPriority(Thread.MIN_PRIORITY);
+                    reconnectThread.run();
                 }
+
             } else {
                 logger.warn("Unhandled state:  eventType=" + event.getType() + "; eventState=" + eventState);
             }
@@ -1013,65 +1057,21 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     /**
      * 
      */
-    private void awaitConnectionInitialization() {
-        while (zooKeeper == null) {
+    void awaitConnectionInitialization(BackoffStrategy backoffStrategy) {
+        while (zooKeeper == null || !this.connected) {
             try {
-                logger.debug("Waiting for ZooKeeper initialization...");
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                logger.info("Interrupted waiting for ZooKeeper initialization...");
-            }
-        }
-    }
-
-    /**
-     * 
-     */
-    private void awaitSessionRenewal(BackoffStrategy backoffStrategy, KeeperException.Code keeperExceptionCode) {
-        // see if we should failfast
-        if (!backoffStrategy.hasNext()) {
-            // do nothing when failing fast, we let users of this method above
-            // deal with any session errors
-            return;
-        }
-
-        if (logger.isWarnEnabled()) {
-            logger.warn("Waiting for session to be re-established...");
-        }
-
-        long waitStartTimestamp = System.currentTimeMillis();
-        synchronized (connectionLock) {
-            try {
-                this.wait(ASSUME_ERROR_TIMEOUT_MS + 10000);
-            } catch (InterruptedException e) {
-                if (logger.isWarnEnabled()) {
-                    logger.warn("Interrupted while waiting for session to be re-established:  " + e, e);
+                logger.debug("Waiting for ZooKeeper connection to be established...");
+                if (backoffStrategy.next() == null) {
+                    break;
                 }
-            }// try
-        }// synchronized
-
-        // took too long, so assume error, force reconnection
-        if (System.currentTimeMillis() - waitStartTimestamp > ASSUME_ERROR_TIMEOUT_MS) {
-            logger.info("Took too long to re-establish session:  attempting to reconnect...");
-            connect(backoffStrategy, true);
-        } else {
-            logger.info("Session re-established.");
-        }
-
+                synchronized (this) {
+                    wait(backoffStrategy.get());
+                }
+            } catch (InterruptedException e) {
+                logger.info("Interrupted waiting for ZooKeeper connection to be established...");
+            }
+        }// while
     }
-
-    // /**
-    // *
-    // * @param backoffStrategy
-    // * @param keeperExceptionCode
-    // * @throws KeeperException
-    // */
-    // private void handleKeeperException(BackoffStrategy backoffStrategy,
-    // KeeperException.Code keeperExceptionCode)
-    // throws KeeperException {
-    // handleKeeperException(backoffStrategy,
-    // KeeperException.create(keeperExceptionCode));
-    // }
 
     /**
      * 
@@ -1079,14 +1079,13 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @param e
      * @throws KeeperException
      */
-    private void handleKeeperException(BackoffStrategy backoffStrategy, KeeperException e) throws KeeperException {
+    void handleKeeperException(BackoffStrategy backoffStrategy, KeeperException e) throws KeeperException {
         if (!backoffStrategy.hasNext()) {
             // just throw exception if in fail fast mode
             throw e;
         } else if (this.isZooKeeperSessionError(e.code())) {
-            // if it is a ZK session error, wait for connection to be
-            // re-established
-            awaitSessionRenewal(backoffStrategy, e.code());
+            // if it is a ZK session error, await connection renewal
+            awaitConnectionInitialization(backoffStrategyFactory.get());
         } else {
             throw e;
         }// if
@@ -1101,7 +1100,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public abstract class ZooKeeperAction<T> {
 
         /** backoff strategy to use on reconnection attempts */
-        private BackoffStrategy _backoffStrategy;
+        private final BackoffStrategy _backoffStrategy;
 
         public ZooKeeperAction(BackoffStrategy _backoffStrategy) {
             this._backoffStrategy = _backoffStrategy;
@@ -1115,7 +1114,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         public abstract T doPerform() throws KeeperException, InterruptedException;
 
         public T perform() throws KeeperException, InterruptedException {
-            awaitConnectionInitialization();
+            awaitConnectionInitialization(backoffStrategyFactory.get());
 
             T result = null;
             boolean success = false;
@@ -1142,7 +1141,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public abstract class VoidZooKeeperAction {
 
         /** backoff strategy to use on reconnection attempts */
-        private BackoffStrategy _backoffStrategy;
+        private final BackoffStrategy _backoffStrategy;
 
         public VoidZooKeeperAction(BackoffStrategy _backoffStrategy) {
             this._backoffStrategy = _backoffStrategy;
@@ -1156,7 +1155,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         public abstract void doPerform() throws KeeperException, InterruptedException;
 
         public void perform() throws KeeperException, InterruptedException {
-            awaitConnectionInitialization();
+            awaitConnectionInitialization(backoffStrategyFactory.get());
 
             boolean success = false;
             while (!success && !shutdown) {

@@ -8,7 +8,6 @@ import io.reign.messaging.MessagingProvider;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +27,7 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     private volatile boolean shutdown = true;
 
-    private ExecutorService executorService;
+    // private ExecutorService executorService;
 
     private ReignContext serviceDirectory;
 
@@ -39,14 +38,14 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     @Override
     public String sendMessage(String hostOrIpAddress, int port, String message) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/ws";
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/websocket";
         WebSocketClient client = getClient(endpointUri);
         return client.write(message);
     }
 
     @Override
     public byte[] sendMessage(String hostOrIpAddress, int port, byte[] message) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/ws";
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/websocket";
         WebSocketClient client = getClient(endpointUri);
         return client.write(message);
     }
@@ -113,7 +112,7 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         this.server = new WebSocketServer(port, serviceDirectory, messageProtocol);
         server.start();
 
-        logger.info("START:  initializing executor");
+        // logger.info("START:  initializing executor");
         // this.executorService = Executors.newFixedThreadPool(2);
 
         shutdown = false;
@@ -129,10 +128,10 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         logger.info("STOP:  shutting down websockets server");
         server.stop();
 
-        logger.info("STOP:  shutting down executor");
-        if (this.executorService != null) {
-            executorService.shutdown();
-        }
+        // logger.info("STOP:  shutting down executor");
+        // if (this.executorService != null) {
+        // executorService.shutdown();
+        // }
 
         this.shutdown = true;
     }

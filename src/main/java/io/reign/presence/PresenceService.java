@@ -187,13 +187,15 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     <T> SimplePresenceObserver<T> getNotifyObserver(final String path) {
-        // create announcement if necessary
+        // observer for wait/notify
         SimplePresenceObserver<T> observer = notifyObserverMap.get(path);
         if (observer == null) {
             SimplePresenceObserver<T> newObserver = new SimplePresenceObserver<T>() {
                 @Override
                 public void updated(T info) {
-                    logger.debug("Notifying all waiters [{}]:  path={}", this.hashCode(), path);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Notifying all waiters [{}]:  path={}", this.hashCode(), path);
+                    }
                     synchronized (this) {
                         this.notifyAll();
                     }

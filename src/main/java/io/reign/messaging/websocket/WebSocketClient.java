@@ -91,7 +91,7 @@ public class WebSocketClient {
 
     public void connect() throws Exception {
 
-        logger.info("Connecting:  uri=" + uri);
+        logger.info("Connecting:  uri={}", uri);
 
         // HashMap<String, String> customHeaders = new HashMap<String, String>();
         // customHeaders.put("MyHeader", "MyValue");
@@ -137,7 +137,9 @@ public class WebSocketClient {
             @Override
             public void operationComplete(ChannelFuture channelFuture) {
                 synchronized (channelFuture) {
-                    logger.trace("notify() called:  channelFuture.hashCode()={}", channelFuture.hashCode());
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("notify() called:  channelFuture.hashCode()={}", channelFuture.hashCode());
+                    }
                     channelFuture.notify();
                 }
             }
@@ -161,8 +163,10 @@ public class WebSocketClient {
             }
         }
 
-        logger.trace("Got response:  requestId={}; channelFuture.hashCode()={}; response={}", new Object[] { requestId,
-                text, response });
+        if (logger.isTraceEnabled()) {
+            logger.trace("Got response:  requestId={}; channelFuture.hashCode()={}; response={}", new Object[] {
+                    requestId, text, response });
+        }
 
         return (String) response;
     }
