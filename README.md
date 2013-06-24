@@ -27,6 +27,8 @@ Reign features a pluggable programming API which allows additional services to b
 
 Quick Start
 -----------
+The following code and a simple Java `main()` hook can be found in  
+`io.reign.examples.QuickStartExample`
 
 ### Prerequisites
 
