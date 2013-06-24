@@ -5,6 +5,9 @@ import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.coord.DistributedReentrantLock;
+import io.reign.messaging.MessagingService;
+import io.reign.messaging.ResponseMessage;
+import io.reign.messaging.SimpleRequestMessage;
 import io.reign.presence.PresenceService;
 
 import java.util.HashMap;
@@ -68,6 +71,18 @@ public class QuickStartExample {
 
         // retrieve configuration as JSON file
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");
+
+        /** messaging example **/
+        // get the messaging service
+        MessagingService messagingService = reign.getService("messaging");
+
+        // send message to a single node in the "service1" service in the "examples" cluster
+        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", "someNodeIdentifier",
+                new SimpleRequestMessage("presence", "/"));
+
+        // broadcast a message to all nodes belonging to the "service1" service in the examples cluster
+        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
+                new SimpleRequestMessage("presence", "/examples"));
 
         /** coordination service example **/
         // get the coordination service

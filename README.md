@@ -102,6 +102,21 @@ In the terminal try sending the following messages
         // retrieve configuration as JSON file
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");
 
+### Messaging between nodes
+
+        /** messaging example **/
+        // get the messaging service
+        MessagingService messagingService = reign.getService("messaging");
+
+        // send message to a single node in the "service1" service in the "examples" cluster
+        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", "someNodeIdentifier",
+                new SimpleRequestMessage("presence", "/"));
+
+        // broadcast a message to all nodes belonging to the "service1" service in the examples cluster
+        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
+                new SimpleRequestMessage("presence", "/examples"));
+
+
 ### Get and use distributed locks
 
         /** coordination service example **/
