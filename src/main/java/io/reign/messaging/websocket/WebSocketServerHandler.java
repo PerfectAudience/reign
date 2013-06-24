@@ -37,15 +37,18 @@ import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static org.jboss.netty.handler.codec.http.HttpMethod.GET;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
-import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import io.reign.Service;
 import io.reign.ReignContext;
+import io.reign.Service;
 import io.reign.messaging.MessageProtocol;
 import io.reign.messaging.RequestMessage;
 import io.reign.messaging.ResponseMessage;
 
+import java.io.IOException;
+import java.io.InputStream;
+
+import org.apache.commons.io.IOUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.ChannelEvent;
@@ -294,33 +297,49 @@ public class WebSocketServerHandler extends ExecutionHandler {
     }
 
     private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest req) throws Exception {
-        // Allow only GET methods.
+        // only GET methods.
         if (req.getMethod() != GET) {
             sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1, FORBIDDEN));
             return;
         }
 
-        // Send the demo page and favicon.ico
-        if ("/".equals(req.getUri())) {
+        // anything but a request for the websocket will be treated like a regular HTTP request
+        String uri = req.getUri();
+        if (uri != null && !"/websocket".equals(uri)) {
             HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
 
-            ChannelBuffer content = WebSocketServerIndexPage.getContent(getWebSocketLocation(req));
+            // ChannelBuffer content = WebSocketServerIndexPage.getContent(getWebSocketLocation(req));
 
-            res.setHeader(CONTENT_TYPE, "text/html; charset=UTF-8");
-            setContentLength(res, content.readableBytes());
+            String contentType = null;
+            if (uri.endsWith(".png")) {
+                contentType = "image/png";
+            } else if (uri.endsWith(".ico")) {
+                contentType = "image/x-icon";
+            } else if (uri.endsWith(".css")) {
+                contentType = "text/css";
+            } else if (uri.endsWith(".js")) {
+                contentType = "application/javascript";
+            } else {
+                contentType = "text/html; charset=UTF-8";
+            }
 
-            res.setContent(content);
-            sendHttpResponse(ctx, req, res);
+            ChannelBuffer content = loadWebResource(uri, contentType, host(req));
+
+            if (content != null) {
+                res.setHeader(CONTENT_TYPE, contentType);
+                setContentLength(res, content.readableBytes());
+
+                res.setContent(content);
+                sendHttpResponse(ctx, req, res);
+            } else {
+                sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1,
+                        org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND));
+            }
             return;
         }
-        if ("/favicon.ico".equals(req.getUri())) {
-            HttpResponse res = new DefaultHttpResponse(HTTP_1_1, NOT_FOUND);
-            sendHttpResponse(ctx, req, res);
-            return;
-        }
 
-        // Handshake
-        WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(getWebSocketLocation(req),
+        // websocket handshake
+        WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(host(req),
                 null, false);
         handshaker = wsFactory.newHandshaker(req);
         if (handshaker == null) {
@@ -430,7 +449,45 @@ public class WebSocketServerHandler extends ExecutionHandler {
         e.getChannel().close();
     }
 
-    private static String getWebSocketLocation(HttpRequest req) {
+    private ChannelBuffer loadWebResource(String path, String contentType, String host) {
+        if (path == null || contentType == null) {
+            return null;
+        }
+
+        if ("/".equals(path)) {
+            path = "/index.html";
+        }
+
+        // try to find resource as stream
+        String resource = "site" + path;
+        InputStream in = this.getClass().getClassLoader().getResourceAsStream(resource);
+        logger.debug("Looking for web resource:  path={}; found={}", resource, in != null);
+        if (in != null) {
+            try {
+                byte[] bytes = IOUtils.toByteArray(IOUtils.toBufferedInputStream(in));
+
+                if (!contentType.startsWith("text")) {
+                    // binary file
+                    return ChannelBuffers.copiedBuffer(bytes);
+
+                } else {
+                    // text file
+                    String textContent = new String(bytes);
+                    if (contentType.startsWith("text/html")) {
+                        textContent = textContent.replace("${HOST}", host);
+                    }
+                    return ChannelBuffers.copiedBuffer(textContent, CharsetUtil.UTF_8);
+                }
+            } catch (IOException e) {
+                logger.error("" + e, e);
+            }
+
+        }
+
+        return null;
+    }
+
+    private static String host(HttpRequest req) {
         return "ws://" + req.getHeader(HOST) + WEBSOCKET_PATH;
     }
 }

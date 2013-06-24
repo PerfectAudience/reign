@@ -62,12 +62,12 @@
 	       <h1>Terminal</h1>
 	       <form onsubmit="return false;">
 <div class="controls controls-row">
-	<input type="text" id="connectHost" name="message" onkeypress="return checkKey(event);" value="ws://localhost:33033/websocket" class="span8"/>
+	<input type="text" id="connectHost" name="connectHost" onkeypress="return checkKey(event);" value="${HOST}" class="span8"/>
 	<input class="btn span2" type="button" value="Connect" onclick="connectWebSocket();" />
 </div>
        
 <div class="controls controls-row">            
-<textarea rows="3" type="text" id="sendInput" name="message" onkeypress="return checkKey(event);" placeholder="presence:/[clusterId]/[serviceId]/[nodeId]" class="span8"></textarea>
+<textarea rows="3" type="text" id="sendInput" name="sendInput" onkeypress="return checkKey(event);" placeholder="presence:/[clusterId]/[serviceId]/[nodeId]" class="span8"></textarea>
 <input class="btn span2" type="button" value="Send" onclick="send($('#sendInput').val());" />
 </div>
            </form>
@@ -127,7 +127,9 @@ if (window.WebSocket) {
 function send(message) {
     if (!window.WebSocket) { return; }
     if (!socket || socket.readyState != WebSocket.OPEN) {
-        connectWebSocket(); alert("The socket is not open:  reconnecting:  "+$('#connectHost').val()); setTimeout( function(){ if (socket && socket.readyState == WebSocket.OPEN) {socket.send(message);} }, 200);
+        connectWebSocket(); 
+        // alert("The socket is not open:  reconnecting:  "+$('#connectHost').val()); 
+        setTimeout( function(){ if (socket && socket.readyState == WebSocket.OPEN) {socket.send(message);} }, 200);
     } else { 
     	socket.send(message);
     }
@@ -141,7 +143,7 @@ function appendDiv(divElementId, html) {
     //contentDiv.appendChild(content);
     //theDiv.appendChild(contentDiv); 
     var currentValue = resultCounter++;
-    $('#'+divElementId).append('<div id="termResult'+currentValue+'"><div><pre>'+html+'<a id="termResultClose'+currentValue+'" class="close" href="#">&times;</a></pre></div></div>');
+    $('#'+divElementId).append('<div id="termResult'+currentValue+'"><div><pre>'+html+'<button id="termResultClose'+currentValue+'" class="close">&times;</button></pre></div></div>');
     $('#termResultClose'+currentValue).on("click", function(event) { $('#termResult'+currentValue).fadeOut('fast', function() {$('#termResult'+currentValue).remove();} ); });
     //theDiv.scrollTop = theDiv.scrollHeight; 
 } // function
