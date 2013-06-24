@@ -17,8 +17,8 @@ Example applications:
 * Zero configuration applications - deploy to different environments or change application properties without needing to edit configuration files or restart services. 
 * Dynamic service discovery - nodes in one service can discover nodes in other services without configuration changes. 
 * Service redundancy - for services where only one process/node can run at the same time, a stand-by process/node can be brought up and will automatically take over if the currently running process/node fails.
-* Capacity monitoring - services can monitor each other and ensure that they do not overwhelm each other:  for example, a frontline service may slow down its rate of requests to a backend service to prevent a \"domino effect\" where a spike in traffic brings down the whole application. 
-* Application decisioning based on service state - services can publish diagnostic metrics which can be used to change application behavior:  for example, nodes in one service may go into \"safety mode\" based on information provided by another service (error rates, etc.). 
+* Capacity monitoring - services can monitor each other and ensure that they do not overwhelm each other:  for example, a frontline service may slow down its rate of requests to a backend service to prevent a "domino effect" where a spike in traffic brings down the whole application. 
+* Application decisioning based on service state - services can publish diagnostic metrics which can be used to change application behavior:  for example, nodes in one service may go into "safety mode" based on information provided by another service (error rates, etc.). 
 
 Building on top of Reign quickly provides a high level of cluster-awareness and coordination capabilities.
 
