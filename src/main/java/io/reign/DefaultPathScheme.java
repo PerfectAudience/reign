@@ -112,20 +112,27 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public String getCanonicalId() {
-        return this.canonicalId;
-    }
-
-    @Override
-    public String getCanonicalId(int port) {
         StringBuilder sb = new StringBuilder(this.canonicalId);
         if (this.messagingPort != null) {
             sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_MESSAGING_PORT).insert(
                     sb.length() - 1, "\":\"").insert(sb.length() - 1, this.messagingPort).insert(sb.length() - 1, "\"");
         }
-        sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_PORT).insert(sb.length() - 1, "\":\"")
-                .insert(sb.length() - 1, port).insert(sb.length() - 1, "\"");
         return sb.toString();
     }
+
+    // @Override
+    // public String getCanonicalId(Integer port) {
+    // StringBuilder sb = new StringBuilder(this.canonicalId);
+    // if (this.messagingPort != null) {
+    // sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_MESSAGING_PORT).insert(
+    // sb.length() - 1, "\":\"").insert(sb.length() - 1, this.messagingPort).insert(sb.length() - 1, "\"");
+    // }
+    // if (port != null) {
+    // sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_PORT).insert(sb.length() - 1,
+    // "\":\"").insert(sb.length() - 1, port).insert(sb.length() - 1, "\"");
+    // }
+    // return sb.toString();
+    // }
 
     @Override
     public Map<String, String> parseCanonicalId(String canonicalId) {

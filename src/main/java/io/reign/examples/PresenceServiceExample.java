@@ -149,37 +149,37 @@ public class PresenceServiceExample {
         logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
 
         // basic service node announcement
-        presenceService.announce("examples", "service1", reign.getPathScheme().getCanonicalId(4321), true);
+        presenceService.announce("examples", "service1", true);
 
         // service node announcement with some additional info
         Map<String, String> nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "1234");
-        presenceService.announce("examples", "service2", "node1", true, nodeAttributes);
+        presenceService.announce("examples", "service2", true, nodeAttributes);
 
         // sleep a bit
         Thread.sleep(10000);
 
-        presenceService.hide("examples", "service2", "node1");
+        presenceService.hide("examples", "service2");
 
         // sleep a bit
         Thread.sleep(10000);
 
-        presenceService.unhide("examples", "service2", "node1");
+        presenceService.unhide("examples", "service2");
 
         // new node available in service
-        presenceService.announce("examples", "service1", "node2", true);
+        presenceService.announce("examples", "service1", true);
 
         // sleep a bit
         Thread.sleep(10000);
 
         // new node available in service
-        presenceService.hide("examples", "service1", "node2");
+        presenceService.hide("examples", "service1");
 
         // reannounce service with changed attributes
         // service node announcement with some additional info
         nodeAttributes = new HashMap<String, String>();
         nodeAttributes.put("port", "9999");
-        presenceService.announce("examples", "service2", "node1", true, nodeAttributes);
+        presenceService.announce("examples", "service2", true, nodeAttributes);
 
     }
 }

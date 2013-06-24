@@ -407,14 +407,22 @@ public class PresenceService extends AbstractActiveService implements Observable
         return result;
     }
 
-    public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
-        announce(clusterId, serviceId, nodeId, visible, null, null);
+    public void announce(String clusterId, String serviceId, boolean visible) {
+        announce(clusterId, serviceId, getPathScheme().getCanonicalId(), visible, null, null);
     }
 
-    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
-            Map<String, String> attributeMap) {
-        announce(clusterId, serviceId, nodeId, visible, attributeMap, null);
+    public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
+        announce(clusterId, serviceId, getPathScheme().getCanonicalId(), visible, attributeMap, null);
     }
+
+    // public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
+    // announce(clusterId, serviceId, nodeId, visible, null, null);
+    // }
+    //
+    // public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
+    // Map<String, String> attributeMap) {
+    // announce(clusterId, serviceId, nodeId, visible, attributeMap, null);
+    // }
 
     /**
      * This method only has to be called once per service node and/or when node data changes. Announcements happen
@@ -428,8 +436,8 @@ public class PresenceService extends AbstractActiveService implements Observable
      * @param attributeMap
      * @param nodeAttributeSerializer
      */
-    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
-            Map<String, String> attributeMap, DataSerializer<Map<String, String>> nodeAttributeSerializer) {
+    void announce(String clusterId, String serviceId, String nodeId, boolean visible, Map<String, String> attributeMap,
+            DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         // defaults
         if (nodeAttributeSerializer == null) {
             nodeAttributeSerializer = this.getNodeAttributeSerializer();
@@ -451,7 +459,15 @@ public class PresenceService extends AbstractActiveService implements Observable
         announcement.setHidden(!visible);
     }
 
-    public void hide(String clusterId, String serviceId, String nodeId) {
+    public void hide(String clusterId, String serviceId) {
+        hide(clusterId, serviceId, getPathScheme().getCanonicalId());
+    }
+
+    public void unhide(String clusterId, String serviceId) {
+        unhide(clusterId, serviceId, getPathScheme().getCanonicalId());
+    }
+
+    void hide(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath);
         if (!announcement.isHidden()) {
@@ -460,7 +476,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         }
     }
 
-    public void unhide(String clusterId, String serviceId, String nodeId) {
+    void unhide(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath);
         if (announcement.isHidden()) {

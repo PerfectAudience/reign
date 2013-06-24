@@ -59,7 +59,7 @@
 		  
 	  
 	  <div class="tab-pane" id="terminal">
-	       <h1>Terminal</h1>
+	       <h1 class="text-info">Terminal</h1>
 	       <form onsubmit="return false;">
 <div class="controls controls-row">
 	<input type="text" id="connectHost" name="connectHost" onkeypress="return checkKey(event);" value="${HOST}" class="span8"/>
@@ -78,8 +78,38 @@
 	  
 	   
       <div class="tab-pane active" id="help">
-          <h1>Terminal Guide</h1>
-          <p>Describe basic terminal commands here...</p>
+          <h1 class="text-info">Terminal Guide</h1>
+          <hr/>
+          
+          <div>
+          <h2>General API Format</h2>
+          <p>API calls are REST-ful in style and generally follow the form <code>[TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...</code></p>
+          <p>The first line may be terminated by a newline with an additional message body.</p>
+          </div>
+          <p>&nbsp;</p> 
+          <hr/>            
+          
+          <div>
+          <h2>Presence Service</h2>
+          <p>Route API calls to the Presence Service by prefixing with <code>presence:</code></p>
+          </div>
+          <p>&nbsp;</p>         
+          <hr/>                   
+          
+          <div>
+          <h2>Configuration Service</h2>
+          <p>Route API calls to the Configuration Service by prefixing with <code>conf:</code></p>
+          </div>
+          <p>&nbsp;</p>         
+          <hr/> 
+          
+          <div>
+          <h2>Coordination Service</h2>
+          <p>Route API calls to the Coordination Service by prefixing with <code>coord:</code></p>
+          </div>
+          <p>&nbsp;</p>         
+          <hr/> 
+                    
       </div>
 	  
 	  <div class="tab-pane" id="contact">

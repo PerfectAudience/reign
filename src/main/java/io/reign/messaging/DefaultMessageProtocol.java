@@ -2,8 +2,6 @@ package io.reign.messaging;
 
 import io.reign.util.JacksonUtil;
 
-import java.util.regex.Pattern;
-
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.slf4j.Logger;
@@ -18,7 +16,7 @@ public class DefaultMessageProtocol implements MessageProtocol {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultMessageProtocol.class);
 
-    private static final Pattern PATTERN_TEXT_REQUEST_SPLITTER = Pattern.compile("\\:");
+    // private static final Pattern PATTERN_TEXT_REQUEST_SPLITTER = Pattern.compile("\\:");
 
     public static final String MESSAGE_ID_DELIMITER = "\\";
 
@@ -36,8 +34,15 @@ public class DefaultMessageProtocol implements MessageProtocol {
     @Override
     public RequestMessage fromTextRequest(String textRequest) {
         // try {
-        String[] requestTokens = PATTERN_TEXT_REQUEST_SPLITTER.split(textRequest);
-        if (requestTokens.length == 2) {
+        String[] requestTokens = null;
+        int colonIndex = textRequest.indexOf(':');
+        if (colonIndex != -1) {
+            requestTokens = new String[2];
+            requestTokens[0] = textRequest.substring(0, colonIndex);
+            requestTokens[1] = textRequest.substring(colonIndex + 1);
+
+        }
+        if (requestTokens != null) {
             RequestMessage requestMessage = new SimpleRequestMessage();
             requestMessage.setTargetService(requestTokens[0]);
 
@@ -50,7 +55,7 @@ public class DefaultMessageProtocol implements MessageProtocol {
             }
             return requestMessage;
         } else {
-            logger.warn("Bad message:  message='{}'", textRequest);
+            logger.warn("Poorly formatted message:  message='{}'", textRequest);
         }
         // } catch (UnsupportedEncodingException e) {
         // logger.error("Error trying to parse request message:  " + e, e);

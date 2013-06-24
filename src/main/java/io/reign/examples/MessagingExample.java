@@ -41,8 +41,8 @@ public class MessagingExample {
 
     public static void messagingExample(Reign reign) throws Exception {
         PresenceService presenceService = reign.getService("presence");
-        presenceService.announce("examples", "service3", reign.getPathScheme().getCanonicalId(1234), true);
-        presenceService.announce("examples", "service4", reign.getPathScheme().getCanonicalId(4321), true);
+        presenceService.announce("examples", "service3", true);
+        presenceService.announce("examples", "service4", true);
 
         presenceService.waitUntilAvailable("examples", "service3", 30000);
 

@@ -6,6 +6,8 @@ import io.reign.ObservableService;
 import io.reign.PathType;
 import io.reign.ServiceObserverManager;
 import io.reign.ServiceObserverWrapper;
+import io.reign.messaging.RequestMessage;
+import io.reign.messaging.ResponseMessage;
 import io.reign.util.PathCacheEntry;
 import io.reign.util.ZkClientUtil;
 
@@ -273,6 +275,14 @@ public class ConfService extends AbstractService implements ObservableService {
 
     @Override
     public void destroy() {
+    }
+
+    /**
+     * TODO: implement!
+     */
+    @Override
+    public ResponseMessage handleMessage(RequestMessage requestMessage) {
+        return null;
     }
 
     private static class ConfObserverWrapper<T> extends ServiceObserverWrapper<SimpleConfObserver<T>> {

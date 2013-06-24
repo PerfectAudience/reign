@@ -2,7 +2,6 @@ package io.reign;
 
 import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
-import io.reign.data.DataService;
 import io.reign.messaging.MessagingProvider;
 import io.reign.messaging.MessagingService;
 import io.reign.messaging.websocket.WebSocketMessagingProvider;
@@ -24,9 +23,9 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class ReignBuilder {
+public class ReignMaker {
 
-    private static final Logger logger = LoggerFactory.getLogger(ReignBuilder.class);
+    private static final Logger logger = LoggerFactory.getLogger(ReignMaker.class);
 
     private String zkConnectString;
     private int zkSessionTimeout = 30000;
@@ -45,7 +44,7 @@ public class ReignBuilder {
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
-    public ReignBuilder allCoreServices() {
+    public ReignMaker allCoreServices() {
         PresenceService presenceService = new PresenceService();
         serviceMap.put("presence", presenceService);
 
@@ -55,8 +54,8 @@ public class ReignBuilder {
         CoordinationService coordService = new CoordinationService();
         serviceMap.put("coord", coordService);
 
-        DataService dataService = new DataService();
-        serviceMap.put("data", dataService);
+        // DataService dataService = new DataService();
+        // serviceMap.put("data", dataService);
 
         MessagingService messagingService = new MessagingService();
         serviceMap.put("messaging", messagingService);
@@ -65,35 +64,35 @@ public class ReignBuilder {
         return this;
     }
 
-    public ReignBuilder zkClient(String zkConnectString, int zkSessionTimeout) {
+    public ReignMaker zkClient(String zkConnectString, int zkSessionTimeout) {
         this.zkConnectString = zkConnectString;
         this.zkSessionTimeout = zkSessionTimeout;
         return this;
 
     }
 
-    public ReignBuilder registerService(String serviceName, Service service) {
+    public ReignMaker registerService(String serviceName, Service service) {
         serviceMap.put(serviceName, service);
         return this;
     }
 
-    public ReignBuilder pathCache(int maxSize, int concurrencyLevel) {
+    public ReignMaker pathCache(int maxSize, int concurrencyLevel) {
         this.pathCacheMaxSize = maxSize;
         this.pathCacheMaxConcurrencyLevel = concurrencyLevel;
         return this;
     }
 
-    public ReignBuilder pathCache(PathCache pathCache) {
+    public ReignMaker pathCache(PathCache pathCache) {
         this.pathCache = pathCache;
         return this;
     }
 
-    public ReignBuilder zkClient(ZkClient zkClient) {
+    public ReignMaker zkClient(ZkClient zkClient) {
         this.zkClient = zkClient;
         return this;
     }
 
-    public ReignBuilder reservedClusterId(String reservedClusterId) {
+    public ReignMaker reservedClusterId(String reservedClusterId) {
         this.reservedClusterId = reservedClusterId;
         return this;
     }
