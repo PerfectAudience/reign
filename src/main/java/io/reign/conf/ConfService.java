@@ -2,6 +2,7 @@ package io.reign.conf;
 
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
+import io.reign.JsonDataSerializer;
 import io.reign.ObservableService;
 import io.reign.PathType;
 import io.reign.ServiceObserverManager;
@@ -37,6 +38,28 @@ public class ConfService extends AbstractService implements ObservableService {
     private final ServiceObserverManager<ConfObserverWrapper> observerManager = new ServiceObserverManager<ConfObserverWrapper>();
 
     /**
+     * Picks serializer based on path "file extension".
+     * 
+     * @param <T>
+     * @param clusterId
+     * @param relativeConfPath
+     * @return
+     */
+    public <T> T getConf(String clusterId, String relativeConfPath) {
+        DataSerializer confSerializer = null;
+        if (relativeConfPath.endsWith(".properties")) {
+            confSerializer = new ConfPropertiesSerializer<ConfProperties>(false);
+        } else if (relativeConfPath.endsWith(".json") || relativeConfPath.endsWith(".js")) {
+            confSerializer = new JsonDataSerializer<T>();
+        } else {
+            throw new IllegalArgumentException("Could not derive serializer from given information:  path="
+                    + relativeConfPath);
+        }
+        return (T) getConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, confSerializer, null, true);
+
+    }
+
+    /**
      * 
      * @param relativePath
      * @param confSerializer
@@ -58,6 +81,27 @@ public class ConfService extends AbstractService implements ObservableService {
             SimpleConfObserver<T> observer) {
         return getConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, confSerializer, observer, true);
 
+    }
+
+    /**
+     * Picks serializer based on path "file extension".
+     * 
+     * @param <T>
+     * @param clusterId
+     * @param relativeConfPath
+     * @param conf
+     */
+    public <T> void putConf(String clusterId, String relativeConfPath, T conf) {
+        DataSerializer confSerializer = null;
+        if (relativeConfPath.endsWith(".properties")) {
+            confSerializer = new ConfPropertiesSerializer<ConfProperties>(false);
+        } else if (relativeConfPath.endsWith(".json") || relativeConfPath.endsWith(".js")) {
+            confSerializer = new JsonDataSerializer<T>();
+        } else {
+            throw new IllegalArgumentException("Could not derive serializer from given information:  path="
+                    + relativeConfPath);
+        }
+        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, getDefaultAclList());
     }
 
     /**

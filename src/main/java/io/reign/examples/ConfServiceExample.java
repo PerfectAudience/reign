@@ -22,17 +22,17 @@ public class ConfServiceExample {
     private static final Logger logger = LoggerFactory.getLogger(ConfServiceExample.class);
 
     public static void main(String[] args) throws Exception {
-        /** init and start sovereign using builder **/
-        final Reign sovereign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices()
+        /** init and start reign using builder **/
+        final Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices()
                 .build();
-        // sovereign.start();
+        // reign.start();
 
         /** conf service example **/
         Thread t1 = new Thread() {
             @Override
             public void run() {
                 try {
-                    confServiceExample(sovereign);
+                    confServiceExample(reign);
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -44,7 +44,7 @@ public class ConfServiceExample {
             @Override
             public void run() {
                 try {
-                    confServiceExample(sovereign);
+                    confServiceExample(reign);
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -57,18 +57,18 @@ public class ConfServiceExample {
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(60000);
 
-        /** shutdown sovereign **/
-        sovereign.stop();
+        /** shutdown reign **/
+        reign.stop();
 
         /** sleep a bit to observe observer callbacks **/
         Thread.sleep(10000);
     }
 
-    public static void confServiceExample(Reign sovereign) throws Exception {
-        sovereign.start();
+    public static void confServiceExample(Reign reign) throws Exception {
+        reign.start();
 
         // this is how you would normally get a service
-        ConfService confService = (ConfService) sovereign.getService("conf");
+        ConfService confService = (ConfService) reign.getService("conf");
 
         // load a configuration which will not be immediately available but pass
         // observer to be notified of changes in configuration
@@ -101,9 +101,12 @@ public class ConfServiceExample {
         conf.setProperty("capacity.min", "333");
         conf.setProperty("capacity.max", "1024");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples", "config1.properties", conf, new ConfPropertiesSerializer<Properties>(false));
+        confService.putConf("examples", "config1.properties", conf);
 
         Thread.sleep(10000);
+
+        // retrieve again using convenience method
+        loadedConf = confService.getConf("examples", "config1.properties");
 
         // remove configuration
         confService.removeConf("examples", "config1.properties");

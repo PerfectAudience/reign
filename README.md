@@ -27,9 +27,87 @@ Reign features a pluggable programming API which allows additional services to b
 
 Quick Start
 -----------
+`
+        /** init and start reign using builder **/
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).allCoreServices().build();
+        reign.start();
 
+        /** presence service example **/
+        // get the presence service
+        PresenceService presenceService = reign.getService("presence");
 
+        // announce this node's available for a given service, immediately visible
+        presenceService.announce("examples", "service1", true);
 
+        // announce this node's available for another service, not immediately visible
+        presenceService.announce("examples", "service2", false);
+
+        // hide service1
+        presenceService.hide("examples", "service1");
+
+        // show service2
+        presenceService.show("examples", "service2");
+
+        /** configuration service example **/
+        // get the configuration service
+        ConfService confService = (ConfService) reign.getService("conf");
+
+        // store configuration as properties file
+        Properties props = new Properties();
+        props.setProperty("capacity.min", "111");
+        props.setProperty("capacity.max", "999");
+        props.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
+        confService.putConf("examples", "config1.properties", props);
+
+        // retrieve configuration as properties file
+        Properties loadedProperties = confService.getConf("examples", "config1.properties");
+
+        // store configuration as JSON file
+        Map<String, String> json = new HashMap<String, String>();
+        json.put("capacity.min", "222");
+        json.put("capacity.max", "888");
+        json.put("lastSavedTimestamp", System.currentTimeMillis() + "");
+        confService.putConf("examples", "config1.js", json);
+
+        // retrieve configuration as JSON file
+        Map<String, String> loadedJson = confService.getConf("examples", "config1.js");
+
+        /** coordination service example **/
+        // get the coordination service
+        CoordinationService coordService = (CoordinationService) reign.getService("coord");
+
+        // get a distributed reentrant lock and use it
+        DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
+        lock.lock();
+        try {
+            // do some stuff here... (just sleeping 5 seconds)
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            // do something here...
+
+        } finally {
+            lock.unlock();
+            lock.destroy();
+        }
+
+        // get a read/write distributed lock and use it
+        DistributedReadWriteLock rwLock = coordService.getReadWriteLock("examples", "rw_lock1");
+        rwLock.readLock().lock();
+        try {
+            // do some stuff here... (just sleeping 5 seconds)
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            // do something here...
+
+        } finally {
+            rwLock.readLock().unlock();
+            rwLock.destroy();
+        }
+
+        /** shutdown reign **/
+        reign.stop();
+
+`
 
 
 

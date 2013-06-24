@@ -23,32 +23,31 @@ public class CoordinationServiceExample {
     private static final Logger logger = LoggerFactory.getLogger(CoordinationServiceExample.class);
 
     public static void main(String[] args) throws Exception {
-        /** init and start sovereign using builder **/
-        Reign sovereign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices()
-                .build();
-        sovereign.start();
+        /** init and start reign using builder **/
+        Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices().build();
+        reign.start();
 
         /** coordination service example **/
-        coordinationServiceExclusiveLockExample(sovereign);
-        coordinationServiceReentrantLockExample(sovereign);
-        coordinationServiceReadWriteLockExample(sovereign);
-        coordinationServiceFixedSemaphoreExample(sovereign);
-        coordinationServiceConfiguredSemaphoreExample(sovereign);
+        coordinationServiceExclusiveLockExample(reign);
+        coordinationServiceReentrantLockExample(reign);
+        coordinationServiceReadWriteLockExample(reign);
+        coordinationServiceFixedSemaphoreExample(reign);
+        coordinationServiceConfiguredSemaphoreExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down...");
         Thread.sleep(120000);
 
-        /** shutdown sovereign **/
-        sovereign.stop();
+        /** shutdown reign **/
+        reign.stop();
 
         /** sleep a bit to observe observer callbacks **/
         Thread.sleep(10000);
     }
 
-    public static void coordinationServiceReentrantLockExample(Reign sovereign) throws Exception {
+    public static void coordinationServiceReentrantLockExample(Reign reign) throws Exception {
         // this is how you would normally get a service
-        final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
+        final CoordinationService coordService = (CoordinationService) reign.getService("coord");
 
         final int lockHoldTimeMillis = 5000;
 
@@ -62,7 +61,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedReentrantLock lock = coordService.getReentrantLock("node1", "examples", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -85,7 +84,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedReentrantLock lock = coordService.getReentrantLock("node2", "examples", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -108,7 +107,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedReentrantLock lock = coordService.getReentrantLock("node3", "examples", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -129,10 +128,10 @@ public class CoordinationServiceExample {
         t3.start();
     }
 
-    public static void coordinationServiceConfiguredSemaphoreExample(Reign sovereign) throws Exception {
+    public static void coordinationServiceConfiguredSemaphoreExample(Reign reign) throws Exception {
         // this is how you would normally get a service
-        final CoordinationService coordService = sovereign.getService("coord");
-        final ConfService confService = sovereign.getService("conf");
+        final CoordinationService coordService = reign.getService("coord");
+        final ConfService confService = reign.getService("conf");
 
         // configure semaphore
         ConfiguredPermitPoolSize.setSemaphoreConf(confService, "examples", "semaphore2", 5);
@@ -153,8 +152,8 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node1", "examples", "semaphore2",
-                        4, false);
+                DistributedSemaphore semaphore = coordService
+                        .getConfiguredSemaphore("examples", "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 4;
@@ -177,8 +176,8 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node2", "examples", "semaphore2",
-                        4, false);
+                DistributedSemaphore semaphore = coordService
+                        .getConfiguredSemaphore("examples", "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 2;
@@ -201,8 +200,8 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node3", "examples", "semaphore2",
-                        4, false);
+                DistributedSemaphore semaphore = coordService
+                        .getConfiguredSemaphore("examples", "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -224,8 +223,8 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getConfiguredSemaphore("node4", "examples", "semaphore2",
-                        4, false);
+                DistributedSemaphore semaphore = coordService
+                        .getConfiguredSemaphore("examples", "semaphore2", 4, false);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -246,16 +245,16 @@ public class CoordinationServiceExample {
 
     }
 
-    public static void coordinationServiceFixedSemaphoreExample(Reign sovereign) throws Exception {
+    public static void coordinationServiceFixedSemaphoreExample(Reign reign) throws Exception {
         // this is how you would normally get a service
-        final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
+        final CoordinationService coordService = (CoordinationService) reign.getService("coord");
 
         final int lockHoldTimeMillis = 15000;
 
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node1", "examples", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("examples", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 4;
@@ -279,7 +278,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node2", "examples", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("examples", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 int permitsToAcquire = 2;
@@ -303,7 +302,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node3", "examples", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("examples", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -326,7 +325,7 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                DistributedSemaphore semaphore = coordService.getFixedSemaphore("node4", "examples", "semaphore1", 4);
+                DistributedSemaphore semaphore = coordService.getFixedSemaphore("examples", "semaphore1", 4);
                 logger.info(this.getName() + ":  attempting to acquire lock...");
 
                 try {
@@ -348,16 +347,16 @@ public class CoordinationServiceExample {
 
     }
 
-    public static void coordinationServiceExclusiveLockExample(Reign sovereign) throws Exception {
+    public static void coordinationServiceExclusiveLockExample(Reign reign) throws Exception {
         // this is how you would normally get a service
-        final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
+        final CoordinationService coordService = (CoordinationService) reign.getService("coord");
 
         final int lockHoldTimeMillis = 5000;
 
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedLock lock = coordService.getLock("node1", "examples", "exclusive_lock1");
+                DistributedLock lock = coordService.getLock("examples", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 for (int i = 0; i < 3; i++) {
                     lock.lock();
@@ -381,7 +380,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedLock lock = coordService.getLock("node2", "examples", "exclusive_lock1");
+                DistributedLock lock = coordService.getLock("examples", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 for (int i = 0; i < 3; i++) {
                     lock.lock();
@@ -405,7 +404,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedLock lock = coordService.getLock("node3", "examples", "exclusive_lock1");
+                DistributedLock lock = coordService.getLock("examples", "exclusive_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 for (int i = 0; i < 3; i++) {
                     lock.lock();
@@ -427,16 +426,16 @@ public class CoordinationServiceExample {
         t3.start();
     }
 
-    public static void coordinationServiceReadWriteLockExample(Reign sovereign) throws Exception {
+    public static void coordinationServiceReadWriteLockExample(Reign reign) throws Exception {
         // this is how you would normally get a service
-        final CoordinationService coordService = (CoordinationService) sovereign.getService("coord");
+        final CoordinationService coordService = (CoordinationService) reign.getService("coord");
 
         final int lockHoldTimeMillis = 30000;
 
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("node1", "examples", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("examples", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
@@ -458,7 +457,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("node2", "examples", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("examples", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.readLock().lock();
                 try {
@@ -480,7 +479,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("node3", "examples", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("examples", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.writeLock().lock();
                 try {
@@ -502,7 +501,7 @@ public class CoordinationServiceExample {
         Thread t4 = new Thread() {
             @Override
             public void run() {
-                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("node4", "examples", "rw_lock1");
+                DistributedReadWriteLock rwLock = coordService.getReadWriteLock("examples", "rw_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 rwLock.writeLock().lock();
                 try {

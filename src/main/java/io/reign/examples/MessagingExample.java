@@ -22,8 +22,8 @@ public class MessagingExample {
     private static final Logger logger = LoggerFactory.getLogger(MessagingExample.class);
 
     public static void main(String[] args) throws Exception {
-        /** init and start sovereign using builder **/
-        Reign reign = Reign.builder().zkClient("localhost:2181", 30000).pathCache(1024, 8).allCoreServices().build();
+        /** init and start reign using builder **/
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).allCoreServices().build();
         reign.start();
 
         /** messaging example **/
@@ -32,7 +32,7 @@ public class MessagingExample {
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(600000);
 
-        /** shutdown sovereign **/
+        /** shutdown reign **/
         reign.stop();
 
         /** sleep a bit to observe observer callbacks **/

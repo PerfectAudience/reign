@@ -64,8 +64,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param relativeLockPath
      * @return
      */
-    public DistributedReentrantLock getReentrantLock(String ownerId, String clusterId, String lockName) {
-        return getReentrantLock(ownerId, clusterId, lockName, getDefaultAclList());
+    public DistributedReentrantLock getReentrantLock(String clusterId, String lockName) {
+        return getReentrantLock(clusterId, lockName, getDefaultAclList());
     }
 
     /**
@@ -76,11 +76,10 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param aclList
      * @return
      */
-    public DistributedReentrantLock getReentrantLock(String ownerId, String clusterId, String lockName,
-            List<ACL> aclList) {
+    public DistributedReentrantLock getReentrantLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock lock = new ZkReentrantLock(zkReservationManager, ownerId, entityPath,
+        DistributedLock lock = new ZkReentrantLock(zkReservationManager, getPathScheme().getCanonicalId(), entityPath,
                 ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(entityPath, ReservationType.LOCK_EXCLUSIVE, lock);
 
@@ -94,8 +93,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param relativeLockPath
      * @return
      */
-    public DistributedLock getLock(String ownerId, String clusterId, String lockName) {
-        return getLock(ownerId, clusterId, lockName, getDefaultAclList());
+    public DistributedLock getLock(String clusterId, String lockName) {
+        return getLock(clusterId, lockName, getDefaultAclList());
     }
 
     /**
@@ -106,11 +105,11 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param aclList
      * @return
      */
-    public DistributedLock getLock(String ownerId, String clusterId, String lockName, List<ACL> aclList) {
+    public DistributedLock getLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock lock = new ZkLock(zkReservationManager, ownerId, entityPath, ReservationType.LOCK_EXCLUSIVE,
-                aclList);
+        DistributedLock lock = new ZkLock(zkReservationManager, getPathScheme().getCanonicalId(), entityPath,
+                ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(entityPath, ReservationType.LOCK_EXCLUSIVE, lock);
 
         return lock;
@@ -122,8 +121,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param relativeLockPath
      * @return
      */
-    public DistributedReadWriteLock getReadWriteLock(String ownerId, String clusterId, String lockName) {
-        return getReadWriteLock(ownerId, clusterId, lockName, getDefaultAclList());
+    public DistributedReadWriteLock getReadWriteLock(String clusterId, String lockName) {
+        return getReadWriteLock(clusterId, lockName, getDefaultAclList());
     }
 
     /**
@@ -133,21 +132,20 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param aclList
      * @return
      */
-    public DistributedReadWriteLock getReadWriteLock(String ownerId, String clusterId, String lockName,
-            List<ACL> aclList) {
+    public DistributedReadWriteLock getReadWriteLock(String clusterId, String lockName, List<ACL> aclList) {
 
         // write lock
         String writeEntityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock writeLock = new ZkReentrantLock(zkReservationManager, ownerId, writeEntityPath,
-                ReservationType.LOCK_EXCLUSIVE, aclList);
+        DistributedLock writeLock = new ZkReentrantLock(zkReservationManager, getPathScheme().getCanonicalId(),
+                writeEntityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(writeEntityPath, ReservationType.LOCK_EXCLUSIVE, writeLock);
 
         // read lock
         String readEntityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_SHARED, lockName);
-        DistributedLock readLock = new ZkReentrantLock(zkReservationManager, ownerId, readEntityPath,
-                ReservationType.LOCK_SHARED, aclList);
+        DistributedLock readLock = new ZkReentrantLock(zkReservationManager, getPathScheme().getCanonicalId(),
+                readEntityPath, ReservationType.LOCK_SHARED, aclList);
         this.coordinationServiceCache.putLock(readEntityPath, ReservationType.LOCK_SHARED, readLock);
 
         return new ZkReadWriteLock(readLock, writeLock);
@@ -160,15 +158,13 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param permitPoolSize
      * @return
      */
-    public DistributedSemaphore getFixedSemaphore(String ownerId, String clusterId, String semaphoreName,
-            int permitPoolSize) {
-        return getSemaphore(ownerId, clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize),
-                getDefaultAclList());
+    public DistributedSemaphore getFixedSemaphore(String clusterId, String semaphoreName, int permitPoolSize) {
+        return getSemaphore(clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize), getDefaultAclList());
     }
 
-    public DistributedSemaphore getFixedSemaphore(String ownerId, String clusterId, String semaphoreName,
-            int permitPoolSize, List<ACL> aclList) {
-        return getSemaphore(ownerId, clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize), aclList);
+    public DistributedSemaphore getFixedSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
+            List<ACL> aclList) {
+        return getSemaphore(clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize), aclList);
     }
 
     /**
@@ -178,13 +174,13 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param semaphoreName
      * @return
      */
-    public DistributedSemaphore getConfiguredSemaphore(String ownerId, String clusterId, String semaphoreName) {
-        return getConfiguredSemaphore(ownerId, clusterId, semaphoreName, -1, false, getDefaultAclList());
+    public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName) {
+        return getConfiguredSemaphore(clusterId, semaphoreName, -1, false, getDefaultAclList());
     }
 
     public DistributedSemaphore getConfiguredSemaphore(String ownerId, String clusterId, String semaphoreName,
             List<ACL> aclList) {
-        return getConfiguredSemaphore(ownerId, clusterId, semaphoreName, -1, false, aclList);
+        return getConfiguredSemaphore(clusterId, semaphoreName, -1, false, aclList);
     }
 
     /**
@@ -195,14 +191,14 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param createConfigurationIfNecessary
      * @return
      */
-    public DistributedSemaphore getConfiguredSemaphore(String ownerId, String clusterId, String semaphoreName,
-            int permitPoolSize, boolean createConfigurationIfNecessary) {
-        return getConfiguredSemaphore(ownerId, clusterId, semaphoreName, permitPoolSize,
-                createConfigurationIfNecessary, getDefaultAclList());
+    public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
+            boolean createConfigurationIfNecessary) {
+        return getConfiguredSemaphore(clusterId, semaphoreName, permitPoolSize, createConfigurationIfNecessary,
+                getDefaultAclList());
     }
 
-    public DistributedSemaphore getConfiguredSemaphore(String ownerId, String clusterId, String semaphoreName,
-            int permitPoolSize, boolean createConfigurationIfNecessary, List<ACL> aclList) {
+    public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
+            boolean createConfigurationIfNecessary, List<ACL> aclList) {
 
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.SEMAPHORE, semaphoreName);
@@ -216,7 +212,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
         pps.initialize();
 
         /** create and cache **/
-        DistributedSemaphore semaphore = getSemaphore(ownerId, clusterId, semaphoreName, pps, aclList);
+        DistributedSemaphore semaphore = getSemaphore(clusterId, semaphoreName, pps, aclList);
         coordinationServiceCache.putSemaphore(entityPath, semaphore);
 
         return semaphore;
@@ -229,8 +225,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @param aclList
      * @return
      */
-    public DistributedSemaphore getSemaphore(String ownerId, String clusterId, String semaphoreName,
-            PermitPoolSize permitPoolSize, List<ACL> aclList) {
+    public DistributedSemaphore getSemaphore(String clusterId, String semaphoreName, PermitPoolSize permitPoolSize,
+            List<ACL> aclList) {
 
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.SEMAPHORE, semaphoreName);
@@ -248,7 +244,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
         }
 
         // create and put in cache
-        DistributedSemaphore semaphore = new ZkSemaphore(zkReservationManager, ownerId, entityPath, aclList, pps);
+        DistributedSemaphore semaphore = new ZkSemaphore(zkReservationManager, getPathScheme().getCanonicalId(),
+                entityPath, aclList, pps);
         coordinationServiceCache.putSemaphore(entityPath, semaphore);
 
         return semaphore;
@@ -261,7 +258,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
     @Override
     public void perform() {
         /** get exclusive leader lock to perform maintenance duties **/
-        DistributedLock adminLock = getLock(getPathScheme().getCanonicalId(), "coord", "admin", getDefaultAclList());
+        DistributedLock adminLock = getLock("coord", "admin", getDefaultAclList());
         adminLock.lock();
         logger.info("Performing administrative maintenance...");
         try {

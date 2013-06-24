@@ -103,8 +103,8 @@ public class DataService extends AbstractActiveService {
             List<String> services = presenceService.lookupServices(clusterId);
             for (String serviceId : services) {
                 // get lock to aggregate service node data
-                DistributedLock aggregateLock = coordinationService.getLock(getPathScheme().getCanonicalId(), "data",
-                        "aggregate-" + clusterId + "-" + serviceId, getDefaultAclList());
+                DistributedLock aggregateLock = coordinationService.getLock("data", "aggregate-" + clusterId + "-"
+                        + serviceId, getDefaultAclList());
                 aggregateLock.lock();
                 try {
                     // get service child nodes

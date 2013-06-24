@@ -25,8 +25,8 @@ public class PresenceServiceExample {
     private static final Logger logger = LoggerFactory.getLogger(PresenceServiceExample.class);
 
     public static void main(String[] args) throws Exception {
-        /** init and start sovereign using builder **/
-        Reign reign = Reign.builder().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices().build();
+        /** init and start reign using builder **/
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).allCoreServices().build();
         reign.start();
 
         /** presence service example **/
@@ -35,7 +35,7 @@ public class PresenceServiceExample {
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(120000);
 
-        /** shutdown sovereign **/
+        /** shutdown reign **/
         reign.stop();
 
         /** sleep a bit to observe observer callbacks **/
@@ -164,7 +164,7 @@ public class PresenceServiceExample {
         // sleep a bit
         Thread.sleep(10000);
 
-        presenceService.unhide("examples", "service2");
+        presenceService.show("examples", "service2");
 
         // new node available in service
         presenceService.announce("examples", "service1", true);

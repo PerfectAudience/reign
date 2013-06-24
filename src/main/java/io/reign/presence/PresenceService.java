@@ -463,8 +463,8 @@ public class PresenceService extends AbstractActiveService implements Observable
         hide(clusterId, serviceId, getPathScheme().getCanonicalId());
     }
 
-    public void unhide(String clusterId, String serviceId) {
-        unhide(clusterId, serviceId, getPathScheme().getCanonicalId());
+    public void show(String clusterId, String serviceId) {
+        show(clusterId, serviceId, getPathScheme().getCanonicalId());
     }
 
     void hide(String clusterId, String serviceId, String nodeId) {
@@ -476,7 +476,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         }
     }
 
-    void unhide(String clusterId, String serviceId, String nodeId) {
+    void show(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath);
         if (announcement.isHidden()) {
@@ -569,8 +569,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
             // get exclusive leader lock to perform maintenance duties
             CoordinationService coordinationService = getContext().getService("coord");
-            DistributedLock adminLock = coordinationService.getLock(getPathScheme().getCanonicalId(), "presence",
-                    "zombie-checker", getDefaultAclList());
+            DistributedLock adminLock = coordinationService.getLock("presence", "zombie-checker", getDefaultAclList());
             logger.info("Checking for zombie nodes...");
             if (adminLock.tryLock()) {
                 try {

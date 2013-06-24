@@ -68,7 +68,7 @@ public class Reign implements Watcher {
 
     private List<ACL> defaultAclList = DEFAULT_ACL_LIST;
 
-    public static ReignMaker builder() {
+    public static ReignMaker maker() {
         return new ReignMaker();
     }
 
