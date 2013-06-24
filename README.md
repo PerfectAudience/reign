@@ -39,7 +39,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
 
 
-### Configure and start the framework
+### Configure and start up
         /** init and start reign using builder **/
         Reign reign = Reign.maker().zkClient("localhost:2181", 30000).allCoreServices().build();
         reign.start();
@@ -137,7 +137,7 @@ In the terminal try sending the following messages
         }
 
 
-### Shutting down the framework
+### Shutting down 
 
         /** shutdown reign **/
         reign.stop();
