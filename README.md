@@ -65,8 +65,16 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         presenceService.show("examples", "service2");
 
 ### Try the Web UI
-You should now be able to see the Web UI at port 33033.  For example, if you are running the framework locally, point your browser to 
+On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
 [http://localhost:33033](http://localhost:33033)
+
+In the terminal try sending the following messages
+
+`presence:/examples`
+
+`presence:/examples/service1`
+
+`presence:/examples/service2`
 
 ### Store configuration in ZooKeeper
 
