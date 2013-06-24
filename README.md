@@ -20,9 +20,11 @@ Example applications:
 * Capacity monitoring - services can monitor each other and ensure that they do not overwhelm each other:  for example, a frontline service may slow down its rate of requests to a backend service to prevent a \"domino effect\" where a spike in traffic brings down the whole application. 
 * Application decisioning based on service state - services can publish diagnostic metrics which can be used to change application behavior:  for example, nodes in one service may go into \"safety mode\" based on information provided by another service (error rates, etc.). 
 
-Building on top of Reign quickly provides a high level of cluster-awareness and coordination capabilities:  allowing you to focus your efforts on application functionality, not low level infrastructure.
+Building on top of Reign quickly provides a high level of cluster-awareness and coordination capabilities.
 
 Reign features a pluggable programming API which allows additional services to be built on top of or in addition to the core services.
+
+
 
 
 Quick Start
@@ -35,10 +37,14 @@ The following code and a simple Java `main()` hook can be found in
 Have a running ZooKeeper cluster.  For a quick guide on how to set up ZooKeeper on OS X, try 
 http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-minutes-or-less/
 
+
+
 ### Configure and start the framework
         /** init and start reign using builder **/
         Reign reign = Reign.maker().zkClient("localhost:2181", 30000).allCoreServices().build();
         reign.start();
+
+
 
 ### Announce presence of a service on a node
 
