@@ -57,7 +57,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         presenceService.show("examples", "service2");
 
 ### Try the Web UI
-You should now be able to see the Web UI at port 33033.  For example, if you are running the framework locally, point your browser to
+You should now be able to see the Web UI at port 33033.  For example, if you are running the framework locally, point your browser to 
 http://localhost:33033
 
 ### Store configuration in ZooKeeper
