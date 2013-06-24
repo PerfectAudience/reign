@@ -27,10 +27,18 @@ Reign features a pluggable programming API which allows additional services to b
 
 Quick Start
 -----------
-`
+
+### Prerequisites
+
+Have a running ZooKeeper cluster.  For a quick guide on how to set up ZooKeeper on OS X, try 
+http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-minutes-or-less/
+
+### Configure and start the framework
         /** init and start reign using builder **/
         Reign reign = Reign.maker().zkClient("localhost:2181", 30000).allCoreServices().build();
         reign.start();
+
+### Announce presence of a service on a node
 
         /** presence service example **/
         // get the presence service
@@ -47,6 +55,12 @@ Quick Start
 
         // show service2
         presenceService.show("examples", "service2");
+
+### Try the Web UI
+You should now be able to see the Web UI at port 33033.  For example, if you are running the framework locally, point your browser to
+http://localhost:33033
+
+### Store configuration in ZooKeeper
 
         /** configuration service example **/
         // get the configuration service
@@ -71,6 +85,8 @@ Quick Start
 
         // retrieve configuration as JSON file
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");
+
+### Get and use distributed locks
 
         /** coordination service example **/
         // get the coordination service
@@ -104,10 +120,11 @@ Quick Start
             rwLock.destroy();
         }
 
+
+### Shutting down the framework
+
         /** shutdown reign **/
         reign.stop();
-
-`
 
 
 
