@@ -34,8 +34,9 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
     }
 
     @Override
-    public void setStatus(ResponseStatus status) {
+    public ResponseMessage setStatus(ResponseStatus status) {
         this.status = status;
+        return this;
     }
 
     @Override

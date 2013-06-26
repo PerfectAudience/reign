@@ -31,8 +31,9 @@ public class SimpleRequestMessage extends AbstractMessage implements RequestMess
     }
 
     @Override
-    public void setTargetService(String targetService) {
+    public RequestMessage setTargetService(String targetService) {
         this.targetService = targetService;
+        return this;
     }
 
     @Override

@@ -9,5 +9,5 @@ public interface RequestMessage extends Message {
 
     public String getTargetService();
 
-    public void setTargetService(String targetService);
+    public RequestMessage setTargetService(String targetService);
 }

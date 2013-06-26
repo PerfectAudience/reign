@@ -17,8 +17,9 @@ public abstract class AbstractMessage implements Message {
     }
 
     @Override
-    public void setId(Integer id) {
+    public Message setId(Integer id) {
         this.id = id;
+        return this;
     }
 
     @Override
@@ -27,8 +28,9 @@ public abstract class AbstractMessage implements Message {
     }
 
     @Override
-    public void setBody(Object body) {
+    public Message setBody(Object body) {
         this.body = body;
+        return this;
     }
 
 }

@@ -9,6 +9,7 @@ import io.reign.messaging.MessagingService;
 import io.reign.messaging.ResponseMessage;
 import io.reign.messaging.SimpleRequestMessage;
 import io.reign.presence.PresenceService;
+import io.reign.util.Structs;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -64,10 +65,11 @@ public class QuickStartExample {
 
         // store configuration as JSON file
         Map<String, String> json = new HashMap<String, String>();
-        json.put("capacity.min", "222");
-        json.put("capacity.max", "888");
-        json.put("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples", "config1.js", json);
+        confService.putConf(
+                "examples",
+                "config1.js",
+                Structs.<String, String> map().kv("capacity.min", "222").kv("capacity.max", "888")
+                        .kv("lastSavedTimestamp", System.currentTimeMillis() + ""));
 
         // retrieve configuration as JSON file
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");

@@ -9,12 +9,12 @@ public interface Message {
 
     public Integer getId();
 
-    public void setId(Integer id);
+    public Message setId(Integer id);
 
     public Object getBody();
 
     // public void setGuid(Object guid);
 
-    public void setBody(Object body);
+    public Message setBody(Object body);
 
 }

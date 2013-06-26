@@ -8,5 +8,5 @@ package io.reign.messaging;
 public interface ResponseMessage extends Message {
     public ResponseStatus getStatus();
 
-    public void setStatus(ResponseStatus status);
+    public ResponseMessage setStatus(ResponseStatus status);
 }
