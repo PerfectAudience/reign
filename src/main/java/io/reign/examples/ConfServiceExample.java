@@ -72,18 +72,18 @@ public class ConfServiceExample {
 
         // load a configuration which will not be immediately available but pass
         // observer to be notified of changes in configuration
-        Properties loadedConf = confService.getConf("examples", "config1.properties",
-                new ConfPropertiesSerializer<ConfProperties>(false), new SimpleConfObserver<ConfProperties>() {
-                    @Override
-                    public void updated(ConfProperties conf) {
-                        if (conf != null) {
-                            logger.info("***** Observer:  conf={}", conf);
+        Properties loadedConf = null;
+        confService.observe("examples", "config1.properties", new SimpleConfObserver<ConfProperties>() {
+            @Override
+            public void updated(ConfProperties conf) {
+                if (conf != null) {
+                    logger.info("***** Observer:  conf={}", conf);
 
-                        } else {
-                            logger.info("***** Observer:  conf deleted");
-                        }
-                    }
-                });
+                } else {
+                    logger.info("***** Observer:  conf deleted");
+                }
+            }
+        });
         logger.info("loadedConf={}", loadedConf);
 
         // save the configuration that we were trying to access above; the

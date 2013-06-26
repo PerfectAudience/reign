@@ -37,6 +37,30 @@ public class ConfService extends AbstractService implements ObservableService {
 
     private final ServiceObserverManager<ConfObserverWrapper> observerManager = new ServiceObserverManager<ConfObserverWrapper>();
 
+    public <T> void observe(String clusterId, String relativeConfPath, SimpleConfObserver<T> observer) {
+        observe(PathType.CONF, clusterId, relativeConfPath, observer);
+    }
+
+    <T> void observe(PathType pathType, String clusterId, String relativeConfPath, SimpleConfObserver<T> observer) {
+
+        String absolutePath = getPathScheme().getAbsolutePath(pathType,
+                getPathScheme().join(clusterId, relativeConfPath));
+
+        DataSerializer confSerializer = null;
+        if (relativeConfPath.endsWith(".properties")) {
+            confSerializer = new ConfPropertiesSerializer<ConfProperties>(false);
+        } else if (relativeConfPath.endsWith(".json") || relativeConfPath.endsWith(".js")) {
+            confSerializer = new JsonDataSerializer();
+        } else {
+            throw new IllegalArgumentException("Could not derive serializer from given information:  path="
+                    + relativeConfPath);
+        }
+
+        Object result = getConfValue(absolutePath, confSerializer, false);
+
+        this.observerManager.put(absolutePath, new ConfObserverWrapper(absolutePath, observer, confSerializer, result));
+    }
+
     /**
      * Picks serializer based on path "file extension".
      * 
@@ -161,7 +185,7 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param useCache
      * @return
      */
-    public <T> T getConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath,
+    <T> T getConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath,
             DataSerializer<T> confSerializer, SimpleConfObserver<T> observer, boolean useCache) {
         String absolutePath = getPathScheme().getAbsolutePath(pathType,
                 getPathScheme().join(clusterId, relativeConfPath));
@@ -180,13 +204,26 @@ public class ConfService extends AbstractService implements ObservableService {
      */
     <T> T getConfAbsolutePath(String absolutePath, DataSerializer<T> confSerializer, SimpleConfObserver<T> observer,
             boolean useCache) {
-        boolean error = false;
+
+        T result = getConfValue(absolutePath, confSerializer, useCache && observer == null);
+
+        /** add observer if given **/
+        if (observer != null) {
+            this.observerManager.put(absolutePath, new ConfObserverWrapper<T>(absolutePath, observer, confSerializer,
+                    result));
+
+        }
+
+        return result;
+    }
+
+    <T> T getConfValue(String absolutePath, DataSerializer<T> confSerializer, boolean useCache) {
         byte[] bytes = null;
         T result = null;
 
         try {
             PathCacheEntry pathCacheEntry = getPathCache().get(absolutePath);
-            if (useCache && observer == null && pathCacheEntry != null) {
+            if (useCache && pathCacheEntry != null) {
                 // found in cache
                 bytes = pathCacheEntry.getBytes();
             } else {
@@ -206,31 +243,19 @@ public class ConfService extends AbstractService implements ObservableService {
                 try {
                     getZkClient().exists(absolutePath, true);
                 } catch (Exception e1) {
-                    logger.error("getConfAbsolutePath():  error trying to watch node:  " + e1 + ":  path="
-                            + absolutePath, e1);
+                    logger.error("getConfValue():  error trying to watch node:  " + e1 + ":  path=" + absolutePath, e1);
                 }
 
-                logger.debug(
-                        "getConfAbsolutePath():  error trying to fetch node info:  {}:  node does not exist:  path={}",
+                logger.debug("getConfValue():  error trying to fetch node info:  {}:  node does not exist:  path={}",
                         e.getMessage(), absolutePath);
             } else {
-                logger.error("getConfAbsolutePath():  error trying to fetch node info:  " + e, e);
+                logger.error("getConfValue():  error trying to fetch node info:  " + e, e);
             }
-            error = true;
         } catch (Exception e) {
-            logger.error("getConfAbsolutePath():  error trying to fetch node info:  " + e, e);
-            error = true;
+            logger.error("getConfValue():  error trying to fetch node info:  " + e, e);
         }
 
-        /** add observer if given **/
-        if (observer != null) {
-            this.observerManager.put(absolutePath, new ConfObserverWrapper<T>(absolutePath, observer, confSerializer,
-                    result));
-
-        }
-
-        return error ? null : result;
-
+        return result;
     }
 
     /**
@@ -244,7 +269,7 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param confSerializer
      * @param aclList
      */
-    public <T> void putConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath, T conf,
+    <T> void putConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath, T conf,
             DataSerializer<T> confSerializer, List<ACL> aclList) {
         String absolutePath = getPathScheme().getAbsolutePath(pathType,
                 getPathScheme().join(clusterId, relativeConfPath));

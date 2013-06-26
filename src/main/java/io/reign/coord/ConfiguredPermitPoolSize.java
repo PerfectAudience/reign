@@ -2,7 +2,6 @@ package io.reign.coord;
 
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.PathType;
 import io.reign.conf.ConfService;
 import io.reign.conf.SimpleConfObserver;
 
@@ -108,8 +107,9 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
 
         // write out to ZK
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
-        confService.putConfAbsolutePath(PathType.COORD, clusterId, confService.getPathScheme().join(
-                ReservationType.SEMAPHORE.category(), semaphoreName), semaphoreConf, confSerializer, aclList);
+        confService.putConf(clusterId,
+                confService.getPathScheme().join(ReservationType.SEMAPHORE.category(), semaphoreName), semaphoreConf,
+                confSerializer, aclList);
     }
 
     /**
@@ -126,9 +126,9 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
             SimpleConfObserver<Map<String, String>> confObserver) {
         // read configuration
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
-        Map<String, String> semaphoreConf = confService.getConfAbsolutePath(PathType.COORD, clusterId, confService
-                .getPathScheme().join(ReservationType.SEMAPHORE.category(), semaphoreName), confSerializer,
-                confObserver, true);
+        Map<String, String> semaphoreConf = confService.getConf(clusterId,
+                confService.getPathScheme().join(ReservationType.SEMAPHORE.category(), semaphoreName), confSerializer,
+                confObserver);
         return semaphoreConf;
     }
 }
