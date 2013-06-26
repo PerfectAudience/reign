@@ -9,19 +9,11 @@
 	<version>0.0.1-SNAPSHOT</version>
 
 	<properties>
-		<slf4j.version>1.6.4</slf4j.version>
-		<logback.version>1.0.0</logback.version>
+		<logback.version>1.0.13</logback.version>
 		<zookeeper.version>3.4.5</zookeeper.version>
 	</properties>
 
 	<dependencies>
-
-		<!-- getopt for args parsing -->
-		<!-- <dependency> -->
-		<!-- <groupId>urbanophile</groupId> -->
-		<!-- <artifactId>java-getopt</artifactId> -->
-		<!-- <version>1.0.9</version> -->
-		<!-- </dependency> -->
 
 		<!-- for various utils -->
 		<dependency>
@@ -39,11 +31,6 @@
 
 		<!-- Logging -->
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>${slf4j.version}</version>
-		</dependency>
-		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-core</artifactId>
 			<version>${logback.version}</version>
@@ -52,12 +39,6 @@
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>${logback.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-access</artifactId>
-			<version>${logback.version}</version>
-			<scope>compile</scope>
 		</dependency>
 
 		<!-- Testing -->
@@ -80,6 +61,20 @@
 			<groupId>org.apache.zookeeper</groupId>
 			<artifactId>zookeeper</artifactId>
 			<version>${zookeeper.version}</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>slf4j-log4j12</artifactId>
+					<groupId>org.slf4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>log4j</artifactId>
+					<groupId>log4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>netty</artifactId>
+					<groupId>org.jboss.netty</groupId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<!-- jackson -->
@@ -120,12 +115,6 @@
 					<exclude>logback.xml*</exclude>
 					<exclude>.gitignore</exclude>
 				</excludes>
-			</resource>
-			<resource>
-				<directory>src</directory>
-				<includes>
-					<include>site/**/*</include>
-				</includes>
 			</resource>
 		</resources>
 		<plugins>

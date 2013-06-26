@@ -47,6 +47,7 @@ import io.reign.messaging.ResponseMessage;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.io.IOUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -77,6 +78,8 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.jboss.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 
 /**
  * Handles handshakes and messages
@@ -305,7 +308,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
         // anything but a request for the websocket will be treated like a regular HTTP request
         String uri = req.getUri();
-        if (uri != null && !"/websocket".equals(uri)) {
+        if (uri != null && !WEBSOCKET_PATH.equals(uri)) {
             HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
 
             // ChannelBuffer content = WebSocketServerIndexPage.getContent(getWebSocketLocation(req));
@@ -339,8 +342,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
         }
 
         // websocket handshake
-        WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(host(req),
-                null, false);
+        WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(host(req), null, false);
         handshaker = wsFactory.newHandshaker(req);
         if (handshaker == null) {
             wsFactory.sendUnsupportedWebSocketVersionResponse(ctx.getChannel());
@@ -449,6 +451,9 @@ public class WebSocketServerHandler extends ExecutionHandler {
         e.getChannel().close();
     }
 
+    private final ConcurrentMap<String, byte[]> webResourceCache = new ConcurrentLinkedHashMap.Builder<String, byte[]>()
+            .maximumWeightedCapacity(32).initialCapacity(8).concurrencyLevel(1).build();
+
     private ChannelBuffer loadWebResource(String path, String contentType, String host) {
         if (path == null || contentType == null) {
             return null;
@@ -458,30 +463,41 @@ public class WebSocketServerHandler extends ExecutionHandler {
             path = "/index.html";
         }
 
-        // try to find resource as stream
+        // try to find resource in cache, otherwise try to retrieve as stream from classpath
         String resource = "site" + path;
-        InputStream in = this.getClass().getClassLoader().getResourceAsStream(resource);
-        logger.debug("Looking for web resource:  path={}; found={}", resource, in != null);
-        if (in != null) {
-            try {
-                byte[] bytes = IOUtils.toByteArray(IOUtils.toBufferedInputStream(in));
-
-                if (!contentType.startsWith("text")) {
-                    // binary file
-                    return ChannelBuffers.copiedBuffer(bytes);
-
-                } else {
-                    // text file
-                    String textContent = new String(bytes);
-                    if (contentType.startsWith("text/html")) {
-                        textContent = textContent.replace("${HOST}", host);
-                    }
-                    return ChannelBuffers.copiedBuffer(textContent, CharsetUtil.UTF_8);
-                }
-            } catch (IOException e) {
-                logger.error("" + e, e);
+        byte[] bytes = webResourceCache.get(resource);
+        if (bytes == null) {
+            InputStream in = this.getClass().getClassLoader().getResourceAsStream(resource);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Looking for web resource:  path={}; found={}", resource, in != null);
             }
+            if (in != null) {
+                try {
+                    bytes = IOUtils.toByteArray(IOUtils.toBufferedInputStream(in));
+                    if (bytes != null) {
+                        // cache
+                        webResourceCache.put(resource, bytes);
+                    }
+                } catch (IOException e) {
+                    logger.error("" + e, e);
+                }
+            }
+        }
 
+        // if found return buffer to serve
+        if (bytes != null) {
+            if (!contentType.startsWith("text")) {
+                // binary file
+                return ChannelBuffers.copiedBuffer(bytes);
+
+            } else {
+                // text file
+                String textContent = new String(bytes);
+                if (contentType.startsWith("text/html")) {
+                    textContent = textContent.replace("${HOST}", host);
+                }
+                return ChannelBuffers.copiedBuffer(textContent, CharsetUtil.UTF_8);
+            }
         }
 
         return null;
