@@ -7,7 +7,7 @@
         </encoder>
     </appender>    
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>logs/sovereign.log</file>
+        <file>logs/reign.log</file>
         <append>true</append>
         <charset>UTF-8</charset>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -15,7 +15,7 @@
         </encoder>
     </appender>
     <appender name="ERRORFILE" class="ch.qos.logback.core.FileAppender">
-        <file>logs/sovereign-error.log</file>
+        <file>logs/reign-error.log</file>
         <append>true</append>
         <charset>UTF-8</charset>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -32,7 +32,7 @@
         <appender-ref ref="ERRORFILE" />
     </root>
     
-    <logger name="org.kompany">
+    <logger name="io.reign">
         <level value="INFO" />
     </logger>
     

@@ -29,10 +29,10 @@ public class CoordinationServiceExample {
 
         /** coordination service example **/
         coordinationServiceExclusiveLockExample(reign);
-        coordinationServiceReentrantLockExample(reign);
-        coordinationServiceReadWriteLockExample(reign);
-        coordinationServiceFixedSemaphoreExample(reign);
-        coordinationServiceConfiguredSemaphoreExample(reign);
+        // coordinationServiceReentrantLockExample(reign);
+        // coordinationServiceReadWriteLockExample(reign);
+        // coordinationServiceFixedSemaphoreExample(reign);
+        // coordinationServiceConfiguredSemaphoreExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down...");
@@ -66,8 +66,8 @@ public class CoordinationServiceExample {
                 lock.lock();
                 try {
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}", new Object[] {
-                            this.getName(), sleepInterval, (lock).getHoldCount() });
+                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}",
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -89,8 +89,8 @@ public class CoordinationServiceExample {
                 lock.lock();
                 try {
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}", new Object[] {
-                            this.getName(), sleepInterval, (lock).getHoldCount() });
+                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}",
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -112,8 +112,8 @@ public class CoordinationServiceExample {
                 lock.lock();
                 try {
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}", new Object[] {
-                            this.getName(), sleepInterval, (lock).getHoldCount() });
+                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}",
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -159,8 +159,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 4;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -183,8 +183,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 2;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -260,8 +260,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 4;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -284,8 +284,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 2;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
