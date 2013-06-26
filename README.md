@@ -46,7 +46,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
 
 
-### Announce presence of a service on a node
+### Announce availability of a service on a node
 
         /** presence service example **/
         // get the presence service
@@ -92,12 +92,9 @@ In the terminal try sending the following messages
         // retrieve configuration as properties file
         Properties loadedProperties = confService.getConf("examples", "config1.properties");
 
-        // store configuration as JSON file
-        Map<String, String> json = new HashMap<String, String>();
-        json.put("capacity.min", "222");
-        json.put("capacity.max", "888");
-        json.put("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples", "config1.js", json);
+        // store configuration as JSON file (uses utility buildable Map for conciseness)
+        confService.putConf("examples", "config1.js", Structs.<String, String> map().kv("capacity.min", "222").kv("capacity.max", "888")
+                        .kv("lastSavedTimestamp", System.currentTimeMillis() + ""));
 
         // retrieve configuration as JSON file
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");
