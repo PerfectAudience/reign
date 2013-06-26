@@ -64,12 +64,12 @@
 	       
 	       <form onsubmit="return false;">
 <div class="controls controls-row">
-	<input type="text" id="connectHost" name="connectHost" onkeypress="return checkKey(event);" value="${HOST}" class="span8"/>
+	<input type="text" id="connectHost" name="connectHost" onkeypress="return checkKey(event);" value="${HOST}" class="span10"/>
 	<input class="btn span2" type="button" value="Connect" onclick="connectWebSocket();" />
 </div>
        
 <div class="controls controls-row">            
-<textarea rows="3" type="text" id="sendInput" name="sendInput" onkeypress="return checkKey(event);" placeholder="presence:/[clusterId]/[serviceId]/[nodeId]" class="span8"></textarea>
+<textarea rows="3" type="text" id="sendInput" name="sendInput" onkeypress="return checkKey(event);" placeholder="presence:/[clusterId]/[serviceId]/[nodeId]" class="span10"></textarea>
 <input class="btn span2" type="button" value="Send" onclick="send($('#sendInput').val());" />
 </div>
            </form>
@@ -85,7 +85,9 @@
           
           <h2>General API Format</h2>
           
-          <p>API calls are REST-ful in style and generally follow the form <code>[TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...</code></p>          
+          <p>API calls are REST-ful in style and generally follow the form<br/>
+          <code>[TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND]</code>
+          </p>          
           <p>The first line may be terminated by a newline with an additional message body.</p>
           <p>&nbsp;</p> 
           <hr/>            
