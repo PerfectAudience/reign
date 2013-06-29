@@ -18,8 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Contains basic functionality for creating Lock/Semaphore functionality using
- * ZooKeeper.
+ * Contains basic functionality for creating Lock/Semaphore functionality using ZooKeeper.
  * 
  * @author ypai
  * 
@@ -151,18 +150,21 @@ class ZkReservationManager {
                                 break;
                             }
 
-                            // set the one ahead of this reservation so we can
+                            // if reservationAheadPath is null and set the one ahead of this reservation so we can
                             // watch if we do not acquire
-                            reservationAheadPath = pathScheme.join(entityPath, lockReservationList.get(i - 1));
+                            // Check if it's null in case we plan to watch an EXCLUSIVE lock
+                            if (reservationAheadPath == null) {
+                                reservationAheadPath = pathScheme.join(entityPath, lockReservationList.get(i - 1));
+                            }
                             break;
                         }
 
-                        // see if we have encountered an exclusive lock yet
-                        if (!exclusiveReservationEncountered) {
-                            exclusiveReservationEncountered = currentReservation
-                                    .startsWith(ReservationType.LOCK_EXCLUSIVE.toString());
+                        // Check if it's an LOCK_EXCLUSIVE; Set the exclusiveReservationEncountered flag and update the
+                        // reservationAheadPath
+                        if (currentReservation.startsWith(ReservationType.LOCK_EXCLUSIVE.prefix())) {
+                            exclusiveReservationEncountered = true;
+                            reservationAheadPath = pathScheme.join(entityPath, currentReservation);
                         }
-
                     }
 
                     /** see if we acquired lock **/
