@@ -129,7 +129,7 @@ class ZkReservationManager {
             ZkLockWatcher lockReservationWatcher = null;
             do {
                 try {
-                    /** see if we can acquire right away **/
+                    /** attempt to acquire lock **/
                     // get lock reservation list without watch
                     List<String> lockReservationList = zkClient.getChildren(entityPath, false);
 
@@ -144,24 +144,24 @@ class ZkReservationManager {
 
                         // see if we have the lock
                         if (lockReservation.equals(currentReservation)) {
-                            if (i == 0
-                                    || (reservationType != ReservationType.LOCK_EXCLUSIVE && !exclusiveReservationEncountered)) {
+                            // see if we are able to acquire lock immediately
+                            if (i == 0 || (!reservationType.isExclusive() && !exclusiveReservationEncountered)) {
                                 acquiredPath = lockReservationPath;
                                 break;
                             }
 
                             // if reservationAheadPath is null and set the one ahead of this reservation so we can
                             // watch if we do not acquire
-                            // Check if it's null in case we plan to watch an EXCLUSIVE lock
+                            // Check if it's null in case we plan to watch an exclusive lock reservation
                             if (reservationAheadPath == null) {
                                 reservationAheadPath = pathScheme.join(entityPath, lockReservationList.get(i - 1));
                             }
                             break;
                         }
 
-                        // Check if it's an LOCK_EXCLUSIVE; Set the exclusiveReservationEncountered flag and update the
-                        // reservationAheadPath
-                        if (currentReservation.startsWith(ReservationType.LOCK_EXCLUSIVE.prefix())) {
+                        // Check if it's an exclusive lock reservation: set the exclusiveReservationEncountered flag and
+                        // update the reservationAheadPath
+                        if (ReservationType.isExclusive(currentReservation)) {
                             exclusiveReservationEncountered = true;
                             reservationAheadPath = pathScheme.join(entityPath, currentReservation);
                         }
