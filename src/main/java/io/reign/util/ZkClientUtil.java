@@ -45,7 +45,8 @@ public class ZkClientUtil {
                         logger.debug("updatePath():  path does not exist for data update:  " + e + ":  path=" + path);
                     }
                 } else {
-                    logger.debug("updatePath():  " + e, e);
+                    logger.error("updatePath():  " + e, e);
+                    throw e;
                 }
             } catch (InterruptedException e) {
                 logger.warn("Interrupted in updatePath():  " + e, e);
@@ -59,7 +60,7 @@ public class ZkClientUtil {
             String pathCreated = zkClient.create(path, leafData, aclList, createMode);
 
             if (logger.isDebugEnabled()) {
-                logger.debug("Created path directly:  pathCreated=" + pathCreated);
+                logger.debug("Created path directly:  pathCreated={}", pathCreated);
             }
 
             return pathCreated;

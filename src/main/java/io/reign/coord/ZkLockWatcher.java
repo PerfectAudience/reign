@@ -56,10 +56,11 @@ public class ZkLockWatcher implements Watcher {
                 // TODO: change this back to above once we fix issue
                 // with lost ZK connections not currently notifying
                 // LockWatcher(s)
-                this.wait(60000);
+                // this.wait(120000);
+                this.wait();
 
-                if (System.currentTimeMillis() - startTimestamp > 60000) {
-                    logger.warn("Safety wait timeout of 60 seconds reached:  lockName={}; lockReservation={}",
+                if (System.currentTimeMillis() - startTimestamp > 120000) {
+                    logger.warn("Waited over 120 seconds for lock event:  lockName={}; lockReservation={}",
                             new Object[] { instancesOutstanding.get(), lockPath, lockReservationPath });
                 }
 
@@ -74,8 +75,8 @@ public class ZkLockWatcher implements Watcher {
     public void process(WatchedEvent event) {
         // log if DEBUG
         if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}",
-                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+            logger.debug("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
+                    ToStringStyle.DEFAULT_STYLE));
 
         }
 

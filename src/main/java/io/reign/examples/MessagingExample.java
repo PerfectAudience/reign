@@ -41,26 +41,26 @@ public class MessagingExample {
 
     public static void messagingExample(Reign reign) throws Exception {
         PresenceService presenceService = reign.getService("presence");
-        presenceService.announce("examples", "service3", true);
-        presenceService.announce("examples", "service4", true);
+        presenceService.announce("examples", "service1", true);
+        presenceService.announce("examples", "service2", true);
 
-        presenceService.waitUntilAvailable("examples", "service3", 30000);
+        presenceService.waitUntilAvailable("examples", "service1", 30000);
 
         Thread.sleep(5000);
 
         MessagingService messagingService = reign.getService("messaging");
 
-        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service3",
+        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
                 new SimpleRequestMessage("presence", "/"));
 
         logger.info("Broadcast#1:  responseMap={}", responseMap);
 
-        responseMap = messagingService.sendMessage("examples", "service4", new SimpleRequestMessage("presence",
-                "/examples/service3"));
+        responseMap = messagingService.sendMessage("examples", "service1", new SimpleRequestMessage("presence",
+                "/examples/service1"));
 
         logger.info("Broadcast#2:  responseMap={}", responseMap);
 
-        responseMap = messagingService.sendMessage("examples", "service3", new SimpleRequestMessage("presence",
+        responseMap = messagingService.sendMessage("examples", "service1", new SimpleRequestMessage("presence",
                 "/examples"));
 
         logger.info("Broadcast#3:  responseMap={}", responseMap);

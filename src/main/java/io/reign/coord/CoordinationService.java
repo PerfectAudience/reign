@@ -258,7 +258,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
     @Override
     public void perform() {
         /** get exclusive leader lock to perform maintenance duties **/
-        DistributedLock adminLock = getLock("coord", "admin", getDefaultAclList());
+        DistributedLock adminLock = getLock("reign", "admin", getDefaultAclList());
         adminLock.lock();
         logger.info("Performing administrative maintenance...");
         try {
