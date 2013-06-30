@@ -1066,8 +1066,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws KeeperException
      */
     void handleKeeperException(BackoffStrategy backoffStrategy, KeeperException e) throws KeeperException {
-        logger.info("Handling KeeperException:  " + e);
-
         if (shutdown) {
             throw e;
         }
