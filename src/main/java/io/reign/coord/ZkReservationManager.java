@@ -378,7 +378,8 @@ class ZkReservationManager {
      */
     public boolean relinquish(String reservationPath) {
         if (reservationPath == null) {
-            logger.debug("Trying to delete ZK reservation node with invalid path:  path={}", reservationPath);
+            // likely already deleted
+            logger.trace("Trying to delete ZK reservation node with invalid path:  path={}", reservationPath);
             return false;
         }// if
 
