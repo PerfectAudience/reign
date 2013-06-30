@@ -235,7 +235,7 @@ Upcoming
 * Ongoing UI Enhancements (suggestions welcome!)
 * Binary protocol
 * Async messaging API
-* Consistent Hashing service/feature
+* Consistent hashing service/feature
 
 
 
