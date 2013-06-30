@@ -29,6 +29,15 @@ public class MessagingService extends AbstractService {
 
     private MessageProtocol messageProtocol = new DefaultMessageProtocol();
 
+    /**
+     * Send message to a single node.
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param nodeId
+     * @param requestMessage
+     * @return
+     */
     public ResponseMessage sendMessage(String clusterId, String serviceId, String nodeId, RequestMessage requestMessage) {
         Map<String, String> canonicalIdMap = getPathScheme().parseCanonicalId(nodeId);
 
@@ -65,6 +74,14 @@ public class MessagingService extends AbstractService {
 
     }
 
+    /**
+     * Send a message to all nodes belonging to a service.
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param requestMessage
+     * @return
+     */
     public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage) {
         PresenceService presenceService = getContext().getService("presence");
         ServiceInfo serviceInfo = presenceService.lookupServiceInfo(clusterId, serviceId);
