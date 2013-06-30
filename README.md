@@ -62,7 +62,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
 ### Equivalent configuration using Spring
 
-##### Spring XML configuration
+##### Example Spring Bean XML
     <!-- Reign bean configuration -->
     <bean id="reignMaker" class="io.reign.util.spring.SpringReignMaker" init-method="initialize">
         <property name="zkConnectString" value="localhost:2181"/>
@@ -70,7 +70,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         <property name="core" value="true"/>
     </bean>
         
-##### Then, in your Java code...
+##### Usage in Java code...
     // get and start Reign object
     SpringReignMaker springReignMaker.get = ...injected dependency...;
     Reign reign = springReignMaker.get();
@@ -79,7 +79,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
     // in Spring configuration
     reign.start();
 
-### Announce availability of a service on a node
+### Announcing availability of a service on a node
 
         /** presence service example **/
         // get the presence service
@@ -97,7 +97,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         // show service2
         presenceService.show("examples", "service2");
 
-### Try the Web UI
+### Check out the Web UI
 On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
 [http://localhost:33033](http://localhost:33033)
 
