@@ -159,7 +159,7 @@ public class PresenceService extends AbstractActiveService implements Observable
             SimplePresenceObserver<ServiceInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
             boolean useCache, long timeoutMillis) {
         ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
-        if (result == null) {
+        if (result == null || result.getNodeIdList().size() < 1) {
             String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
             String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
             SimplePresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(path);
@@ -167,7 +167,7 @@ public class PresenceService extends AbstractActiveService implements Observable
                     notifyObserver, nodeAttributeSerializer, result));
             synchronized (notifyObserver) {
                 long waitStartTimestamp = System.currentTimeMillis();
-                while (result == null
+                while ((result == null || result.getNodeIdList().size() < 1)
                         && (System.currentTimeMillis() - waitStartTimestamp < timeoutMillis || timeoutMillis < 0)) {
                     try {
                         if (timeoutMillis < 0) {
