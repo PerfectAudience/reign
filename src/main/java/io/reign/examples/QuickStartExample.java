@@ -1,5 +1,6 @@
 package io.reign.examples;
 
+import io.reign.CanonicalId;
 import io.reign.Reign;
 import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
@@ -49,6 +50,9 @@ public class QuickStartExample {
         // show service2
         presenceService.show("examples", "service2");
 
+        // show service1 again
+        presenceService.show("examples", "service1");
+
         /** configuration service example **/
         // get the configuration service
         ConfService confService = (ConfService) reign.getService("conf");
@@ -65,11 +69,8 @@ public class QuickStartExample {
 
         // store configuration as JSON file
         Map<String, String> json = new HashMap<String, String>();
-        confService.putConf(
-                "examples",
-                "config1.js",
-                Structs.<String, String> map().kv("capacity.min", "222").kv("capacity.max", "888")
-                        .kv("lastSavedTimestamp", System.currentTimeMillis() + ""));
+        confService.putConf("examples", "config1.js", Structs.<String, String> map().kv("capacity.min", "222").kv(
+                "capacity.max", "888").kv("lastSavedTimestamp", System.currentTimeMillis() + ""));
 
         // retrieve configuration as JSON file
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");
@@ -78,8 +79,13 @@ public class QuickStartExample {
         // get the messaging service
         DefaultMessagingService messagingService = reign.getService("messaging");
 
+        // wait indefinitely for at least one node in "service1" to become available
+        presenceService.waitUntilAvailable("examples", "service1", -1);
+
         // send message to a single node in the "service1" service in the "examples" cluster
-        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", "someNodeIdentifier",
+        CanonicalId canonicalId = reign.getCanonicalId();
+        String canonicalIdString = reign.getPathScheme().toPathToken(canonicalId);
+        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", canonicalIdString,
                 new SimpleRequestMessage("presence", "/"));
 
         // broadcast a message to all nodes belonging to the "service1" service in the examples cluster
