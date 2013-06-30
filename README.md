@@ -101,7 +101,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         // show service2
         presenceService.show("examples", "service2");
 
-### Check out the Web UI
+### Using the Web UI
 On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
 [http://localhost:33033](http://localhost:33033).
 
@@ -116,7 +116,7 @@ List nodes comprising "service1":
 List nodes comprising "service2":  
 `presence:/examples/service2`
 
-### Store configuration in ZooKeeper
+### Storing configuration in ZooKeeper
 
         /** configuration service example **/
         // get the configuration service
@@ -160,7 +160,7 @@ List nodes comprising "service2":
                 new SimpleRequestMessage("presence", "/examples"));
 
 
-### Get and use distributed locks
+### Getting and using distributed locks
 
         /** coordination service example **/
         // get the coordination service
