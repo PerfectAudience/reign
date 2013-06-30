@@ -111,14 +111,4 @@ public class DefaultMessageProtocol implements MessageProtocol {
     public byte[] toBinaryRequest(RequestMessage requestMessage) {
         throw new UnsupportedOperationException("Not yet supported.");
     }
-
-    @Override
-    public byte getResponseStatusCode(ResponseStatus responseStatus) {
-        switch (responseStatus) {
-        case OK:
-            return (byte) 0;
-        default:
-            return (byte) 5;
-        }
-    }
 }

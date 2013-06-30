@@ -64,11 +64,4 @@ public interface MessageProtocol {
      */
     public byte[] toBinaryRequest(RequestMessage requestMessage);
 
-    /**
-     * 
-     * @param responseStatus
-     * @return byte representation of response status for transmission over the wire
-     */
-    public byte getResponseStatusCode(ResponseStatus responseStatus);
-
 }

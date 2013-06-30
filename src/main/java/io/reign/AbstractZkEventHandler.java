@@ -51,10 +51,10 @@ public class AbstractZkEventHandler implements ZkEventHandler {
     @Override
     public void process(WatchedEvent event) {
         /** log event **/
-        // log if DEBUG
-        if (logger.isDebugEnabled()) {
-            logger.info("***** Received ZooKeeper Event:  {}",
-                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+        // log if TRACE
+        if (logger.isTraceEnabled()) {
+            logger.trace("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
+                    ToStringStyle.DEFAULT_STYLE));
 
         }
 

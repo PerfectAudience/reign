@@ -26,8 +26,6 @@ import org.slf4j.LoggerFactory;
 /**
  * Entry point into framework functionality.
  * 
- * Should be set up in a single thread.
- * 
  * @author ypai
  * 
  */
@@ -86,7 +84,6 @@ public class Reign implements Watcher {
 
         this.pathScheme = pathScheme;
 
-        // initialize cache instance
         this.pathCache = pathCache;
 
         this.canonicalIdMaker = canonicalIdMaker;
@@ -119,9 +116,9 @@ public class Reign implements Watcher {
 
     @Override
     public void process(WatchedEvent event) {
-        // log if DEBUG
-        if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
+        // log if TRACE
+        if (logger.isTraceEnabled()) {
+            logger.trace("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
                     ToStringStyle.DEFAULT_STYLE));
 
         }

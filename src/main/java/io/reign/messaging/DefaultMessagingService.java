@@ -121,6 +121,9 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
     @Override
     public void setPort(Integer port) {
+        if (port == null) {
+            throw new IllegalArgumentException("Invalid argument:  'port' cannot be null!");
+        }
         this.port = port;
     }
 

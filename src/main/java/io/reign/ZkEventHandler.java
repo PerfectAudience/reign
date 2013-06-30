@@ -28,7 +28,7 @@ public interface ZkEventHandler extends Watcher {
     /**
      * 
      * @param event
-     * @return true if we do not need to process this event
+     * @return true if we do NOT need to process this event
      */
     public boolean filterWatchedEvent(WatchedEvent event);
 
