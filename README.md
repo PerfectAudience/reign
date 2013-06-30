@@ -163,7 +163,7 @@ Run one of the examples and in the terminal, you should be able to send the foll
 Design Notes
 ------------
 
-Part of Reign's value is derived from how data is organized in ZooKeeper.  By creating a standard layout of information, the framework sets up the possibility of an ecosystem that allows non-Java services/applications to easily coordinate/monitor each other in a standard fashion.  Monitoring and administration is also made simpler, as the framework's "magic" is made more transparent for easier debugging:  for example, in the case of locks, one can even force a node to release a lock by deleting its lock node just using the standard Zookeeper shell!
+Part of Reign's value is derived from how data is organized in ZooKeeper.  By creating a standard layout of information, the framework sets up the possibility of an ecosystem that allows non-Java services/applications to easily coordinate/monitor each other in a standard fashion.  Monitoring and administration is also made simpler, as the framework's "magic" is made more transparent for easier debugging:  for example, in the case of locks, one can force a node to release a lock by deleting its lock node just using the standard Zookeeper shell -- of course, this may have unintended consequences and should be done with care.
 
 The default data layout in ZooKeeper is outlined below.  Custom layouts may be created as necessary by implementing your own or customizing the provided `PathScheme` implementation.
 
@@ -200,6 +200,7 @@ Upcoming
 * Ongoing UI Enhancements (suggestions welcome!)
 * Binary protocol
 * Async messaging API
+* Consistent Hashing service/feature
 
 
 
