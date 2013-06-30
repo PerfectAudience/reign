@@ -1,6 +1,7 @@
 Reign Framework
 ===============
-A suite of lightweight services for distributed systems coordination and messaging based on ZooKeeper, Netty, and Web Sockets. 
+A suite of lightweight services for distributed systems coordination and messaging based on ZooKeeper, Netty, and Web Sockets.  
+
 The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
 
