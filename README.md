@@ -103,8 +103,13 @@ Run one of the examples and in the terminal, you should be able to send the foll
         // get the messaging service
         MessagingService messagingService = reign.getService("messaging");
 
+        // wait indefinitely for at least one node in "service1" to become available
+        presenceService.waitUntilAvailable("examples", "service1", -1);
+
         // send message to a single node in the "service1" service in the "examples" cluster
-        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", "canonicalNodeIdentifier",
+        CanonicalId canonicalId = reign.getCanonicalId();
+        String canonicalIdString = reign.getPathScheme().toPathToken(canonicalId);
+        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", canonicalIdString,
                 new SimpleRequestMessage("presence", "/"));
 
         // broadcast a message to all nodes belonging to the "service1" service in the examples cluster
@@ -193,6 +198,7 @@ Upcoming
 * Distributed barriers
 * Ongoing UI Enhancements (suggestions welcome!)
 * Binary protocol
+* Async messaging API
 
 
 
