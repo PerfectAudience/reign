@@ -12,7 +12,7 @@ public interface PathScheme {
     public static final String CANONICAL_ID_PID = "pid";
     public static final String CANONICAL_ID_IP = "ip";
     public static final String CANONICAL_ID_HOST = "host";
-    // public static final String CANONICAL_ID_PORT = "port";
+    public static final String CANONICAL_ID_PORT = "port";
     public static final String CANONICAL_ID_MESSAGING_PORT = "mport";
 
     public String getBasePath();
