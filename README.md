@@ -232,6 +232,11 @@ By default, services in the framework can receive and respond to messages via We
 `presence:/my_cluster/foo_service` - this message would get information on the `foo_service`.  More information is available in the Web UI available on any node running the framework at port 33033 (default port).
 
 
+License
+-------
+The Reign project is licensed under the Apache License, Version 2.0.  Details available in LICENSE.txt.
+
+
 Upcoming
 --------
 
