@@ -7,8 +7,8 @@ import io.reign.ObservableService;
 import io.reign.PathType;
 import io.reign.ServiceObserverManager;
 import io.reign.ServiceObserverWrapper;
-import io.reign.messaging.RequestMessage;
-import io.reign.messaging.ResponseMessage;
+import io.reign.mesg.RequestMessage;
+import io.reign.mesg.ResponseMessage;
 import io.reign.util.PathCacheEntry;
 import io.reign.util.ZkClientUtil;
 

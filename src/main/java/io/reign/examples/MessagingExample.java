@@ -1,9 +1,9 @@
 package io.reign.examples;
 
 import io.reign.Reign;
-import io.reign.messaging.DefaultMessagingService;
-import io.reign.messaging.ResponseMessage;
-import io.reign.messaging.SimpleRequestMessage;
+import io.reign.mesg.DefaultMessagingService;
+import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.SimpleRequestMessage;
 import io.reign.presence.PresenceService;
 
 import java.util.Map;
@@ -25,6 +25,14 @@ public class MessagingExample {
         /** init and start reign using builder **/
         Reign reign = Reign.maker().zkClient("localhost:2181", 30000).core().get();
         reign.start();
+
+        /** init and start using Spring convenience builder **/
+        // SpringReignMaker springReignMaker = new SpringReignMaker();
+        // springReignMaker.setZkConnectString("localhost:2181");
+        // springReignMaker.setZkSessionTimeout(30000);
+        // springReignMaker.setCore(true);
+        // springReignMaker.initializeAndStart();
+        // Reign reign = springReignMaker.get();
 
         /** messaging example **/
         messagingExample(reign);

@@ -6,9 +6,9 @@ import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.coord.DistributedReentrantLock;
-import io.reign.messaging.DefaultMessagingService;
-import io.reign.messaging.ResponseMessage;
-import io.reign.messaging.SimpleRequestMessage;
+import io.reign.mesg.DefaultMessagingService;
+import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.SimpleRequestMessage;
 import io.reign.presence.PresenceService;
 import io.reign.util.Structs;
 
@@ -36,6 +36,14 @@ public class QuickStartExample {
          **/
         Reign reign = Reign.maker().core("localhost:2181", 30000).get();
         reign.start();
+
+        /** init and start using Spring convenience builder **/
+        // SpringReignMaker springReignMaker = new SpringReignMaker();
+        // springReignMaker.setZkConnectString("localhost:2181");
+        // springReignMaker.setZkSessionTimeout(30000);
+        // springReignMaker.setCore(true);
+        // springReignMaker.initializeAndStart();
+        // Reign reign = springReignMaker.get();
 
         /** presence service example **/
         // get the presence service

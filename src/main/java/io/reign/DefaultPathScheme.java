@@ -25,7 +25,7 @@ public class DefaultPathScheme implements PathScheme {
 
     private String basePath;
 
-    private Integer messagingPort;
+    // private Integer messagingPort;
 
     // private final String canonicalId;
 
@@ -37,16 +37,6 @@ public class DefaultPathScheme implements PathScheme {
         this();
         this.basePath = basePath;
 
-    }
-
-    public DefaultPathScheme(String basePath, int messagingPort) {
-        this();
-        this.basePath = basePath;
-        this.messagingPort = messagingPort;
-    }
-
-    public void setMessagingPort(Integer messagingPort) {
-        this.messagingPort = messagingPort;
     }
 
     public void setBasePath(String basePath) {

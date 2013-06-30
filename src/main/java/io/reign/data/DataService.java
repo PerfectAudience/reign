@@ -6,8 +6,8 @@ import io.reign.JsonDataSerializer;
 import io.reign.PathType;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
-import io.reign.messaging.RequestMessage;
-import io.reign.messaging.ResponseMessage;
+import io.reign.mesg.RequestMessage;
+import io.reign.mesg.ResponseMessage;
 import io.reign.presence.PresenceService;
 
 import java.util.Collections;

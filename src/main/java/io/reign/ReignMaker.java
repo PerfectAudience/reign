@@ -2,12 +2,13 @@ package io.reign;
 
 import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
-import io.reign.messaging.DefaultMessagingService;
-import io.reign.messaging.MessagingService;
+import io.reign.data.DataService;
+import io.reign.mesg.DefaultMessagingService;
+import io.reign.mesg.MessagingService;
 import io.reign.presence.PresenceService;
 import io.reign.util.PathCache;
 import io.reign.util.SimplePathCache;
-import io.reign.zookeeper.ResilientZooKeeper;
+import io.reign.zk.ResilientZooKeeper;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -39,28 +40,72 @@ public class ReignMaker {
 
     private String reservedClusterId;
 
-    private Integer messagingPort = null;
+    private Integer messagingPort = Reign.DEFAULT_MESSAGING_PORT;
 
     private CanonicalIdMaker canonicalIdMaker = null;
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
     public ReignMaker core() {
+        // configure Reign with all core services
+
+        presence();
+
+        conf();
+
+        coord();
+
+        data();
+
+        mesg();
+
+        return this;
+    }
+
+    public ReignMaker presence() {
         PresenceService presenceService = new PresenceService();
         serviceMap.put("presence", presenceService);
+        return this;
+    }
 
+    public ReignMaker conf() {
         ConfService confService = new ConfService();
         serviceMap.put("conf", confService);
+        return this;
+    }
 
+    public ReignMaker coord() {
         CoordinationService coordService = new CoordinationService();
         serviceMap.put("coord", coordService);
+        return this;
+    }
 
-        // DataService dataService = new DataService();
-        // serviceMap.put("data", dataService);
+    public ReignMaker data() {
+        DataService dataService = new DataService();
+        serviceMap.put("data", dataService);
+        return this;
+    }
 
+    public ReignMaker mesg() {
         MessagingService messagingService = new DefaultMessagingService();
         serviceMap.put("messaging", messagingService);
-        messagingPort = messagingService.getPort();
+        if (messagingPort == null) {
+            messagingService.setPort(Reign.DEFAULT_MESSAGING_PORT);
+        }
+        return this;
+    }
+
+    public ReignMaker messagingPort(Integer messagingPort) {
+        if (messagingPort == null) {
+            throw new IllegalArgumentException("Invalid argument:  'messagingPort' cannot be null!");
+        }
+        this.messagingPort = messagingPort;
+
+        // set messaging port if message service has already been configured
+        MessagingService messagingService = (MessagingService) serviceMap.get("messaging");
+        if (messagingService != null) {
+            messagingService.setPort(messagingPort);
+        }
 
         return this;
     }
@@ -82,6 +127,16 @@ public class ReignMaker {
         this.zkSessionTimeout = zkSessionTimeout;
         return this;
 
+    }
+
+    public ReignMaker zkConnectString(String zkConnectString) {
+        this.zkConnectString = zkConnectString;
+        return this;
+    }
+
+    public ReignMaker zkSessionTimeout(int zkSessionTimeout) {
+        this.zkSessionTimeout = zkSessionTimeout;
+        return this;
     }
 
     public ReignMaker registerService(String serviceName, Service service) {
@@ -162,7 +217,7 @@ public class ReignMaker {
     }
 
     PathScheme defaultPathScheme(String reservedClusterId) {
-        return new DefaultPathScheme("/" + reservedClusterId, messagingPort);
+        return new DefaultPathScheme("/" + reservedClusterId);
     }
 
     CanonicalIdMaker defaultCanonicalIdMaker() {

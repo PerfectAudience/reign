@@ -60,7 +60,24 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         Reign reign = Reign.maker().core("zk-host1:2181,zk-host2:2181,zk-host3:2181/custom_root_path", 30000).get();
         reign.start();           
 
+### Equivalent configuration using Spring
 
+##### Spring XML configuration
+    <!-- Reign bean configuration -->
+    <bean id="reignMaker" class="io.reign.util.spring.SpringReignMaker" init-method="initialize">
+        <property name="zkConnectString" value="localhost:2181"/>
+        <property name="zkSessionTimeout" value="30000"/>
+        <property name="core" value="true"/>
+    </bean>
+        
+##### Then, in your Java code...
+    // get and start Reign object
+    SpringReignMaker springReignMaker.get = ...injected dependency...;
+    Reign reign = springReignMaker.get();
+    
+    // may not have to do this if bean init-method is specified as "initializeAndStart"
+    // in Spring configuration
+    reign.start();
 
 ### Announce availability of a service on a node
 

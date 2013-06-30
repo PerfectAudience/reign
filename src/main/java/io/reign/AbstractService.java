@@ -1,7 +1,7 @@
 package io.reign;
 
-import io.reign.messaging.RequestMessage;
-import io.reign.messaging.ResponseMessage;
+import io.reign.mesg.RequestMessage;
+import io.reign.mesg.ResponseMessage;
 import io.reign.util.PathCache;
 
 import java.util.List;

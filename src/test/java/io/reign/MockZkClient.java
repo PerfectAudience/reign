@@ -1,6 +1,6 @@
 package io.reign;
 
-import io.reign.zookeeper.ResilientZooKeeper;
+import io.reign.zk.ResilientZooKeeper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
