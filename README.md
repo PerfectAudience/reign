@@ -1,6 +1,7 @@
 Reign Framework
 ===============
-A suite of lightweight services for distributed systems coordination and messaging based on Zookeeper, Netty, and Web Sockets.
+A suite of lightweight services for distributed systems coordination and messaging based on ZooKeeper, Netty, and Web Sockets. 
+The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
 
 Features
@@ -230,11 +231,6 @@ By default, services in the framework can receive and respond to messages via We
 
 ###Example Messages
 `presence:/my_cluster/foo_service` - this message would get information on the `foo_service`.  More information is available in the Web UI available on any node running the framework at port 33033 (default port).
-
-
-License
--------
-The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
 
 Upcoming
