@@ -13,16 +13,16 @@ Out of the box, the framework provides the following:
 * Reliable Zookeeper client wrapper that handles common ZooKeeper connection/session errors and re-connects as necessary.
 * A standardized way of organizing information in ZooKeeper.
 
-Example applications:
-* Zero configuration applications - deploy to different environments or change application properties without needing to edit configuration files or restart services. 
+Application using Reign quickly gain a high level of cluster-awareness and coordination capabilities.
+
+Common use cases:
+* Zero configuration applications - deploy to different environments or change application properties without needing to edit configuration files or restart services.  Edit configuration in one place and push changes out to many nodes at once. 
 * Dynamic service discovery - nodes in one service can discover nodes in other services without configuration changes. 
 * Service redundancy - for services where only one process/node can run at the same time, a stand-by process/node can be brought up and will automatically take over if the currently running process/node fails.
 * Capacity monitoring - services can monitor each other and ensure that they do not overwhelm each other:  for example, a frontline service may slow down its rate of requests to a backend service to prevent a "domino effect" where a spike in traffic brings down the whole application. 
 * Application decisioning based on service state - services can publish diagnostic metrics which can be used to change application behavior:  for example, nodes in one service may go into "safety mode" based on information provided by another service (error rates, etc.). 
 
-Building on top of Reign quickly provides a high level of cluster-awareness and coordination capabilities.
-
-Reign features a pluggable programming API which allows additional services to be built on top of or in addition to the core services.
+Reign features a programming API which allows additional services to be built on top of or in addition to the core services.  Reign services can communicate with each other by sending messages to a specific node or broadcasting to an entire service.
 
 
 
