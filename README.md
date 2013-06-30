@@ -13,8 +13,6 @@ Out of the box, the framework provides the following:
 * Reliable Zookeeper client wrapper that handles common ZooKeeper connection/session errors and re-connects as necessary.
 * A standardized way of organizing information in ZooKeeper.
 
-Application using Reign quickly gain a high level of cluster-awareness and coordination capabilities.
-
 Common use cases:
 * Zero configuration applications - deploy to different environments or change application properties without needing to edit configuration files or restart services.  Edit configuration in one place and push changes out to many nodes at once. 
 * Dynamic service discovery - nodes in one service can discover nodes in other services without configuration changes. 
@@ -22,7 +20,7 @@ Common use cases:
 * Capacity monitoring - services can monitor each other and ensure that they do not overwhelm each other:  for example, a frontline service may slow down its rate of requests to a backend service to prevent a "domino effect" where a spike in traffic brings down the whole application. 
 * Application decisioning based on service state - services can publish diagnostic metrics which can be used to change application behavior:  for example, nodes in one service may go into "safety mode" based on information provided by another service (error rates, etc.). 
 
-Reign features a programming API which allows additional services to be built on top of or in addition to the core services.  Reign services can communicate with each other by sending messages to a specific node or broadcasting to an entire service.
+Application using Reign quickly gain a high level of cluster-awareness and coordination capabilities.  In addition, Reign provides a programming API which allows additional capabilities to be built on top of or in addition to the core services.  Distributed services using Reign can easily communicate with each other by sending messages to a specific node or broadcasting to an entire service.
 
 
 
@@ -106,7 +104,7 @@ Run one of the examples and in the terminal, you should be able to send the foll
         MessagingService messagingService = reign.getService("messaging");
 
         // send message to a single node in the "service1" service in the "examples" cluster
-        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", "someNodeIdentifier",
+        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", "canonicalNodeIdentifier",
                 new SimpleRequestMessage("presence", "/"));
 
         // broadcast a message to all nodes belonging to the "service1" service in the examples cluster
