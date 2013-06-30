@@ -93,6 +93,10 @@ public class Reign implements Watcher {
 
     }
 
+    public CanonicalId getCanonicalId() {
+        return this.canonicalIdMaker.id();
+    }
+
     public String getReservedClusterId() {
         return reservedClusterId;
     }
@@ -107,10 +111,6 @@ public class Reign implements Watcher {
 
     public void setDefaultAclList(List<ACL> defaultAclList) {
         this.defaultAclList = defaultAclList;
-    }
-
-    public CanonicalIdMaker getCanonicalIdMaker() {
-        return canonicalIdMaker;
     }
 
     public void setCanonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
