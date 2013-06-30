@@ -45,7 +45,7 @@ public class ReignMaker {
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
-    public ReignMaker allCoreServices() {
+    public ReignMaker core() {
         PresenceService presenceService = new PresenceService();
         serviceMap.put("presence", presenceService);
 

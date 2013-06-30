@@ -23,7 +23,7 @@ public class MessagingExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).allCoreServices().build();
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).core().build();
         reign.start();
 
         /** messaging example **/
