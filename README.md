@@ -234,7 +234,7 @@ By default, services in the framework can receive and respond to messages via We
 
 License
 -------
-The Reign project is licensed under the Apache License, Version 2.0.  Details available in LICENSE.txt.
+The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
 
 Upcoming
