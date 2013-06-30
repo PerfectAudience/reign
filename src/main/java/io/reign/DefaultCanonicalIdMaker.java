@@ -9,44 +9,49 @@ import io.reign.util.IdUtil;
  */
 public class DefaultCanonicalIdMaker implements CanonicalIdMaker {
 
-    private Integer messagingPort;
+    private String processId;
+    private String host;
+    private String ipAddress;
 
-    @Override
-    public CanonicalId id() {
+    private final Integer messagingPort;
+
+    public DefaultCanonicalIdMaker() {
+        this(null);
+    }
+
+    public DefaultCanonicalIdMaker(Integer messagingPort) {
+        this.messagingPort = messagingPort;
+
         // get pid
-        String pid = IdUtil.getProcessId();
+        processId = IdUtil.getProcessId();
 
         // try to get hostname and ip address
-        String hostname = IdUtil.getHostname();
-        String ipAddress = IdUtil.getIpAddress();
+        host = IdUtil.getHostname();
+        ipAddress = IdUtil.getIpAddress();
 
         // fill in unknown values
-        if (pid == null) {
-            pid = "";
+        if (processId == null) {
+            processId = "";
         }
-        if (hostname == null) {
-            hostname = "";
+        if (host == null) {
+            host = "";
         }
         if (ipAddress == null) {
             ipAddress = "";
         }
+    }
+
+    @Override
+    public CanonicalId id() {
 
         CanonicalId id = new DefaultCanonicalId();
-        id.setProcessId(pid);
-        id.setHost(hostname);
+        id.setProcessId(processId);
+        id.setHost(host);
         id.setIpAddress(ipAddress);
         id.setMessagingPort(messagingPort);
 
         return id;
 
-    }
-
-    public Integer getMessagingPort() {
-        return messagingPort;
-    }
-
-    public void setMessagingPort(Integer messagingPort) {
-        this.messagingPort = messagingPort;
     }
 
 }

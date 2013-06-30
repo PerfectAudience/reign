@@ -159,8 +159,7 @@ public class ReignMaker {
     }
 
     CanonicalIdMaker defaultCanonicalIdMaker() {
-        DefaultCanonicalIdMaker idMaker = new DefaultCanonicalIdMaker();
-        idMaker.setMessagingPort(messagingPort);
+        DefaultCanonicalIdMaker idMaker = new DefaultCanonicalIdMaker(messagingPort);
         return idMaker;
     }
 
