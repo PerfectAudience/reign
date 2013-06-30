@@ -103,13 +103,13 @@ On any node running the framework, the Web UI is available at port 33033 (assumi
 
 Run one of the examples and in the terminal, you should be able to send the following messages and see the corresponding responses (more information is available on the "Terminal Guide" tab):
 
-List available services in cluster namespace "examples":
+List available services in cluster namespace "examples":  
 `presence:/examples`
 
-List nodes comprising "service1":
+List nodes comprising "service1":  
 `presence:/examples/service1`
 
-List nodes comprising "service2":
+List nodes comprising "service2":  
 `presence:/examples/service2`
 
 ### Store configuration in ZooKeeper
