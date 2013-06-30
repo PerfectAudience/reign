@@ -29,12 +29,12 @@ public class CoordinationServiceExample {
         Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).allCoreServices().build();
         reign.start();
 
-        /** coordination service example **/
-        // coordinationServiceExclusiveLockExample(reign);
-        // coordinationServiceReentrantLockExample(reign);
+        /** coordination service examples **/
+        coordinationServiceExclusiveLockExample(reign);
+        coordinationServiceReentrantLockExample(reign);
         coordinationServiceReadWriteLockExample(reign);
-        // coordinationServiceFixedSemaphoreExample(reign);
-        // coordinationServiceConfiguredSemaphoreExample(reign);
+        coordinationServiceFixedSemaphoreExample(reign);
+        coordinationServiceConfiguredSemaphoreExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down...");
