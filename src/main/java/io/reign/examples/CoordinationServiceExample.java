@@ -30,11 +30,11 @@ public class CoordinationServiceExample {
         reign.start();
 
         /** coordination service example **/
-        // coordinationServiceExclusiveLockExample(reign);
-        // coordinationServiceReentrantLockExample(reign);
+        coordinationServiceExclusiveLockExample(reign);
+        coordinationServiceReentrantLockExample(reign);
         coordinationServiceReadWriteLockExample(reign);
-        // coordinationServiceFixedSemaphoreExample(reign);
-        // coordinationServiceConfiguredSemaphoreExample(reign);
+        coordinationServiceFixedSemaphoreExample(reign);
+        coordinationServiceConfiguredSemaphoreExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down...");
@@ -53,6 +53,9 @@ public class CoordinationServiceExample {
 
         final int lockHoldTimeMillis = 5000;
 
+        // should always be 1 or 0
+        final AtomicInteger locksHeld = new AtomicInteger(0);
+
         coordService.observe("examples", "exclusive_lock1", new SimpleLockObserver() {
             @Override
             public void revoked(DistributedLock lock, String reservationId) {
@@ -64,19 +67,28 @@ public class CoordinationServiceExample {
             @Override
             public void run() {
                 DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
+
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
+                    locksHeld.incrementAndGet();
+
+                    // re-entrant lock so we should be able to acquire multiple times within same thread/process
+                    lock.lock();
+
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}", new Object[] {
-                            this.getName(), sleepInterval, (lock).getHoldCount() });
+                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}; locksHeld={}",
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount(), locksHeld.get() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
+                    locksHeld.decrementAndGet();
+                    lock.unlock();
                     lock.unlock();
                     lock.destroy();
                 }
+
             }
         };
         t1.setName("T1");
@@ -90,13 +102,15 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
+                    locksHeld.incrementAndGet();
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}", new Object[] {
-                            this.getName(), sleepInterval, (lock).getHoldCount() });
+                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}; locksHeld={}",
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount(), locksHeld.get() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
+                    locksHeld.decrementAndGet();
                     lock.unlock();
                     lock.destroy();
                 }
@@ -113,13 +127,15 @@ public class CoordinationServiceExample {
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
+                    locksHeld.incrementAndGet();
                     long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}", new Object[] {
-                            this.getName(), sleepInterval, (lock).getHoldCount() });
+                    logger.info("{}:  acquired lock:  will hold for {} millis:  holdCount={}; locksHeld={}",
+                            new Object[] { this.getName(), sleepInterval, (lock).getHoldCount(), locksHeld.get() });
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
+                    locksHeld.decrementAndGet();
                     lock.unlock();
                     lock.destroy();
                 }
@@ -355,6 +371,9 @@ public class CoordinationServiceExample {
 
         final int lockHoldTimeMillis = 5000;
 
+        // should always be 1 or 0
+        final AtomicInteger locksHeld = new AtomicInteger(0);
+
         Thread t1 = new Thread() {
             @Override
             public void run() {
@@ -363,16 +382,20 @@ public class CoordinationServiceExample {
                 for (int i = 0; i < 3; i++) {
                     lock.lock();
                     try {
+                        locksHeld.incrementAndGet();
                         long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                        logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                        logger.info("{}:  acquired lock:  will hold for {} millis...  locksHeld={}", this.getName(),
+                                sleepInterval, locksHeld.get());
                         Thread.sleep(sleepInterval);
                     } catch (InterruptedException e) {
                         logger.info("Interrupted:  " + e, e);
                     } finally {
+                        locksHeld.decrementAndGet();
                         lock.unlock();
+                        lock.destroy();
                     }
                 } // for
-                lock.destroy();
+
             }
         };
         t1.setName("T1");
@@ -387,16 +410,19 @@ public class CoordinationServiceExample {
                 for (int i = 0; i < 3; i++) {
                     lock.lock();
                     try {
+                        locksHeld.incrementAndGet();
                         long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                        logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                        logger.info("{}:  acquired lock:  will hold for {} millis...  locksHeld={}", this.getName(),
+                                sleepInterval, locksHeld.get());
                         Thread.sleep(sleepInterval);
                     } catch (InterruptedException e) {
                         logger.info("Interrupted:  " + e, e);
                     } finally {
+                        locksHeld.decrementAndGet();
                         lock.unlock();
+                        lock.destroy();
                     }
                 }// for
-                lock.destroy();
             }
         };
         t2.setName("T2");
@@ -411,16 +437,19 @@ public class CoordinationServiceExample {
                 for (int i = 0; i < 3; i++) {
                     lock.lock();
                     try {
+                        locksHeld.incrementAndGet();
                         long sleepInterval = (long) (lockHoldTimeMillis * Math.random());
-                        logger.info("{}:  acquired lock:  will hold for {} millis...", this.getName(), sleepInterval);
+                        logger.info("{}:  acquired lock:  will hold for {} millis...  locksHeld={}", this.getName(),
+                                sleepInterval, locksHeld.get());
                         Thread.sleep(sleepInterval);
                     } catch (InterruptedException e) {
                         logger.info("Interrupted:  " + e, e);
                     } finally {
+                        locksHeld.decrementAndGet();
                         lock.unlock();
+                        lock.destroy();
                     }
                 }// for
-                lock.destroy();
             }
         };
         t3.setName("T3");
