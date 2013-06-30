@@ -30,7 +30,10 @@ public class QuickStartExample {
     private static final Logger logger = LoggerFactory.getLogger(QuickStartExample.class);
 
     public static void main(String[] args) throws Exception {
-        /** init and start reign using builder **/
+        /**
+         * init and start with core services -- connecting to ZooKeeper on localhost at port 2181 with 30 second
+         * ZooKeeper session timeout
+         **/
         Reign reign = Reign.maker().core("localhost:2181", 30000).get();
         reign.start();
 

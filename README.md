@@ -37,10 +37,28 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
 
 
-### Configure and start up
-        /** init and start reign using builder **/
+### Initialize and start up examples
+        /**
+         * init and start with core services -- connecting to ZooKeeper on localhost at port 2181 with 30 second
+         * ZooKeeper session timeout
+         **/
         Reign reign = Reign.maker().core("localhost:2181", 30000).get();
         reign.start();
+        
+        /**
+         * init and start with core services -- connecting to a ZooKeeper cluster at port 2181 with 30 second
+         * ZooKeeper session timeout
+         **/
+        Reign reign = Reign.maker().core("zk-host1:2181,zk-host2:2181,zk-host3:2181", 30000).get();
+        reign.start();      
+        
+        /**
+         * init and start with core services -- connecting to a ZooKeeper cluster at port 2181 with 30 second
+         * ZooKeeper session timeout using a custom root path, effectively "chroot-ing" the ZooKeeper session:  
+         * this is one way to share a ZooKeeper cluster without worrying about path collision  
+         **/
+        Reign reign = Reign.maker().core("zk-host1:2181,zk-host2:2181,zk-host3:2181/custom_root_path", 30000).get();
+        reign.start();           
 
 
 
