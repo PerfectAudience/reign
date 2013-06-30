@@ -24,7 +24,7 @@ public class ConfServiceExample {
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
         final Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).core()
-                .build();
+                .get();
         // reign.start();
 
         /** conf service example **/

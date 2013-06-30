@@ -42,7 +42,7 @@ public class DefaultCanonicalIdMaker implements CanonicalIdMaker {
     }
 
     @Override
-    public CanonicalId id() {
+    public CanonicalId get() {
 
         CanonicalId id = new DefaultCanonicalId();
         id.setProcessId(processId);

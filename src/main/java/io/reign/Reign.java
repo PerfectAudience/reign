@@ -94,7 +94,7 @@ public class Reign implements Watcher {
     }
 
     public CanonicalId getCanonicalId() {
-        return this.canonicalIdMaker.id();
+        return this.canonicalIdMaker.get();
     }
 
     public String getReservedClusterId() {
@@ -246,7 +246,7 @@ public class Reign implements Watcher {
 
             @Override
             public CanonicalId getCanonicalId() {
-                return canonicalIdMaker.id();
+                return canonicalIdMaker.get();
             }
 
         };

@@ -11,5 +11,5 @@ public interface CanonicalIdMaker {
      * 
      * @return NEW instance of CanonicalId
      */
-    public CanonicalId id();
+    public CanonicalId get();
 }

@@ -31,7 +31,7 @@ public class QuickStartExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).core().build();
+        Reign reign = Reign.maker().core("localhost:2181", 30000).get();
         reign.start();
 
         /** presence service example **/

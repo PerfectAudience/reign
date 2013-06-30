@@ -65,6 +65,13 @@ public class ReignMaker {
         return this;
     }
 
+    public ReignMaker core(String zkConnectString, int zkSessionTimeout) {
+        core();
+        this.zkConnectString = zkConnectString;
+        this.zkSessionTimeout = zkSessionTimeout;
+        return this;
+    }
+
     public ReignMaker canonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
         this.canonicalIdMaker = canonicalIdMaker;
         return this;
@@ -103,7 +110,7 @@ public class ReignMaker {
         return this;
     }
 
-    public Reign build() {
+    public Reign get() {
 
         Reign s = null;
 
