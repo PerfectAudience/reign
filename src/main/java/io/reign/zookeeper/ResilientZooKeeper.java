@@ -46,15 +46,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
     private volatile BackoffStrategyFactory backoffStrategyFactory = DEFAULT_BACKOFF_STRATEGY_FACTORY;
 
-    /**
-     * Placeholder for tracking watched paths along with custom Watcher(s) that are passed in.
-     */
-    private static final Watcher DEFAULT_WATCHER = new Watcher() {
-        @Override
-        public void process(WatchedEvent arg0) {
-        }
-    };
-
     private volatile Long currentSessionId;
     private volatile byte[] sessionPassword;
 
@@ -173,11 +164,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             logger.info("Restoring data watch(s):  path={}", path);
             for (Watcher watcher : dataWatchesMap.get(path)) {
                 try {
-                    if (watcher == DEFAULT_WATCHER) {
-                        this.exists(path, true);
-                    } else {
-                        this.exists(path, watcher);
-                    }
+                    this.exists(path, watcher);
                 } catch (Exception e) {
                     logger.warn("Interrupted while restoring watch:  " + e + ":  path=" + path, e);
                 } // try
@@ -188,11 +175,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             logger.info("Restoring child watch(s):  path={}", path);
             for (Watcher watcher : childWatchesMap.get(path)) {
                 try {
-                    if (watcher == DEFAULT_WATCHER) {
-                        this.getChildren(path, true);
-                    } else {
-                        this.getChildren(path, watcher);
-                    }
+                    this.getChildren(path, watcher);
                 } catch (Exception e) {
                     logger.warn("Interrupted while restoring watch:  " + e + ":  path=" + path, e);
                 } // try
@@ -266,7 +249,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
     public void exists(final String path, final boolean watch, final StatCallback cb, final Object ctx) {
         if (watch) {
-            trackDataWatch(path, DEFAULT_WATCHER);
+            trackDataWatch(path, this);
         }
 
         VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
@@ -344,7 +327,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
     public void getChildren(final String path, final boolean watch, final Children2Callback cb, final Object ctx) {
         if (watch) {
-            trackChildWatch(path, DEFAULT_WATCHER);
+            trackChildWatch(path, this);
         }
 
         VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
@@ -368,7 +351,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public void getChildren(final String path, final boolean watch, final ChildrenCallback cb, final Object ctx) {
 
         if (watch) {
-            trackChildWatch(path, DEFAULT_WATCHER);
+            trackChildWatch(path, this);
         }
 
         VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
@@ -394,7 +377,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             InterruptedException {
 
         if (watch) {
-            trackChildWatch(path, DEFAULT_WATCHER);
+            trackChildWatch(path, this);
         }
 
         ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
@@ -494,7 +477,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public void getData(final String path, final boolean watch, final DataCallback cb, final Object ctx) {
 
         if (watch) {
-            trackDataWatch(path, DEFAULT_WATCHER);
+            trackDataWatch(path, this);
         }
 
         VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
@@ -636,7 +619,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * 
      * Sometimes developers mistakenly assume one other guarantee that ZooKeeper does not in fact make. This is:
      * 
-     * Simultaneously Conistent Cross-Client Views ZooKeeper does not guarantee that at every instance in time, two
+     * Simultaneously Consistent Cross-Client Views ZooKeeper does not guarantee that at every instance in time, two
      * different clients will have identical views of ZooKeeper data. Due to factors like network delays, one client may
      * perform an update before another client gets notified of the change. Consider the scenario of two clients, A and
      * B. If client A sets the value of a znode /a from 0 to 1, then tells client B to read /a, client B may read the
@@ -747,11 +730,10 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     public Stat exists(final String path, final boolean watch) throws KeeperException, InterruptedException {
 
         if (watch) {
-            trackDataWatch(path, DEFAULT_WATCHER);
+            trackDataWatch(path, this);
         }
 
         ZooKeeperAction<Stat> zkAction = new ZooKeeperAction<Stat>(backoffStrategyFactory.get()) {
-
             @Override
             public Stat doPerform() throws KeeperException, InterruptedException {
                 return zooKeeper.exists(path, watch);
@@ -775,7 +757,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             InterruptedException {
 
         if (watch) {
-            trackDataWatch(path, DEFAULT_WATCHER);
+            trackDataWatch(path, this);
         }
 
         ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
@@ -852,7 +834,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             InterruptedException {
 
         if (watch) {
-            trackDataWatch(path, DEFAULT_WATCHER);
+            trackDataWatch(path, this);
         }
 
         ZooKeeperAction<byte[]> zkAction = new ZooKeeperAction<byte[]>(backoffStrategyFactory.get()) {
@@ -1084,6 +1066,12 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @throws KeeperException
      */
     void handleKeeperException(BackoffStrategy backoffStrategy, KeeperException e) throws KeeperException {
+        logger.info("Handling KeeperException:  " + e);
+
+        if (shutdown) {
+            throw e;
+        }
+
         if (!backoffStrategy.hasNext()) {
             // just throw exception if in fail fast mode
             throw e;
@@ -1131,6 +1119,10 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
                 }// try
             }// while
 
+            if (shutdown) {
+                throw new KeeperException.SessionExpiredException();
+            }
+
             return result;
         }
 
@@ -1170,6 +1162,10 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
                     handleKeeperException(_backoffStrategy, e);
                 }// try
             }// while
+
+            if (shutdown) {
+                throw new KeeperException.SessionExpiredException();
+            }
         }
 
     }// class
