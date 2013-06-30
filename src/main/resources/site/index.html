@@ -85,10 +85,12 @@
           
           <h2>General API Format</h2>
           
-          <p>API calls are REST-ful in style and generally follow the form<br/>
-          <code>[TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND]</code>
+          <p>Core API calls are REST-ful in style and generally follow the form:<br/>
+          <pre>
+              [TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND][OPTIONAL_NEW_LINE]
+              [OPTIONAL_MESSAGE_BODY]</pre>
           </p>          
-          <p>The first line may be terminated by a newline with an additional message body.</p>
+          <p>Even though API calls are over Web Sockets, most calls have been designed in a familiar HTTP REST style.</p>
           <p>&nbsp;</p> 
           <hr/>            
 
