@@ -11,4 +11,10 @@ public interface ReignContext {
     public <T extends Service> T getService(String serviceName);
 
     public String getReservedClusterId();
+
+    /**
+     * 
+     * @return NEW instance of CanonicalId
+     */
+    public CanonicalId getCanonicalId();
 }

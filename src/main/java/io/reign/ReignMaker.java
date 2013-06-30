@@ -2,9 +2,8 @@ package io.reign;
 
 import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
-import io.reign.messaging.MessagingProvider;
+import io.reign.messaging.DefaultMessagingService;
 import io.reign.messaging.MessagingService;
-import io.reign.messaging.websocket.WebSocketMessagingProvider;
 import io.reign.presence.PresenceService;
 import io.reign.util.PathCache;
 import io.reign.util.SimplePathCache;
@@ -42,6 +41,8 @@ public class ReignMaker {
 
     private Integer messagingPort = null;
 
+    private CanonicalIdMaker canonicalIdMaker = null;
+
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
     public ReignMaker allCoreServices() {
@@ -57,10 +58,15 @@ public class ReignMaker {
         // DataService dataService = new DataService();
         // serviceMap.put("data", dataService);
 
-        MessagingService messagingService = new MessagingService();
+        MessagingService messagingService = new DefaultMessagingService();
         serviceMap.put("messaging", messagingService);
         messagingPort = messagingService.getPort();
 
+        return this;
+    }
+
+    public ReignMaker canonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
+        this.canonicalIdMaker = canonicalIdMaker;
         return this;
     }
 
@@ -114,9 +120,12 @@ public class ReignMaker {
         if (pathScheme == null) {
             pathScheme = defaultPathScheme(reservedClusterId);
         }
+        if (canonicalIdMaker == null) {
+            canonicalIdMaker = defaultCanonicalIdMaker();
+        }
 
         // build
-        s = new Reign(reservedClusterId, zkClient, pathScheme, pathCache);
+        s = new Reign(reservedClusterId, zkClient, pathScheme, pathCache, canonicalIdMaker);
         s.registerServices(serviceMap);
 
         return s;
@@ -149,11 +158,10 @@ public class ReignMaker {
         return new DefaultPathScheme("/" + reservedClusterId, messagingPort);
     }
 
-    MessagingProvider defaultMessagingProvider(int port) {
-        MessagingProvider messagingProvider = new WebSocketMessagingProvider();
-        messagingProvider.setPort(port);
-        return messagingProvider;
-
+    CanonicalIdMaker defaultCanonicalIdMaker() {
+        DefaultCanonicalIdMaker idMaker = new DefaultCanonicalIdMaker();
+        idMaker.setMessagingPort(messagingPort);
+        return idMaker;
     }
 
 }

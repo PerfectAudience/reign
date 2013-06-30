@@ -1,19 +1,11 @@
 package io.reign;
 
-import java.util.Map;
-
 /**
  * 
  * @author ypai
  * 
  */
 public interface PathScheme {
-
-    public static final String CANONICAL_ID_PID = "pid";
-    public static final String CANONICAL_ID_IP = "ip";
-    public static final String CANONICAL_ID_HOST = "host";
-    public static final String CANONICAL_ID_PORT = "port";
-    public static final String CANONICAL_ID_MESSAGING_PORT = "mport";
 
     public String getBasePath();
 
@@ -31,13 +23,24 @@ public interface PathScheme {
 
     public boolean isValidPathToken(String pathToken);
 
-    public String getCanonicalId();
+    // public String getCanonicalId();
+    //
+    // public String getCanonicalId(Integer port);
 
     /**
      * Try to parse input String as canonical ID with some embedded information
      * 
      * @param canonicalId
      * @return Map of values; or null
+     * @throws IllegalArgumentException
+     *             if there is a parsing error
      */
-    public Map<String, String> parseCanonicalId(String canonicalId);
+    public CanonicalId parseCanonicalId(String canonicalId);
+
+    /**
+     * 
+     * @param canonicalId
+     * @return valid path representation of CanonicalId
+     */
+    public String toPathToken(CanonicalId canonicalId);
 }

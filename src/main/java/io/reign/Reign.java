@@ -68,6 +68,8 @@ public class Reign implements Watcher {
 
     private List<ACL> defaultAclList = DEFAULT_ACL_LIST;
 
+    private CanonicalIdMaker canonicalIdMaker;
+
     public static ReignMaker maker() {
         return new ReignMaker();
     }
@@ -75,7 +77,8 @@ public class Reign implements Watcher {
     public Reign() {
     }
 
-    public Reign(final String reservedClusterId, ZkClient zkClient, PathScheme pathScheme, PathCache pathCache) {
+    public Reign(final String reservedClusterId, ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
+            CanonicalIdMaker canonicalIdMaker) {
 
         this.reservedClusterId = reservedClusterId;
 
@@ -85,6 +88,8 @@ public class Reign implements Watcher {
 
         // initialize cache instance
         this.pathCache = pathCache;
+
+        this.canonicalIdMaker = canonicalIdMaker;
 
     }
 
@@ -102,6 +107,14 @@ public class Reign implements Watcher {
 
     public void setDefaultAclList(List<ACL> defaultAclList) {
         this.defaultAclList = defaultAclList;
+    }
+
+    public CanonicalIdMaker getCanonicalIdMaker() {
+        return canonicalIdMaker;
+    }
+
+    public void setCanonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
+        this.canonicalIdMaker = canonicalIdMaker;
     }
 
     @Override
@@ -230,6 +243,12 @@ public class Reign implements Watcher {
                     return null;
                 }
             }
+
+            @Override
+            public CanonicalId getCanonicalId() {
+                return canonicalIdMaker.id();
+            }
+
         };
 
         /** init services **/

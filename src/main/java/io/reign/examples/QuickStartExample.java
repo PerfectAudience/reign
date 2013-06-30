@@ -5,7 +5,7 @@ import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.coord.DistributedReentrantLock;
-import io.reign.messaging.MessagingService;
+import io.reign.messaging.DefaultMessagingService;
 import io.reign.messaging.ResponseMessage;
 import io.reign.messaging.SimpleRequestMessage;
 import io.reign.presence.PresenceService;
@@ -76,7 +76,7 @@ public class QuickStartExample {
 
         /** messaging example **/
         // get the messaging service
-        MessagingService messagingService = reign.getService("messaging");
+        DefaultMessagingService messagingService = reign.getService("messaging");
 
         // send message to a single node in the "service1" service in the "examples" cluster
         ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", "someNodeIdentifier",

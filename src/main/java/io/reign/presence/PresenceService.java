@@ -408,11 +408,12 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public void announce(String clusterId, String serviceId, boolean visible) {
-        announce(clusterId, serviceId, getPathScheme().getCanonicalId(), visible, null, null);
+        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null);
     }
 
     public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
-        announce(clusterId, serviceId, getPathScheme().getCanonicalId(), visible, attributeMap, null);
+        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
+                attributeMap, null);
     }
 
     // public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
@@ -460,11 +461,11 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     public void hide(String clusterId, String serviceId) {
-        hide(clusterId, serviceId, getPathScheme().getCanonicalId());
+        hide(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()));
     }
 
     public void show(String clusterId, String serviceId) {
-        show(clusterId, serviceId, getPathScheme().getCanonicalId());
+        show(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()));
     }
 
     void hide(String clusterId, String serviceId, String nodeId) {

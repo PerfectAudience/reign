@@ -79,8 +79,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
     public DistributedReentrantLock getReentrantLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock lock = new ZkReentrantLock(zkReservationManager, getPathScheme().getCanonicalId(), entityPath,
-                ReservationType.LOCK_EXCLUSIVE, aclList);
+        DistributedLock lock = new ZkReentrantLock(zkReservationManager, getPathScheme().toPathToken(
+                getContext().getCanonicalId()), entityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(entityPath, ReservationType.LOCK_EXCLUSIVE, lock);
 
         return (DistributedReentrantLock) lock;
@@ -108,8 +108,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
     public DistributedLock getLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock lock = new ZkLock(zkReservationManager, getPathScheme().getCanonicalId(), entityPath,
-                ReservationType.LOCK_EXCLUSIVE, aclList);
+        DistributedLock lock = new ZkLock(zkReservationManager, getPathScheme().toPathToken(
+                getContext().getCanonicalId()), entityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(entityPath, ReservationType.LOCK_EXCLUSIVE, lock);
 
         return lock;
@@ -137,15 +137,15 @@ public class CoordinationService extends AbstractActiveService implements Observ
         // write lock
         String writeEntityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock writeLock = new ZkReentrantLock(zkReservationManager, getPathScheme().getCanonicalId(),
-                writeEntityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
+        DistributedLock writeLock = new ZkReentrantLock(zkReservationManager, getPathScheme().toPathToken(
+                getContext().getCanonicalId()), writeEntityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(writeEntityPath, ReservationType.LOCK_EXCLUSIVE, writeLock);
 
         // read lock
         String readEntityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_SHARED, lockName);
-        DistributedLock readLock = new ZkReentrantLock(zkReservationManager, getPathScheme().getCanonicalId(),
-                readEntityPath, ReservationType.LOCK_SHARED, aclList);
+        DistributedLock readLock = new ZkReentrantLock(zkReservationManager, getPathScheme().toPathToken(
+                getContext().getCanonicalId()), readEntityPath, ReservationType.LOCK_SHARED, aclList);
         this.coordinationServiceCache.putLock(readEntityPath, ReservationType.LOCK_SHARED, readLock);
 
         return new ZkReadWriteLock(readLock, writeLock);
@@ -244,8 +244,8 @@ public class CoordinationService extends AbstractActiveService implements Observ
         }
 
         // create and put in cache
-        DistributedSemaphore semaphore = new ZkSemaphore(zkReservationManager, getPathScheme().getCanonicalId(),
-                entityPath, aclList, pps);
+        DistributedSemaphore semaphore = new ZkSemaphore(zkReservationManager, getPathScheme().toPathToken(
+                getContext().getCanonicalId()), entityPath, aclList, pps);
         coordinationServiceCache.putSemaphore(entityPath, semaphore);
 
         return semaphore;
