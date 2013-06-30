@@ -179,7 +179,7 @@ The default data layout in ZooKeeper is outlined below.  Custom layouts may be c
 Web Sockets Protocol
 --------------------
 
-By default, services in the framework can receive and response to messages via Web Sockets.
+By default, services in the framework can receive and respond to messages via Web Sockets.
 
 ###Message Format
 `[TARGET_SERVICE]:[RESOURCE]#[META_COMMAND]`
@@ -193,7 +193,7 @@ Upcoming
 
 * SASL support for ZooKeeper
 * Distributed barriers
-* Enhanced administration UI
+* Ongoing UI Enhancements (suggestions welcome!)
 * Binary protocol
 
 
