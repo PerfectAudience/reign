@@ -11,3 +11,5 @@ target/**/*
 logs/**/*
 logs
 docs/*.graffle
+DESIGN*
+
