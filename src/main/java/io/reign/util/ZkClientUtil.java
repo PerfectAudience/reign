@@ -21,7 +21,7 @@ public class ZkClientUtil {
     private static final Logger logger = LoggerFactory.getLogger(ZkClientUtil.class);
 
     /**
-     * Creates path, including parent nodes if necessary.
+     * Creates path, including parent nodes if necessary, and updates data.
      * 
      * @param path
      * @param data
@@ -34,7 +34,7 @@ public class ZkClientUtil {
             final byte[] leafData, final List<ACL> aclList, final CreateMode createMode, int leafDataVersion)
             throws KeeperException {
 
-        /***** if there is leaf data, try updating first to save on calls to ZK *****/
+        /***** if there is leaf data, try updating first to save on ZK ops *****/
         if (!createMode.isSequential()) {
             try {
                 zkClient.setData(path, leafData, leafDataVersion);
