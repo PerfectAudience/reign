@@ -76,13 +76,13 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     // /** object to synchronize on for connection/re-connection attempts */
     // private final ReentrantLock connectionLock = new ReentrantLock();
 
-    public ResilientZooKeeper(String connectString, int sessionTimeoutMillis, long sessionId, byte[] sessionPasswd)
+    public ResilientZooKeeper(String connectString, int sessionTimeoutMillis, long sessionId, byte[] sessionPassword)
             throws IOException {
         this.connectString = connectString;
         this.sessionTimeoutMillis = sessionTimeoutMillis;
         this.currentSessionId = sessionId;
-        this.sessionPassword = sessionPasswd;
-        this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this, sessionId, sessionPasswd);
+        this.sessionPassword = sessionPassword;
+        this.zooKeeper = new ZooKeeper(connectString, sessionTimeoutMillis, this, sessionId, sessionPassword);
     }
 
     public ResilientZooKeeper(String connectString, int sessionTimeoutMillis) throws IOException {
@@ -981,6 +981,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
                 }
 
                 this.currentSessionId = this.zooKeeper.getSessionId();
+                this.sessionPassword = this.zooKeeper.getSessionPasswd();
 
                 logger.info("SyncConnected:  notifying all waiters:  currentSessionId={}; connectString={}",
                         currentSessionId, getConnectString());
