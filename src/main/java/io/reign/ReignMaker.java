@@ -65,24 +65,40 @@ public class ReignMaker {
     public ReignMaker presence() {
         PresenceService presenceService = new PresenceService();
         serviceMap.put("presence", presenceService);
+
+        // alternate route for more concise messaging
+        serviceMap.put("P", presenceService);
+
         return this;
     }
 
     public ReignMaker conf() {
         ConfService confService = new ConfService();
         serviceMap.put("conf", confService);
+
+        // alternate route for more concise messaging
+        serviceMap.put("F", confService);
+
         return this;
     }
 
     public ReignMaker coord() {
         CoordinationService coordService = new CoordinationService();
         serviceMap.put("coord", coordService);
+
+        // alternate route for more concise messaging
+        serviceMap.put("C", coordService);
+
         return this;
     }
 
     public ReignMaker data() {
         DataService dataService = new DataService();
         serviceMap.put("data", dataService);
+
+        // alternate route for more concise messaging
+        serviceMap.put("D", dataService);
+
         return this;
     }
 
@@ -91,6 +107,8 @@ public class ReignMaker {
         serviceMap.put("messaging", messagingService);
         if (messagingPort == null) {
             messagingService.setPort(Reign.DEFAULT_MESSAGING_PORT);
+        } else {
+            messagingService.setPort(messagingPort);
         }
         return this;
     }
