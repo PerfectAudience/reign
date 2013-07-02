@@ -91,6 +91,8 @@ public class ReignMaker {
         serviceMap.put("messaging", messagingService);
         if (messagingPort == null) {
             messagingService.setPort(Reign.DEFAULT_MESSAGING_PORT);
+        } else {
+            messagingService.setPort(messagingPort);
         }
         return this;
     }
