@@ -5,6 +5,10 @@ import io.reign.ZkClient;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -24,15 +28,32 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 public class SimplePathCache extends AbstractZkEventHandler implements PathCache {
     private static final Logger logger = LoggerFactory.getLogger(SimplePathCache.class);
 
+    private final AtomicLong hitCount = new AtomicLong(0);
+    private final AtomicLong missCount = new AtomicLong(0);
+
     private final ConcurrentMap<String, PathCacheEntry> cache;
 
     private final ZkClient zkClient;
 
-    public SimplePathCache(int maxSize, int concurrencyLevel, ZkClient zkClient) {
+    private final ExecutorService executorService;
+
+    public SimplePathCache(int maxSize, int concurrencyLevel, ZkClient zkClient, int updaterThreads) {
         cache = new ConcurrentLinkedHashMap.Builder<String, PathCacheEntry>().maximumWeightedCapacity(maxSize)
                 .initialCapacity(maxSize).concurrencyLevel(concurrencyLevel).build();
 
+        executorService = Executors.newScheduledThreadPool(updaterThreads);
+
         this.zkClient = zkClient;
+    }
+
+    @Override
+    public void init() {
+
+    }
+
+    @Override
+    public void destroy() {
+        executorService.shutdown();
     }
 
     /**
@@ -44,10 +65,43 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
     @Override
     public PathCacheEntry get(String absolutePath, int ttl) {
         PathCacheEntry cacheEntry = cache.get(absolutePath);
-        if (cacheEntry.getLastUpdatedTimestampMillis() + ttl < System.currentTimeMillis()) {
+
+        // if item is expired, return null
+        if (System.currentTimeMillis() - cacheEntry.getLastUpdatedTimestampMillis() > ttl) {
+            missCount.incrementAndGet();
             return null;
         }
+
+        hitCount.incrementAndGet();
+
         return cacheEntry;
+    }
+
+    @Override
+    public PathCacheEntry get(String absolutePath, int ttl, PathCacheEntryUpdater updater, int updateThreshold) {
+        PathCacheEntry cacheEntry = cache.get(absolutePath);
+
+        long timeDiff = System.currentTimeMillis() - cacheEntry.getLastUpdatedTimestampMillis();
+
+        // if item age is past updateThreshold, then schedule an async refresh to keep cache data fresh
+        if (timeDiff > updateThreshold) {
+            executorService.submit(new PathCacheEntryUpdaterRunnable(absolutePath, updater, cache));
+        }
+
+        // if item is expired, return null
+        if (timeDiff > ttl) {
+            missCount.incrementAndGet();
+            return null;
+        }
+
+        hitCount.incrementAndGet();
+
+        return cacheEntry;
+    }
+
+    @Override
+    public PathCacheEntry get(String absolutePath, int ttl, int updateThreshold) {
+        return get(absolutePath, ttl, new DefaultPathCacheEntryUpdater(absolutePath), updateThreshold);
     }
 
     /**
@@ -58,8 +112,23 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
      */
     @Override
     public PathCacheEntry get(String absolutePath) {
-        return cache.get(absolutePath);
+        PathCacheEntry cacheEntry = cache.get(absolutePath);
+        if (cacheEntry == null) {
+            missCount.incrementAndGet();
+        } else {
+            hitCount.incrementAndGet();
+        }
+        return cacheEntry;
+    }
 
+    @Override
+    public long getHitCount() {
+        return hitCount.get();
+    }
+
+    @Override
+    public long getMissCount() {
+        return missCount.get();
     }
 
     /**
@@ -132,12 +201,81 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
             this.put(path, stat, bytes, children);
 
         } catch (KeeperException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.error(this.getClass().getSimpleName() + ":  error while trying to update cache entry:  " + e
+                    + ":  path=" + path, e);
         } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.warn(this.getClass().getSimpleName() + ":  interrupted while trying to update cache entry:  " + e
+                    + ":  path=" + path, e);
         }
+
+    }
+
+    /**
+     * Wrapper runnable
+     * 
+     * @author ypai
+     * 
+     */
+    private static class PathCacheEntryUpdaterRunnable implements Runnable {
+        private static final AtomicInteger inProgressCount = new AtomicInteger(0);
+        private final PathCacheEntryUpdater updater;
+        private final String absolutePath;
+        private final ConcurrentMap<String, PathCacheEntry> cache;
+
+        PathCacheEntryUpdaterRunnable(String absolutePath, PathCacheEntryUpdater updater,
+                ConcurrentMap<String, PathCacheEntry> cache) {
+            // increment jobs in progress
+            inProgressCount.incrementAndGet();
+
+            this.absolutePath = absolutePath;
+            this.updater = updater;
+            this.cache = cache;
+        }
+
+        @Override
+        public void run() {
+            PathCacheEntry updatedValue = updater.get();
+            if (updatedValue != null) {
+                cache.put(absolutePath, updatedValue);
+            }
+
+            // decrement jobs in progress
+            int inProgressCountValue = inProgressCount.decrementAndGet();
+            if (inProgressCountValue > 500) {
+                logger.warn("Pending update jobs > 500:  inProgressCount={}", inProgressCountValue);
+            } else {
+                logger.debug("Pending update jobs:  inProgressCount={}", inProgressCountValue);
+            }
+        }
+    }
+
+    private class DefaultPathCacheEntryUpdater implements PathCacheEntryUpdater {
+
+        private final String absolutePath;
+
+        DefaultPathCacheEntryUpdater(String absolutePath) {
+            this.absolutePath = absolutePath;
+        }
+
+        @Override
+        public PathCacheEntry get() {
+            try {
+                Stat stat = new Stat();
+                byte[] bytes = zkClient.getData(absolutePath, true, stat);
+                List<String> children = zkClient.getChildren(absolutePath, true);
+
+                return new PathCacheEntry(stat, bytes, children, System.currentTimeMillis());
+            } catch (KeeperException e) {
+                logger.error(this.getClass().getSimpleName() + ":  error while trying to update cache entry:  " + e
+                        + ":  path=" + absolutePath, e);
+            } catch (InterruptedException e) {
+                logger.warn(this.getClass().getSimpleName() + ":  interrupted while trying to update cache entry:  "
+                        + e + ":  path=" + absolutePath, e);
+            }
+
+            return null;
+        }
+
     }
 
 }

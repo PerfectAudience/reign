@@ -231,7 +231,7 @@ public class ReignMaker {
                     "zkClient, pathCacheMaxSize, and pathCacheMaxConcurrencyLevel must be configured to create default path cache!");
         }
 
-        return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel, zkClient);
+        return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel, zkClient, 1);
     }
 
     PathScheme defaultPathScheme(String reservedClusterId) {

@@ -67,7 +67,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 ##### Example Spring Bean XML
     <!-- Reign bean configuration -->
     <bean id="reignMaker" class="io.reign.util.spring.SpringReignMaker"  
-        init-method="initialize"  
+        init-method="init"  
         destroy-method="destroy">
         <property name="zkConnectString" value="localhost:2181"/>
         <property name="zkSessionTimeout" value="30000"/>

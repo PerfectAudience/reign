@@ -90,7 +90,7 @@ public class SpringReignMaker extends ReignMaker {
     /**
      * Call using Spring "init-method" when initializing bean. Creates Reign object but does not start.
      */
-    public void initialize() {
+    public void init() {
         reign = super.get();
         synchronized (this) {
             logger.info("Initialized:  notifying all waiters...");
@@ -101,8 +101,8 @@ public class SpringReignMaker extends ReignMaker {
     /**
      * Call using Spring "init-method" when initializing bean. Creates Reign object AND starts it up.
      */
-    public void initializeAndStart() {
-        initialize();
+    public void initStart() {
+        init();
         reign.start();
     }
 

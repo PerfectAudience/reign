@@ -219,7 +219,21 @@ public class Reign implements Watcher {
 
         logger.info("START:  begin");
 
+        /** create graceful shutdown hook **/
+        logger.info("START:  add shutdown hook");
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                Reign.this.stop();
+            }
+        });
+
+        /** init path cache **/
+        logger.info("START:  initializing pathCache...");
+        pathCache.init();
+
         /** create context object **/
+        logger.info("START:  creating ReignContext...");
         this.context = new ReignContext() {
             @Override
             public String getReservedClusterId() {
@@ -267,15 +281,6 @@ public class Reign implements Watcher {
                 watcherList.add((Watcher) service);
             }
         }
-
-        /** create graceful shutdown hook **/
-        logger.info("START:  add shutdown hook");
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                Reign.this.stop();
-            }
-        });
 
         /** watcher set-up **/
         logger.info("START:  registering watchers");
@@ -350,6 +355,10 @@ public class Reign implements Watcher {
         for (ServiceWrapper serviceWrapper : serviceMap.values()) {
             serviceWrapper.getService().destroy();
         }
+
+        /** init path cache **/
+        logger.info("START:  stopping pathCache...");
+        pathCache.destroy();
 
         /** clean up zk client **/
         logger.info("SHUTDOWN:  closing Zookeeper client");

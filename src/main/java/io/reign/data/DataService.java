@@ -3,22 +3,18 @@ package io.reign.data;
 import io.reign.AbstractActiveService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.PathType;
-import io.reign.coord.CoordinationService;
-import io.reign.coord.DistributedLock;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
-import io.reign.presence.PresenceService;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 
 /**
  * 
@@ -29,113 +25,69 @@ public class DataService extends AbstractActiveService {
 
     private static final Logger logger = LoggerFactory.getLogger(DataService.class);
 
-    /** publish every 5 seconds by default */
-    public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 5000;
+    /** queue of cache and persistent store operations to perform */
+    private final LinkedBlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<Runnable>(512);
 
-    /** map of data collectors that gather node data to publish to ZK */
-    private final Map<String, DataCollector> collectorMap = new ConcurrentHashMap<String, DataCollector>(4, 0.9f, 1);
+    /** process task queue every 2 seconds by default */
+    public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
 
-    /** set of clusterId(s) for which to perform data aggregation */
-    private final Set<String> activeAggregationClusterIds = Collections
-            .newSetFromMap(new ConcurrentHashMap<String, Boolean>(4, 0.9f, 1));
+    private final DataSerializer<PointData> dataSerializer = new JsonDataSerializer<PointData>();
 
-    private DataSerializer<DataBundle> dataSerializer = new JsonDataSerializer<DataBundle>();
+    private final ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(2);
+
+    /** data cache */
+    private final ConcurrentLinkedHashMap<String, DataValue<?>> dataCache = new ConcurrentLinkedHashMap.Builder<String, DataValue<?>>()
+            .maximumWeightedCapacity(4096).initialCapacity(1024).concurrencyLevel(2).build();
 
     /**
-     * Retrieves DataBundle for a given service.
+     * Retrieve a single data path. Example usage:
+     * <ul>
+     * <li>Returns DataNode (could be Map or List of DataPoints or just a single value):
+     * dataService.getDataPack("myCluster", "eventServer", "someHostNameId");</li>
+     * <li>Returns DataNode (could be Map or List of DataPoints or just a single value):
+     * dataService.getDataPack("myCluster", "eventServer/eventCounts", "someHostNameId");</li>
+     * <li>Returns DataPoint: dataService.getDataPack("myCluster", "eventServer/eventCounts", "someHostNameId.mapKey");</li>
+     * <li>Returns DataPoint: dataService.getDataPack("myCluster", "eventServer/eventCounts",
+     * "someHostNameId.listIndex");</li>
+     * </ul>
      * 
      * @param clusterId
-     * @param serviceId
-     * @return
+     * @param dataKeyPath
+     * @return read-only data
      */
-    public DataBundle getDataBundle(String clusterId, String serviceId) {
+    public <T> T getData(String clusterId, String dataNodePath) {
+        // a "." in the
+
         return null;
     }
 
     /**
-     * Retrieves DataBundle for a given service node.
+     * Apply an operation to a set of DataPoint(s).
      * 
+     * @param <T>
+     * @param operation
      * @param clusterId
-     * @param serviceId
-     * @param nodeId
+     * @param dataKeyPath
      * @return
      */
-    public DataBundle getDataBundle(String clusterId, String serviceId, String nodeId) {
+    public <T> T group(Operator operation, String clusterId, String dataNodePath) {
         return null;
-    }
-
-    public void register(String clusterId, String serviceId, String nodeId, DataCollector collector) {
-        // add cluster id to set of cluster ids to do aggregation for
-        activeAggregationClusterIds.add(clusterId);
-
-        collectorMap.put(getNodeIdString(clusterId, serviceId, nodeId), collector);
     }
 
     @Override
     public void perform() {
-        /** iterate through collectors, serialize, and set in ZK **/
-        Iterator<String> keyIter = collectorMap.keySet().iterator();
-        while (keyIter.hasNext()) {
-            try {
-                String key = keyIter.next();
-                DataCollector collector = collectorMap.get(key);
+        /** check data cache and see if we need to do reads to keep data cache warm **/
 
-                byte[] data = dataSerializer.serialize(collector.get());
-
-                // gather data
-
-            } catch (Exception e) {
-                logger.error("Error while serializing data:  " + e, e);
+        /** do operations in task queue **/
+        Runnable runnable = null;
+        do {
+            if (runnable != null) {
+                this.executorService.submit(runnable);
             }
-        }// while
+        } while (runnable != null);
 
-        /** acquire aggregation lock and aggregate data to service level **/
-        PresenceService presenceService = getContext().getService("presence");
-        CoordinationService coordinationService = getContext().getService("coord");
-        for (String clusterId : activeAggregationClusterIds) {
-
-            // skip reserved cluster id
-            if (clusterId.equals(getContext().getReservedClusterId())) {
-                continue;
-            }
-
-            // iterate through available services
-            List<String> services = presenceService.lookupServices(clusterId);
-            for (String serviceId : services) {
-                // get lock to aggregate service node data
-                DistributedLock aggregateLock = coordinationService.getLock("data", "aggregate-" + clusterId + "-"
-                        + serviceId, getDefaultAclList());
-                aggregateLock.lock();
-                try {
-                    // get service child nodes
-                    String relativeServicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
-                    String servicePath = getPathScheme().getAbsolutePath(PathType.PRESENCE, relativeServicePath);
-                    List<String> children = getZkClient().getChildren(servicePath, false);
-
-                    // iterate through children
-                    for (String nodeId : children) {
-                        // read datum from child
-                        String relativeServiceNodePath = getPathScheme()
-                                .buildRelativePath(clusterId, serviceId, nodeId);
-                        String serviceNodePath = getPathScheme().getAbsolutePath(PathType.PRESENCE,
-                                relativeServiceNodePath);
-                        byte[] bytes = getZkClient().getData(serviceNodePath, false, null);
-
-                        // deserialize
-                        DataBundle dataBundle = dataSerializer.deserialize(bytes);
-
-                        // aggregate
-                    }
-
-                    // write out service level datum
-
-                } catch (Exception e) {
-                } finally {
-                    aggregateLock.unlock();
-                    aggregateLock.destroy();
-                }
-            } // for
-        }// for
+        /** groom data **/
+        // get lock on path, check data point TTLs, and clean up data nodes as necessary
     }
 
     @Override
@@ -149,16 +101,16 @@ public class DataService extends AbstractActiveService {
 
     @Override
     public void destroy() {
-
+        executorService.shutdown();
     }
 
-    public DataSerializer<DataBundle> getDataSerializer() {
-        return dataSerializer;
-    }
-
-    public void setDataSerializer(DataSerializer<DataBundle> dataSerializer) {
-        this.dataSerializer = dataSerializer;
-    }
+    // public DataSerializer<DataBundle> getDataSerializer() {
+    // return dataSerializer;
+    // }
+    //
+    // public void setDataSerializer(DataSerializer<DataBundle> dataSerializer) {
+    // this.dataSerializer = dataSerializer;
+    // }
 
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
@@ -174,8 +126,41 @@ public class DataService extends AbstractActiveService {
         return null;
     }
 
-    String getNodeIdString(String clusterId, String serviceId, String nodeId) {
-        return getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+    private static abstract class DataServiceRunnable implements Runnable {
+        private static final AtomicInteger outstandingOperations = new AtomicInteger(0);
+
+        private int delayMillis;
+
+        private String path;
+
+        public abstract void doRun();
+
+        public int getDelayMillis() {
+            return delayMillis;
+        }
+
+        public void setDelayMillis(int delayMillis) {
+            this.delayMillis = delayMillis;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public void setPath(String path) {
+            this.path = path;
+        }
+
+        public static AtomicInteger getOutstandingoperations() {
+            return outstandingOperations;
+        }
+
+        @Override
+        public void run() {
+            outstandingOperations.incrementAndGet();
+            doRun();
+            outstandingOperations.decrementAndGet();
+        }
     }
 
 }
