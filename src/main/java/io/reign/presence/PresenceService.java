@@ -95,7 +95,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     public List<String> lookupServices(String clusterId) {
         /** get node data from zk **/
-        String clusterPath = getPathScheme().buildRelativePath(clusterId);
+        String clusterPath = getPathScheme().joinTokens(clusterId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterPath);
         List<String> children = null;
         try {
@@ -121,7 +121,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     public void observe(String clusterId, String serviceId, SimplePresenceObserver<ServiceInfo> observer) {
         ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, true);
-        String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
+        String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
         this.observerManager.put(path, new PresenceObserverWrapper<ServiceInfo>(clusterId, serviceId, null, observer,
                 nodeAttributeSerializer, result));
@@ -129,7 +129,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     public void observe(String clusterId, String serviceId, String nodeId, SimplePresenceObserver<NodeInfo> observer) {
         NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
-        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
         this.observerManager.put(path, new PresenceObserverWrapper<NodeInfo>(clusterId, serviceId, nodeId, observer,
                 nodeAttributeSerializer, result));
@@ -160,7 +160,7 @@ public class PresenceService extends AbstractActiveService implements Observable
             boolean useCache, long timeoutMillis) {
         ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
         if (result == null || result.getNodeIdList().size() < 1) {
-            String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
+            String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
             String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
             SimplePresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(path);
             this.observerManager.put(path, new PresenceObserverWrapper<ServiceInfo>(clusterId, serviceId, null,
@@ -223,7 +223,7 @@ public class PresenceService extends AbstractActiveService implements Observable
             SimplePresenceObserver<ServiceInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
             boolean useCache) {
         /** get node data from zk **/
-        String servicePath = getPathScheme().buildRelativePath(clusterId, serviceId);
+        String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
 
         boolean error = false;
@@ -306,7 +306,7 @@ public class PresenceService extends AbstractActiveService implements Observable
             boolean useCache, long timeoutMillis) {
         NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, useCache);
         if (result == null) {
-            String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+            String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
             String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
             SimplePresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(path);
             this.observerManager.put(path, new PresenceObserverWrapper<NodeInfo>(clusterId, serviceId, nodeId,
@@ -346,7 +346,7 @@ public class PresenceService extends AbstractActiveService implements Observable
             SimplePresenceObserver<NodeInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer,
             boolean useCache) {
         /** get node data from zk **/
-        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
 
         boolean error = false;
@@ -445,7 +445,7 @@ public class PresenceService extends AbstractActiveService implements Observable
         }
 
         // get announcement using path to node
-        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath);
         announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
 
@@ -469,7 +469,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     void hide(String clusterId, String serviceId, String nodeId) {
-        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath);
         if (!announcement.isHidden()) {
             announcement.setHidden(true);
@@ -478,7 +478,7 @@ public class PresenceService extends AbstractActiveService implements Observable
     }
 
     void show(String clusterId, String serviceId, String nodeId) {
-        String nodePath = getPathScheme().buildRelativePath(clusterId, serviceId, nodeId);
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath);
         if (announcement.isHidden()) {
             announcement.setHidden(false);
@@ -589,7 +589,7 @@ public class PresenceService extends AbstractActiveService implements Observable
                             // check stat and make sure mtime of each child is
                             // within 4x heartbeatIntervalMillis; if not, delete
                             for (String child : serviceChildren) {
-                                String serviceChildPath = getPathScheme().join(servicePath, child);
+                                String serviceChildPath = getPathScheme().joinPaths(servicePath, child);
                                 logger.info("Checking for service zombie child nodes:  path={}", servicePath);
                                 Stat stat = getZkClient().exists(serviceChildPath, false);
                                 long timeDiff = System.currentTimeMillis() - stat.getMtime();

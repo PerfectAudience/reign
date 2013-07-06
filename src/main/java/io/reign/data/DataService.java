@@ -3,18 +3,15 @@ package io.reign.data;
 import io.reign.AbstractActiveService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
+import io.reign.coord.CoordinationService;
+import io.reign.coord.DistributedReadWriteLock;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 
 /**
  * 
@@ -31,47 +28,73 @@ public class DataService extends AbstractActiveService {
     /** process task queue every 2 seconds by default */
     public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
 
-    private final DataSerializer<PointData> dataSerializer = new JsonDataSerializer<PointData>();
+    private static final String DATA_PATH_SUFFIX = "$";
+    private static final String MAP_PATH_SUFFIX = "{}";
+    private static final String LIST_PATH_SUFFIX = "[]";
 
-    private final ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(2);
+    private DataSerializer<DataValue> dataSerializer = new JsonDataSerializer<DataValue>();
 
-    /** data cache */
-    private final ConcurrentLinkedHashMap<String, DataValue<?>> dataCache = new ConcurrentLinkedHashMap.Builder<String, DataValue<?>>()
-            .maximumWeightedCapacity(4096).initialCapacity(1024).concurrencyLevel(2).build();
+    public <V> MultiData<V> get(String clusterId, String dataPath, int ttlMillis, boolean processSafe) {
+        dataPath = dataPath + DATA_PATH_SUFFIX;
 
-    /**
-     * Retrieve a single data path. Example usage:
-     * <ul>
-     * <li>Returns DataNode (could be Map or List of DataPoints or just a single value):
-     * dataService.getDataPack("myCluster", "eventServer", "someHostNameId");</li>
-     * <li>Returns DataNode (could be Map or List of DataPoints or just a single value):
-     * dataService.getDataPack("myCluster", "eventServer/eventCounts", "someHostNameId");</li>
-     * <li>Returns DataPoint: dataService.getDataPack("myCluster", "eventServer/eventCounts", "someHostNameId.mapKey");</li>
-     * <li>Returns DataPoint: dataService.getDataPack("myCluster", "eventServer/eventCounts",
-     * "someHostNameId.listIndex");</li>
-     * </ul>
-     * 
-     * @param clusterId
-     * @param dataKeyPath
-     * @return read-only data
-     */
-    public <T> T getData(String clusterId, String dataNodePath) {
-        // a "." in the
+        DistributedReadWriteLock readWriteLock = null;
+        if (processSafe) {
+            readWriteLock = getReadWriteLock(clusterId, dataPath);
+        }
 
-        return null;
+        String relativeBasePath = getPathScheme().joinPaths(clusterId, dataPath);
+
+        return new ZkMultiData<V>(relativeBasePath, getPathScheme(), readWriteLock, getZkClient(), ttlMillis);
     }
 
-    /**
-     * Apply an operation to a set of DataPoint(s).
-     * 
-     * @param <T>
-     * @param operation
-     * @param clusterId
-     * @param dataKeyPath
-     * @return
-     */
-    public <T> T group(Operator operation, String clusterId, String dataNodePath) {
-        return null;
+    public <K, V> MultiMapData<K, V> getMultiMap(String clusterId, String dataPath, boolean processSafe) {
+        dataPath = dataPath + MAP_PATH_SUFFIX;
+
+        DistributedReadWriteLock readWriteLock = null;
+        if (processSafe) {
+            readWriteLock = getReadWriteLock(clusterId, dataPath);
+        }
+
+        String relativeBasePath = getPathScheme().joinPaths(clusterId, dataPath);
+
+        return new ZkMultiMapData<K, V>(relativeBasePath, getPathScheme(), readWriteLock, getZkClient());
+    }
+
+    public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath, int maxSize, int ttlMillis,
+            boolean processSafe) {
+        if (maxSize == -1) {
+            dataPath = dataPath + LIST_PATH_SUFFIX;
+        } else {
+            dataPath = dataPath + LIST_PATH_SUFFIX.charAt(0) + maxSize + LIST_PATH_SUFFIX.charAt(1);
+        }
+
+        DistributedReadWriteLock readWriteLock = null;
+        if (processSafe) {
+            readWriteLock = getReadWriteLock(clusterId, dataPath);
+        }
+
+        String relativeBasePath = getPathScheme().joinPaths(clusterId, dataPath);
+
+        return new ZkLinkedListData<V>(maxSize, relativeBasePath, getPathScheme(), readWriteLock, getZkClient(),
+                ttlMillis);
+    }
+
+    public <V> QueueData<V> getQueue(String clusterId, String dataPath, int maxSize, int ttlMillis, boolean processSafe) {
+        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe);
+
+        return new ZkQueueData<V>(linkedListData);
+    }
+
+    public <V> StackData<V> getStack(String clusterId, String dataPath, int maxSize, int ttlMillis, boolean processSafe) {
+        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe);
+
+        return new ZkStackData<V>(linkedListData);
+    }
+
+    DistributedReadWriteLock getReadWriteLock(String clusterId, String dataPath) {
+        CoordinationService coordinationService = getContext().getService("coord");
+        DistributedReadWriteLock readWriteLock = coordinationService.getReadWriteLock(clusterId, dataPath);
+        return readWriteLock;
     }
 
     @Override
@@ -79,12 +102,6 @@ public class DataService extends AbstractActiveService {
         /** check data cache and see if we need to do reads to keep data cache warm **/
 
         /** do operations in task queue **/
-        Runnable runnable = null;
-        do {
-            if (runnable != null) {
-                this.executorService.submit(runnable);
-            }
-        } while (runnable != null);
 
         /** groom data **/
         // get lock on path, check data point TTLs, and clean up data nodes as necessary
@@ -101,16 +118,16 @@ public class DataService extends AbstractActiveService {
 
     @Override
     public void destroy() {
-        executorService.shutdown();
+
     }
 
-    // public DataSerializer<DataBundle> getDataSerializer() {
-    // return dataSerializer;
-    // }
-    //
-    // public void setDataSerializer(DataSerializer<DataBundle> dataSerializer) {
-    // this.dataSerializer = dataSerializer;
-    // }
+    public DataSerializer<DataValue> getDataSerializer() {
+        return dataSerializer;
+    }
+
+    public void setDataSerializer(DataSerializer<DataValue> dataSerializer) {
+        this.dataSerializer = dataSerializer;
+    }
 
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
@@ -124,43 +141,6 @@ public class DataService extends AbstractActiveService {
         }
 
         return null;
-    }
-
-    private static abstract class DataServiceRunnable implements Runnable {
-        private static final AtomicInteger outstandingOperations = new AtomicInteger(0);
-
-        private int delayMillis;
-
-        private String path;
-
-        public abstract void doRun();
-
-        public int getDelayMillis() {
-            return delayMillis;
-        }
-
-        public void setDelayMillis(int delayMillis) {
-            this.delayMillis = delayMillis;
-        }
-
-        public String getPath() {
-            return path;
-        }
-
-        public void setPath(String path) {
-            this.path = path;
-        }
-
-        public static AtomicInteger getOutstandingoperations() {
-            return outstandingOperations;
-        }
-
-        @Override
-        public void run() {
-            outstandingOperations.incrementAndGet();
-            doRun();
-            outstandingOperations.decrementAndGet();
-        }
     }
 
 }

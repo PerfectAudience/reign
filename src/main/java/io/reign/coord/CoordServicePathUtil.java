@@ -46,6 +46,6 @@ public class CoordServicePathUtil {
 
     public static String getAbsolutePathReservationPrefix(PathScheme pathScheme, String entityPath,
             ReservationType reservationType) {
-        return pathScheme.join(entityPath, reservationType.prefix() + "_");
+        return pathScheme.joinPaths(entityPath, reservationType.prefix() + "_");
     }
 }

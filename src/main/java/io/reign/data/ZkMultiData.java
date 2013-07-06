@@ -4,18 +4,17 @@ import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
 
+import java.util.List;
+
 /**
- * Base implementation is thread-safe within the same JVM. Construct with read/write lock for inter-process safety.
  * 
  * @author ypai
  * 
  * @param <V>
  */
-public class ZkLinkedListData<V> implements LinkedListData<V> {
+public class ZkMultiData<V> implements MultiData<V> {
 
     private final DistributedReadWriteLock readWriteLock;
-
-    private final int maxSize;
 
     private final String relativeBasePath;
 
@@ -23,23 +22,25 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
 
     private final ZkClient zkClient;
 
+    private final int ttlMillis;
+
     /**
-     * @param maxSize
-     * @param basePath
+     * 
+     * @param relativeBasePath
      * @param readWriteLock
      *            for inter-process safety; can be null
      */
-    public ZkLinkedListData(int maxSize, String relativeBasePath, PathScheme pathScheme,
-            DistributedReadWriteLock readWriteLock, ZkClient zkClient, int ttlMillis) {
-        this.maxSize = maxSize;
+    public ZkMultiData(String relativeBasePath, PathScheme pathScheme, DistributedReadWriteLock readWriteLock,
+            ZkClient zkClient, int ttlMillis) {
         this.relativeBasePath = relativeBasePath;
         this.pathScheme = pathScheme;
         this.readWriteLock = readWriteLock;
         this.zkClient = zkClient;
+        this.ttlMillis = ttlMillis;
     }
 
     @Override
-    public synchronized <T extends V> T popAt(int index) {
+    public synchronized void set(V value) {
         lockForWrite();
         try {
 
@@ -47,11 +48,23 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
             unlockForWrite();
         }
         // TODO Auto-generated method stub
-        return null;
+
     }
 
     @Override
-    public synchronized <T extends V> T peekAt(int index) {
+    public synchronized void set(String index, V value) {
+        lockForWrite();
+        try {
+
+        } finally {
+            unlockForWrite();
+        }
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public synchronized V get() {
         lockForRead();
         try {
 
@@ -63,31 +76,7 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
     }
 
     @Override
-    public synchronized <T extends V> T popFirst() {
-        lockForWrite();
-        try {
-
-        } finally {
-            unlockForWrite();
-        }
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public synchronized <T extends V> T popLast() {
-        lockForWrite();
-        try {
-
-        } finally {
-            unlockForWrite();
-        }
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public synchronized <T extends V> T peekFirst() {
+    public synchronized List<V> getAll() {
         lockForRead();
         try {
 
@@ -99,19 +88,7 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
     }
 
     @Override
-    public synchronized <T extends V> T peekLast() {
-        lockForRead();
-        try {
-
-        } finally {
-            unlockForRead();
-        }
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public synchronized boolean pushLast(V value) {
+    public synchronized String remove() {
         lockForWrite();
         try {
 
@@ -119,24 +96,19 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
             unlockForWrite();
         }
         // TODO Auto-generated method stub
-        return false;
+        return null;
     }
 
     @Override
-    public synchronized int size() {
-        lockForRead();
+    public synchronized List<String> removeAll() {
+        lockForWrite();
         try {
 
         } finally {
-            unlockForRead();
+            unlockForWrite();
         }
         // TODO Auto-generated method stub
-        return 0;
-    }
-
-    @Override
-    public synchronized int maxSize() {
-        return maxSize;
+        return null;
     }
 
     void lockForWrite() {

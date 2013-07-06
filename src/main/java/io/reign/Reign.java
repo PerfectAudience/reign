@@ -260,6 +260,16 @@ public class Reign implements Watcher {
                 return canonicalIdMaker.get();
             }
 
+            @Override
+            public ZkClient getZkClient() {
+                return zkClient;
+            }
+
+            @Override
+            public PathScheme getPathScheme() {
+                return pathScheme;
+            }
+
         };
 
         /** init services **/

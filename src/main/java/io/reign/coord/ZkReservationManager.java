@@ -154,7 +154,7 @@ class ZkReservationManager {
                             // watch if we do not acquire
                             // Check if it's null in case we plan to watch an exclusive lock reservation
                             if (reservationAheadPath == null) {
-                                reservationAheadPath = pathScheme.join(entityPath, lockReservationList.get(i - 1));
+                                reservationAheadPath = pathScheme.joinPaths(entityPath, lockReservationList.get(i - 1));
                             }
                             break;
                         }
@@ -163,7 +163,7 @@ class ZkReservationManager {
                         // update the reservationAheadPath
                         if (ReservationType.isExclusive(currentReservation)) {
                             exclusiveReservationEncountered = true;
-                            reservationAheadPath = pathScheme.join(entityPath, currentReservation);
+                            reservationAheadPath = pathScheme.joinPaths(entityPath, currentReservation);
                         }
                     }
 

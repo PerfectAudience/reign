@@ -33,6 +33,6 @@ public interface DataValue<T> {
      * 
      * @return time to live in millis
      */
-    public long getTimeToLive();
+    public int getTimeToLive();
 
 }

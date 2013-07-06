@@ -15,11 +15,11 @@ public interface PathScheme {
 
     public String getAbsolutePath(PathType pathType, String... pathTokens);
 
-    public String join(String pathSegment1, String pathSegment2);
+    public String joinPaths(String... paths);
 
     public String[] tokenizePath(String path);
 
-    public String buildRelativePath(String... pathTokens);
+    public String joinTokens(String... pathTokens);
 
     public boolean isValidPathToken(String pathToken);
 

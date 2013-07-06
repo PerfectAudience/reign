@@ -1,5 +1,8 @@
 package io.reign.data;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonProperty;
+
 /**
  * 
  * @author ypai
@@ -7,14 +10,19 @@ package io.reign.data;
  */
 public class SimpleDataValue<T> implements DataValue<T> {
 
+    @JsonIgnore
     private String index = DEFAULT_INDEX;
 
+    @JsonProperty("m")
     private long lastModified;
-    private long timeToLive;
 
+    @JsonProperty("t")
+    private int timeToLive;
+
+    @JsonProperty("v")
     private T value;
 
-    public SimpleDataValue(String index, T value, long timeToLive, long lastModified) {
+    public SimpleDataValue(String index, T value, int timeToLive, long lastModified) {
         super();
         this.index = index;
         this.value = value;
@@ -47,11 +55,11 @@ public class SimpleDataValue<T> implements DataValue<T> {
     }
 
     @Override
-    public long getTimeToLive() {
+    public int getTimeToLive() {
         return timeToLive;
     }
 
-    public void setTimeToLive(long timeToLive) {
+    public void setTimeToLive(int timeToLive) {
         this.timeToLive = timeToLive;
     }
 

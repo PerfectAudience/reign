@@ -15,22 +15,12 @@ import org.codehaus.jackson.type.TypeReference;
  */
 public class DefaultPathScheme implements PathScheme {
 
-    public static final String CANONICAL_ID_PID = "pid";
-    public static final String CANONICAL_ID_IP = "ip";
-    public static final String CANONICAL_ID_HOST = "host";
-    public static final String CANONICAL_ID_PORT = "port";
-    public static final String CANONICAL_ID_MESSAGING_PORT = "mport";
-
     private static final Pattern PATTERN_PATH_TOKENIZER = Pattern.compile("/");
 
     private String basePath;
 
-    // private Integer messagingPort;
-
-    // private final String canonicalId;
-
     public DefaultPathScheme() {
-        // this.canonicalId = defaultCanonicalId();
+
     }
 
     public DefaultPathScheme(String basePath) {
@@ -62,12 +52,30 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public String getAbsolutePath(PathType pathType, String... pathTokens) {
-        return getAbsolutePath(pathType, buildRelativePath(pathTokens));
+        return getAbsolutePath(pathType, joinTokens(pathTokens));
     }
 
     @Override
-    public String join(String pathSegment1, String pathSegment2) {
-        return pathSegment1 + '/' + pathSegment2;
+    public String joinPaths(String... paths) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < paths.length; i++) {
+            String path = paths[i];
+
+            // strip trailing slash
+            if (path.endsWith("/")) {
+                path = path.substring(0, path.length() - 1);
+            }
+
+            // only add slash btw. paths if we have to
+            if (i > 0 && !path.startsWith("/")) {
+                sb.append('/');
+            }
+
+            sb.append(path);
+        }
+
+        return sb.toString();
+
     }
 
     @Override
@@ -77,12 +85,11 @@ public class DefaultPathScheme implements PathScheme {
     }
 
     @Override
-    public String buildRelativePath(String... pathTokens) {
+    public String joinTokens(String... pathTokens) {
         StringBuilder sb = new StringBuilder();
         for (String token : pathTokens) {
             if (!isValidPathToken(token)) {
-                throw new IllegalArgumentException("'/' character is not allowed in path token:  pathToken='" + token
-                        + "'");
+                throw new IllegalArgumentException("Invalid path token:  pathToken='" + token + "'");
 
             }
             sb.append(token);
@@ -95,34 +102,6 @@ public class DefaultPathScheme implements PathScheme {
     public boolean isValidPathToken(String pathToken) {
         return !StringUtils.isBlank(pathToken) && pathToken.indexOf('/') == -1;
     }
-
-    // @Override
-    // public String getCanonicalId() {
-    // StringBuilder sb = new StringBuilder(this.canonicalId);
-    // if (this.messagingPort != null) {
-    // sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_MESSAGING_PORT).insert(
-    // sb.length() - 1, "\":\"").insert(sb.length() - 1, this.messagingPort).insert(sb.length() - 1, "\"");
-    // }
-    // return sb.toString();
-    // }
-    //
-    // @Override
-    // public String getCanonicalId(Integer port) {
-    // if (port == null) {
-    // throw new IllegalArgumentException("Invalid argument:  port cannot be null!");
-    // }
-    //
-    // StringBuilder sb = new StringBuilder(this.canonicalId);
-    // if (this.messagingPort != null) {
-    // sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_MESSAGING_PORT).insert(
-    // sb.length() - 1, "\":\"").insert(sb.length() - 1, this.messagingPort).insert(sb.length() - 1, "\"");
-    // }
-    // if (port != null) {
-    // sb.insert(sb.length() - 1, ",\"").insert(sb.length() - 1, CANONICAL_ID_PORT).insert(sb.length() - 1,
-    // "\":\"").insert(sb.length() - 1, port).insert(sb.length() - 1, "\"");
-    // }
-    // return sb.toString();
-    // }
 
     @Override
     public CanonicalId parseCanonicalId(String canonicalId) {
@@ -143,28 +122,5 @@ public class DefaultPathScheme implements PathScheme {
             throw new IllegalArgumentException(e);
         }
     }
-
-    // String defaultCanonicalId() {
-    // // get pid
-    // String pid = IdUtil.getProcessId();
-    //
-    // // try to get hostname and ip address
-    // String hostname = IdUtil.getHostname();
-    // String ipAddress = IdUtil.getIpAddress();
-    //
-    // // fill in unknown values
-    // if (pid == null) {
-    // pid = "";
-    // }
-    // if (hostname == null) {
-    // hostname = "";
-    // }
-    // if (ipAddress == null) {
-    // ipAddress = "";
-    // }
-    //
-    // return "{\"" + CANONICAL_ID_HOST + "\":\"" + hostname + "\",\"" + CANONICAL_ID_IP + "\":\"" + ipAddress
-    // + "\",\"" + CANONICAL_ID_PID + "\":\"" + pid + "\"}";
-    // }
 
 }

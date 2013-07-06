@@ -1,5 +1,6 @@
 package io.reign.data;
 
+import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
 
@@ -16,7 +17,11 @@ public class ZkMultiMapData<K, V> implements MultiMapData<K, V> {
 
     private final DistributedReadWriteLock readWriteLock;
 
-    private final String basePath;
+    private final String relativeBasePath;
+
+    private final ZkClient zkClient;
+
+    private final PathScheme pathScheme;
 
     /**
      * 
@@ -24,9 +29,12 @@ public class ZkMultiMapData<K, V> implements MultiMapData<K, V> {
      * @param readWriteLock
      *            for inter-process safety; can be null
      */
-    public ZkMultiMapData(String basePath, DistributedReadWriteLock readWriteLock, ZkClient zkClient) {
-        this.basePath = basePath;
+    public ZkMultiMapData(String relativeBasePath, PathScheme pathScheme, DistributedReadWriteLock readWriteLock,
+            ZkClient zkClient) {
+        this.relativeBasePath = relativeBasePath;
+        this.pathScheme = pathScheme;
         this.readWriteLock = readWriteLock;
+        this.zkClient = zkClient;
     }
 
     @Override

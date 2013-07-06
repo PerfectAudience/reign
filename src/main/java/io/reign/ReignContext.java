@@ -17,4 +17,8 @@ public interface ReignContext {
      * @return NEW instance of CanonicalId
      */
     public CanonicalId getCanonicalId();
+
+    public ZkClient getZkClient();
+
+    public PathScheme getPathScheme();
 }

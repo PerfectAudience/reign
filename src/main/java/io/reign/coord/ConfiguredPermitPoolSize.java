@@ -108,7 +108,7 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
         // write out to ZK
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         confService.putConf(clusterId,
-                confService.getPathScheme().join(ReservationType.SEMAPHORE.category(), semaphoreName), semaphoreConf,
+                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName), semaphoreConf,
                 confSerializer, aclList);
     }
 
@@ -127,7 +127,7 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
         // read configuration
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         Map<String, String> semaphoreConf = confService.getConf(clusterId,
-                confService.getPathScheme().join(ReservationType.SEMAPHORE.category(), semaphoreName), confSerializer,
+                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName), confSerializer,
                 confObserver);
         return semaphoreConf;
     }

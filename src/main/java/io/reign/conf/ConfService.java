@@ -44,7 +44,7 @@ public class ConfService extends AbstractService implements ObservableService {
     <T> void observe(PathType pathType, String clusterId, String relativeConfPath, SimpleConfObserver<T> observer) {
 
         String absolutePath = getPathScheme().getAbsolutePath(pathType,
-                getPathScheme().join(clusterId, relativeConfPath));
+                getPathScheme().joinPaths(clusterId, relativeConfPath));
 
         DataSerializer confSerializer = null;
         if (relativeConfPath.endsWith(".properties")) {
@@ -155,7 +155,7 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param relativePath
      */
     public void removeConf(String clusterId, String relativeConfPath) {
-        String path = getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().join(clusterId, relativeConfPath));
+        String path = getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath));
         try {
             getZkClient().delete(path, -1);
 
@@ -188,7 +188,7 @@ public class ConfService extends AbstractService implements ObservableService {
     <T> T getConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath,
             DataSerializer<T> confSerializer, SimpleConfObserver<T> observer, boolean useCache) {
         String absolutePath = getPathScheme().getAbsolutePath(pathType,
-                getPathScheme().join(clusterId, relativeConfPath));
+                getPathScheme().joinPaths(clusterId, relativeConfPath));
         return getConfAbsolutePath(absolutePath, confSerializer, observer, useCache);
 
     }
@@ -272,7 +272,7 @@ public class ConfService extends AbstractService implements ObservableService {
     <T> void putConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath, T conf,
             DataSerializer<T> confSerializer, List<ACL> aclList) {
         String absolutePath = getPathScheme().getAbsolutePath(pathType,
-                getPathScheme().join(clusterId, relativeConfPath));
+                getPathScheme().joinPaths(clusterId, relativeConfPath));
         try {
             // write to ZK
             byte[] leafData = confSerializer.serialize(conf);

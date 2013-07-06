@@ -93,7 +93,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
                         new Object[] { clusterId, serviceId, nodeId, requestMessage });
             }
             ResponseMessage responseMessage = sendMessage(clusterId, serviceId, nodeId, requestMessage);
-            responseMap.put(getPathScheme().buildRelativePath(clusterId, serviceId, nodeId), responseMessage);
+            responseMap.put(getPathScheme().joinTokens(clusterId, serviceId, nodeId), responseMessage);
         }
 
         return responseMap;
