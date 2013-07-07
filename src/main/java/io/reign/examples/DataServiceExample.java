@@ -36,7 +36,7 @@ public class DataServiceExample {
         // Reign reign = springReignMaker.get();
 
         /** messaging example **/
-        messagingExample(reign);
+        multiDataExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(600000);
@@ -48,10 +48,20 @@ public class DataServiceExample {
         Thread.sleep(10000);
     }
 
-    public static void messagingExample(Reign reign) throws Exception {
+    public static void multiDataExample(Reign reign) throws Exception {
         DataService dataService = reign.getService("data");
+
         MultiData<Double> multiData = dataService.getMulti("examples", "my-data", Double.class, false,
                 Reign.DEFAULT_ACL_LIST);
+        doMultiDataExample(multiData);
+
+        multiData = dataService
+                .getMulti("examples", "my-data-process-safe", Double.class, true, Reign.DEFAULT_ACL_LIST);
+        doMultiDataExample(multiData);
+
+    }
+
+    public static void doMultiDataExample(MultiData<Double> multiData) throws Exception {
         multiData.set("1", 1000D);
         multiData.set("2", 2000D);
 
@@ -86,6 +96,5 @@ public class DataServiceExample {
         multiData.removeAll();
         values = multiData.getAll();
         logger.debug("MultiData:  values={}", values);
-
     }
 }
