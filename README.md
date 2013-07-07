@@ -79,7 +79,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
     SpringReignMaker springReignMaker.get = ...injected dependency...;
     Reign reign = springReignMaker.get();
     
-    // may not have to do this if bean init-method is specified as "initializeAndStart"
+    // may not have to do this if bean init-method is specified as "initStart"
     // in Spring configuration
     reign.start();
 
