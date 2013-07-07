@@ -14,6 +14,11 @@ public class ZkQueueData<V> implements QueueData<V> {
     }
 
     @Override
+    public synchronized void destroy() {
+        linkedListData.destroy();
+    }
+
+    @Override
     public synchronized V pop() {
         return this.linkedListData.popFirst();
     }

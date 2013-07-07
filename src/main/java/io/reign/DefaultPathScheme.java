@@ -56,10 +56,22 @@ public class DefaultPathScheme implements PathScheme {
     }
 
     @Override
+    public String getParentPath(String path) {
+        if (!isValidPath(path)) {
+            throw new IllegalArgumentException("Invalid path:  path=" + path);
+        }
+        return path.substring(0, path.lastIndexOf("/"));
+    }
+
+    @Override
     public String joinPaths(String... paths) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < paths.length; i++) {
             String path = paths[i];
+
+            if (!isValidPath(path)) {
+                throw new IllegalArgumentException("Invalid path:  path=" + path);
+            }
 
             // strip trailing slash
             if (path.endsWith("/")) {
@@ -101,6 +113,11 @@ public class DefaultPathScheme implements PathScheme {
     @Override
     public boolean isValidPathToken(String pathToken) {
         return !StringUtils.isBlank(pathToken) && pathToken.indexOf('/') == -1;
+    }
+
+    @Override
+    public boolean isValidPath(String path) {
+        return !path.endsWith("/");
     }
 
     @Override

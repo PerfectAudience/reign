@@ -2,14 +2,20 @@ package io.reign.data;
 
 import io.reign.AbstractActiveService;
 import io.reign.DataSerializer;
-import io.reign.JsonDataSerializer;
+import io.reign.PathScheme;
+import io.reign.PathType;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
+import io.reign.util.ZkClientUtil;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.apache.zookeeper.data.ACL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,9 +38,27 @@ public class DataService extends AbstractActiveService {
     private static final String MAP_PATH_SUFFIX = "{}";
     private static final String LIST_PATH_SUFFIX = "[]";
 
-    private DataSerializer<DataValue> dataSerializer = new JsonDataSerializer<DataValue>();
+    private final ZkClientUtil zkClientUtil = new ZkClientUtil();
 
-    public <V> MultiData<V> get(String clusterId, String dataPath, int ttlMillis, boolean processSafe) {
+    private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(33,
+            0.9f, 1);
+
+    public DataService() {
+        // register default serializers
+        dataSerializerMap.put(Long.class.getName(), new LongSerializer());
+        dataSerializerMap.put(Integer.class.getName(), new IntegerSerializer());
+        dataSerializerMap.put(Float.class.getName(), new FloatSerializer());
+        dataSerializerMap.put(Double.class.getName(), new DoubleSerializer());
+        dataSerializerMap.put(Boolean.class.getName(), new BooleanSerializer());
+        dataSerializerMap.put(Short.class.getName(), new ShortSerializer());
+        dataSerializerMap.put(Byte.class.getName(), new ByteSerializer());
+        dataSerializerMap.put(byte[].class.getName(), new BytesSerializer());
+        dataSerializerMap.put(String.class.getName(), new Utf8StringSerializer());
+
+    }
+
+    public <V> MultiData<V> getMulti(String clusterId, String dataPath, Class<V> typeClass, boolean processSafe,
+            List<ACL> aclList) {
         dataPath = dataPath + DATA_PATH_SUFFIX;
 
         DistributedReadWriteLock readWriteLock = null;
@@ -42,12 +66,15 @@ public class DataService extends AbstractActiveService {
             readWriteLock = getReadWriteLock(clusterId, dataPath);
         }
 
-        String relativeBasePath = getPathScheme().joinPaths(clusterId, dataPath);
+        PathScheme pathScheme = getPathScheme();
+        String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiData<V>(relativeBasePath, getPathScheme(), readWriteLock, getZkClient(), ttlMillis);
+        return new ZkMultiData<V>(typeClass, absoluteBasePath, getPathScheme(), readWriteLock, getZkClient(),
+                getPathCache(), zkClientUtil, dataSerializerMap, aclList);
     }
 
-    public <K, V> MultiMapData<K, V> getMultiMap(String clusterId, String dataPath, boolean processSafe) {
+    public <K, V> MultiMapData<K, V> getMultiMap(String clusterId, String dataPath, boolean processSafe,
+            List<ACL> aclList) {
         dataPath = dataPath + MAP_PATH_SUFFIX;
 
         DistributedReadWriteLock readWriteLock = null;
@@ -55,13 +82,14 @@ public class DataService extends AbstractActiveService {
             readWriteLock = getReadWriteLock(clusterId, dataPath);
         }
 
-        String relativeBasePath = getPathScheme().joinPaths(clusterId, dataPath);
+        PathScheme pathScheme = getPathScheme();
+        String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiMapData<K, V>(relativeBasePath, getPathScheme(), readWriteLock, getZkClient());
+        return new ZkMultiMapData<K, V>(absoluteBasePath, getPathScheme(), readWriteLock, getZkClient(), getPathCache());
     }
 
     public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath, int maxSize, int ttlMillis,
-            boolean processSafe) {
+            boolean processSafe, List<ACL> aclList) {
         if (maxSize == -1) {
             dataPath = dataPath + LIST_PATH_SUFFIX;
         } else {
@@ -73,20 +101,23 @@ public class DataService extends AbstractActiveService {
             readWriteLock = getReadWriteLock(clusterId, dataPath);
         }
 
-        String relativeBasePath = getPathScheme().joinPaths(clusterId, dataPath);
+        PathScheme pathScheme = getPathScheme();
+        String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkLinkedListData<V>(maxSize, relativeBasePath, getPathScheme(), readWriteLock, getZkClient(),
-                ttlMillis);
+        return new ZkLinkedListData<V>(maxSize, absoluteBasePath, getPathScheme(), readWriteLock, getZkClient(),
+                getPathCache(), ttlMillis);
     }
 
-    public <V> QueueData<V> getQueue(String clusterId, String dataPath, int maxSize, int ttlMillis, boolean processSafe) {
-        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe);
+    public <V> QueueData<V> getQueue(String clusterId, String dataPath, int maxSize, int ttlMillis,
+            boolean processSafe, List<ACL> aclList) {
+        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe, aclList);
 
         return new ZkQueueData<V>(linkedListData);
     }
 
-    public <V> StackData<V> getStack(String clusterId, String dataPath, int maxSize, int ttlMillis, boolean processSafe) {
-        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe);
+    public <V> StackData<V> getStack(String clusterId, String dataPath, int maxSize, int ttlMillis,
+            boolean processSafe, List<ACL> aclList) {
+        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe, aclList);
 
         return new ZkStackData<V>(linkedListData);
     }
@@ -121,12 +152,8 @@ public class DataService extends AbstractActiveService {
 
     }
 
-    public DataSerializer<DataValue> getDataSerializer() {
-        return dataSerializer;
-    }
-
-    public void setDataSerializer(DataSerializer<DataValue> dataSerializer) {
-        this.dataSerializer = dataSerializer;
+    public void registerSerializer(String className, DataSerializer dataSerializer) {
+        this.dataSerializerMap.put(className, dataSerializer);
     }
 
     @Override

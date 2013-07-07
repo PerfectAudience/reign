@@ -6,7 +6,7 @@ package io.reign.data;
  * @author ypai
  * 
  */
-public interface StackData<V> {
+public interface StackData<V> extends BaseData {
 
     /**
      * Remove most recently inserted and return it -- LIFO style

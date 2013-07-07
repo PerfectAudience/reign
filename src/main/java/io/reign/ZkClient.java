@@ -2,6 +2,7 @@ package io.reign;
 
 import java.util.List;
 
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
@@ -43,4 +44,6 @@ public interface ZkClient {
             throws KeeperException, InterruptedException;
 
     public void delete(final String path, final int version) throws InterruptedException, KeeperException;
+
+    public void sync(final String path, final VoidCallback cb, final Object ctx);
 }

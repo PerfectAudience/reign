@@ -3,6 +3,7 @@ package io.reign.data;
 import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
+import io.reign.util.PathCache;
 
 /**
  * Base implementation is thread-safe within the same JVM. Construct with read/write lock for inter-process safety.
@@ -22,6 +23,9 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
     private final PathScheme pathScheme;
 
     private final ZkClient zkClient;
+    private final PathCache pathCache;
+
+    private final int ttlMillis;
 
     /**
      * @param maxSize
@@ -30,12 +34,21 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
      *            for inter-process safety; can be null
      */
     public ZkLinkedListData(int maxSize, String relativeBasePath, PathScheme pathScheme,
-            DistributedReadWriteLock readWriteLock, ZkClient zkClient, int ttlMillis) {
+            DistributedReadWriteLock readWriteLock, ZkClient zkClient, PathCache pathCache, int ttlMillis) {
         this.maxSize = maxSize;
         this.relativeBasePath = relativeBasePath;
         this.pathScheme = pathScheme;
         this.readWriteLock = readWriteLock;
         this.zkClient = zkClient;
+        this.pathCache = pathCache;
+        this.ttlMillis = ttlMillis;
+    }
+
+    @Override
+    public synchronized void destroy() {
+        if (readWriteLock != null) {
+            readWriteLock.destroy();
+        }
     }
 
     @Override

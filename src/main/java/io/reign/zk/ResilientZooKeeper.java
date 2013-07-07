@@ -618,7 +618,6 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * From ZK docs:
      * 
      * Sometimes developers mistakenly assume one other guarantee that ZooKeeper does not in fact make. This is:
-     * 
      * Simultaneously Consistent Cross-Client Views ZooKeeper does not guarantee that at every instance in time, two
      * different clients will have identical views of ZooKeeper data. Due to factors like network delays, one client may
      * perform an update before another client gets notified of the change. Consider the scenario of two clients, A and

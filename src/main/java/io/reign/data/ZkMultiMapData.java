@@ -3,6 +3,7 @@ package io.reign.data;
 import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
+import io.reign.util.PathCache;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class ZkMultiMapData<K, V> implements MultiMapData<K, V> {
     private final String relativeBasePath;
 
     private final ZkClient zkClient;
+    private final PathCache pathCache;
 
     private final PathScheme pathScheme;
 
@@ -30,11 +32,19 @@ public class ZkMultiMapData<K, V> implements MultiMapData<K, V> {
      *            for inter-process safety; can be null
      */
     public ZkMultiMapData(String relativeBasePath, PathScheme pathScheme, DistributedReadWriteLock readWriteLock,
-            ZkClient zkClient) {
+            ZkClient zkClient, PathCache pathCache) {
         this.relativeBasePath = relativeBasePath;
         this.pathScheme = pathScheme;
         this.readWriteLock = readWriteLock;
         this.zkClient = zkClient;
+        this.pathCache = pathCache;
+    }
+
+    @Override
+    public synchronized void destroy() {
+        if (readWriteLock != null) {
+            readWriteLock.destroy();
+        }
     }
 
     @Override

@@ -8,7 +8,7 @@ import java.util.List;
  * @author ypai
  * 
  */
-public interface MultiMapData<K, V> {
+public interface MultiMapData<K, V> extends BaseData {
 
     /**
      * Put value using custom index

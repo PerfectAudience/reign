@@ -19,6 +19,29 @@ public class DefaultPathSchemeTest {
     }
 
     @Test
+    public void testGetParentPath() throws Exception {
+        String value;
+        value = pathScheme.getParentPath("/a/b/c");
+        assertTrue("/a/b".equals(value));
+
+        try {
+            value = pathScheme.getParentPath("/a/b/c/");
+            assertTrue("Should not get here", false);
+        } catch (Exception e) {
+        }
+
+        value = pathScheme.getParentPath("a/b/c");
+        assertTrue("a/b".equals(value));
+
+        try {
+            value = pathScheme.getParentPath("a/b/c/");
+            assertTrue("Should not get here", false);
+        } catch (Exception e) {
+        }
+
+    }
+
+    @Test
     public void testJoin() throws Exception {
 
         String value;
@@ -29,11 +52,17 @@ public class DefaultPathSchemeTest {
         value = pathScheme.joinPaths("/this/that", "/and/how");
         assertTrue("Unexpected value:  " + value, "/this/that/and/how".equals(value));
 
-        value = pathScheme.joinPaths("/this/that", "/and/how/");
-        assertTrue("Unexpected value:  " + value, "/this/that/and/how".equals(value));
+        try {
+            value = pathScheme.joinPaths("/this/that", "/and/how/");
+            assertTrue("Should not get here", false);
+        } catch (Exception e) {
+        }
 
-        value = pathScheme.joinPaths("/this/that", "and/how/");
-        assertTrue("Unexpected value:  " + value, "/this/that/and/how".equals(value));
+        try {
+            value = pathScheme.joinPaths("/this/that", "and/how/");
+            assertTrue("Should not get here", false);
+        } catch (Exception e) {
+        }
     }
 
     @Test
@@ -41,7 +70,7 @@ public class DefaultPathSchemeTest {
         String value;
         value = pathScheme.toPathToken(new DefaultCanonicalId("1234", "1.2.3.4", "localhost", 4321, 9876));
 
-        System.out.println(value);
+        // System.out.println(value);
 
         CanonicalId id = pathScheme.parseCanonicalId(value);
 

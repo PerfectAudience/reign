@@ -17,9 +17,9 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class MessagingExample {
+public class MessagingServiceExample {
 
-    private static final Logger logger = LoggerFactory.getLogger(MessagingExample.class);
+    private static final Logger logger = LoggerFactory.getLogger(MessagingServiceExample.class);
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/

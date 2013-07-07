@@ -23,9 +23,9 @@ public interface PathScheme {
 
     public boolean isValidPathToken(String pathToken);
 
-    // public String getCanonicalId();
-    //
-    // public String getCanonicalId(Integer port);
+    public boolean isValidPath(String path);
+
+    public String getParentPath(String path);
 
     /**
      * Try to parse input String as canonical ID with some embedded information

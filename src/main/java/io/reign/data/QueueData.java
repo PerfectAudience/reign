@@ -6,7 +6,7 @@ package io.reign.data;
  * @author ypai
  * 
  */
-public interface QueueData<V> {
+public interface QueueData<V> extends BaseData {
 
     /**
      * Remove oldest inserted item and return it -- FIFO style

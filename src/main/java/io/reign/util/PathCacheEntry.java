@@ -10,6 +10,7 @@ import org.apache.zookeeper.data.Stat;
  * 
  */
 public class PathCacheEntry {
+
     private final Stat stat;
     private final byte[] bytes;
     private final List<String> children;

@@ -8,7 +8,7 @@ import java.util.List;
  * @author ypai
  * 
  */
-public interface MultiData<T> {
+public interface MultiData<T> extends BaseData {
 
     /**
      * Set value for DataValue.DEFAULT_INDEX
@@ -32,6 +32,12 @@ public interface MultiData<T> {
     public T get();
 
     /**
+     * @param index
+     * @return the value with index
+     */
+    public T get(String index);
+
+    /**
      * 
      * @return all values
      */
@@ -45,9 +51,18 @@ public interface MultiData<T> {
     public String remove();
 
     /**
+     * Remove value at index
+     * 
+     * @param index
+     * @return
+     */
+    public String remove(String index);
+
+    /**
      * Remove all values associated with this point.
      * 
      * @return
      */
     public List<String> removeAll();
+
 }

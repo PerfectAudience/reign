@@ -4,10 +4,12 @@ import io.reign.PathScheme;
 import io.reign.ZkClient;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,24 +22,38 @@ import org.slf4j.LoggerFactory;
 public class ZkClientUtil {
     private static final Logger logger = LoggerFactory.getLogger(ZkClientUtil.class);
 
+    public String updatePath(final ZkClient zkClient, final PathScheme pathScheme, final String path,
+            final byte[] leafData, final List<ACL> aclList, final CreateMode createMode, int leafDataVersion)
+            throws KeeperException {
+        return updatePath(zkClient, pathScheme, path, leafData, aclList, createMode, leafDataVersion, null);
+    }
+
     /**
-     * Creates path, including parent nodes if necessary, and updates data.
      * 
+     * @param zkClient
+     * @param pathScheme
      * @param path
-     * @param data
-     * @param acl
+     * @param leafData
+     * @param aclList
      * @param createMode
+     * @param leafDataVersion
+     * @param statRef
+     *            to return Stat on update of data nodes
      * @return
      * @throws KeeperException
      */
     public String updatePath(final ZkClient zkClient, final PathScheme pathScheme, final String path,
-            final byte[] leafData, final List<ACL> aclList, final CreateMode createMode, int leafDataVersion)
-            throws KeeperException {
+            final byte[] leafData, final List<ACL> aclList, final CreateMode createMode, int leafDataVersion,
+            AtomicReference<Stat> statRef) throws KeeperException {
 
         /***** if there is leaf data, try updating first to save on ZK ops *****/
         if (!createMode.isSequential()) {
             try {
-                zkClient.setData(path, leafData, leafDataVersion);
+                if (statRef != null) {
+                    statRef.set(zkClient.setData(path, leafData, leafDataVersion));
+                } else {
+                    zkClient.setData(path, leafData, leafDataVersion);
+                }
                 return path;
             } catch (KeeperException e) {
                 if (e.code() == KeeperException.Code.NONODE) {
@@ -88,7 +104,6 @@ public class ZkClientUtil {
         /***** build path by building parent nodes first *****/
         String[] tokens = pathScheme.tokenizePath(path);
 
-        // StringBuilder pathInProgress = new StringBuilder();
         String pathCreated = "";
         String pathToCreate = null;
         for (int i = 0; i < tokens.length; i++) {
@@ -143,5 +158,4 @@ public class ZkClientUtil {
         return pathCreated;
 
     }
-
 }

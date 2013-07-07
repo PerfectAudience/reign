@@ -3,6 +3,7 @@ package io.reign.util;
 import io.reign.AbstractZkEventHandler;
 import io.reign.ZkClient;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -122,6 +123,15 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
     }
 
     @Override
+    public PathCacheEntry remove(String absolutePath) {
+        PathCacheEntry removed = cache.remove(absolutePath);
+        if (removed != null) {
+            logger.debug("Removed cache entry:  path={}", absolutePath);
+        }
+        return removed;
+    }
+
+    @Override
     public long getHitCount() {
         return hitCount.get();
     }
@@ -140,6 +150,9 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
      */
     @Override
     public void put(String absolutePath, Stat stat, byte[] bytes, List<String> children) {
+        if (children == null) {
+            children = Collections.EMPTY_LIST;
+        }
         cache.put(absolutePath, new PathCacheEntry(stat, bytes, children, System.currentTimeMillis()));
     }
 

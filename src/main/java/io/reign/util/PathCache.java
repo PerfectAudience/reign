@@ -59,6 +59,13 @@ public interface PathCache {
      */
     public void put(String absolutePath, Stat stat, byte[] bytes, List<String> children);
 
+    /**
+     * 
+     * @param absolutePath
+     * @return the cache entry removed
+     */
+    public PathCacheEntry remove(String absolutePath);
+
     public long getHitCount();
 
     public long getMissCount();

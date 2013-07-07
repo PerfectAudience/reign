@@ -14,6 +14,11 @@ public class ZkStackData<V> implements StackData<V> {
     }
 
     @Override
+    public synchronized void destroy() {
+        linkedListData.destroy();
+    }
+
+    @Override
     public synchronized V pop() {
         return this.linkedListData.popLast();
     }

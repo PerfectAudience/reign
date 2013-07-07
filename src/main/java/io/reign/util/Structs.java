@@ -1,6 +1,9 @@
 package io.reign.util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 
 /**
@@ -10,6 +13,68 @@ import java.util.Properties;
  * 
  */
 public class Structs {
+
+    /**
+     * 
+     * @return a List that allows chaining when setting values.
+     */
+    public static <V> Iterable<V> iterable(V[] array) {
+        Iterable<V> iterable = new ArrayIterable<V>(array);
+        return iterable;
+    }
+
+    public static class ArrayIterable<V> implements Iterable<V> {
+        private final V[] array;
+
+        public ArrayIterable(V[] array) {
+            this.array = array;
+        }
+
+        @Override
+        public Iterator<V> iterator() {
+            return new Iterator<V>() {
+
+                private int index = -1;
+
+                @Override
+                public boolean hasNext() {
+                    return index < array.length - 1;
+                }
+
+                @Override
+                public V next() {
+                    if (!hasNext()) {
+                        throw new NoSuchElementException("No more elements!");
+                    }
+                    index++;
+                    return array[index];
+                }
+
+                @Override
+                public void remove() {
+                    throw new UnsupportedOperationException("remove() is not supported!");
+                }
+
+            };
+        }
+
+    }
+
+    /**
+     * 
+     * @return a List that allows chaining when setting values.
+     */
+    public static <V> BuildableList<V> list() {
+        BuildableList<V> map = new BuildableList<V>();
+        return map;
+    }
+
+    public static class BuildableList<V> extends ArrayList<V> {
+        public BuildableList<V> v(V val) {
+            this.add(val);
+            return this;
+        }
+    }
 
     /**
      * 

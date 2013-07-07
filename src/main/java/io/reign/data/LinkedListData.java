@@ -6,7 +6,7 @@ package io.reign.data;
  * @author ypai
  * 
  */
-public interface LinkedListData<V> {
+public interface LinkedListData<V> extends BaseData {
 
     /**
      * Remove and return item at index.

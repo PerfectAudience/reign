@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -239,6 +240,12 @@ public class MockZkClient implements ZkClient, Watcher {
             }
         }
         return currentNode;
+    }
+
+    @Override
+    public void sync(String path, VoidCallback cb, Object ctx) {
+        cb.processResult(0, path, ctx);
+
     }
 
     /**

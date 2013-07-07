@@ -15,24 +15,14 @@ public interface DataValue<T> {
      * 
      * @return
      */
-    public String getIndex();
+    public String index();
 
     /**
      * 
      * @return last modified timestamp in millis
      */
-    public long getLastModified();
+    public long lastModified();
 
-    /**
-     * 
-     * @return the value
-     */
-    public T getValue();
-
-    /**
-     * 
-     * @return time to live in millis
-     */
-    public int getTimeToLive();
+    public T value();
 
 }
