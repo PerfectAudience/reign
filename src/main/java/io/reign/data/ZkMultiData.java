@@ -179,8 +179,8 @@ public class ZkMultiData<V> implements MultiData<V> {
         zkClient.sync(dataPath, new VoidCallback() {
             @Override
             public void processResult(int arg0, String arg1, Object arg2) {
-                synchronized (this) {
-                    this.notifyAll();
+                synchronized (ZkMultiData.this) {
+                    ZkMultiData.this.notifyAll();
                 }
             }
         }, null);
