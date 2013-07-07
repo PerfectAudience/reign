@@ -31,11 +31,15 @@ public interface MultiData<T> extends BaseData {
      */
     public T get();
 
+    public T get(int ttlMillis);
+
     /**
      * @param index
      * @return the value with index
      */
     public T get(String index);
+
+    public T get(String index, int ttlMillis);
 
     /**
      * 
@@ -43,12 +47,16 @@ public interface MultiData<T> extends BaseData {
      */
     public List<T> getAll();
 
+    public List<T> getAll(int ttlMillis);
+
     /**
      * Remove value for DataValue.DEFAULT_INDEX
      * 
      * @return
      */
     public String remove();
+
+    public String remove(int ttlMillis);
 
     /**
      * Remove value at index
@@ -58,11 +66,15 @@ public interface MultiData<T> extends BaseData {
      */
     public String remove(String index);
 
+    public String remove(String index, int ttlMillis);
+
     /**
      * Remove all values associated with this point.
      * 
      * @return
      */
     public List<String> removeAll();
+
+    public List<String> removeAll(int ttlMillis);
 
 }

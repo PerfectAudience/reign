@@ -60,11 +60,14 @@ public class OperatorsTest {
 
     @Test
     public void testStats() throws Exception {
-        Stats stats;
+        Stats<Integer> stats;
 
         stats = Operators.stats(Structs.<Integer> iterable(new Integer[] { 2, 4, 4, 4, 5, 5, 7, 9 }));
         assertTrue("avg = " + stats.avg() + " ?", stats.avg() == 5.0);
         assertTrue("stdDev = " + stats.stdDev() + " ?", stats.stdDev() == 2.0);
+        assertTrue("min = " + stats.min() + " ?", stats.min() == 2);
+        assertTrue("max = " + stats.max() + " ?", stats.max() == 9);
+        assertTrue("sum = " + stats.sum() + " ?", stats.sum() == 40);
 
     }
 }

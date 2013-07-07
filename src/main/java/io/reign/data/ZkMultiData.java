@@ -96,15 +96,27 @@ public class ZkMultiData<V> implements MultiData<V> {
 
     @Override
     public synchronized V get() {
-        return get(DataValue.DEFAULT_INDEX);
+        return get(DataValue.DEFAULT_INDEX, -1);
+
+    }
+
+    @Override
+    public synchronized V get(int ttlMillis) {
+        return get(DataValue.DEFAULT_INDEX, ttlMillis);
 
     }
 
     @Override
     public synchronized V get(String index) {
+        return get(index, -1);
+
+    }
+
+    @Override
+    public synchronized V get(String index, int ttlMillis) {
         lockForRead(pathScheme.joinPaths(absoluteBasePath, index));
         try {
-            return readData(absoluteBasePath, index, -1);
+            return readData(absoluteBasePath, index, ttlMillis);
         } finally {
             unlockForRead();
         }
@@ -113,9 +125,15 @@ public class ZkMultiData<V> implements MultiData<V> {
 
     @Override
     public synchronized List<V> getAll() {
+        return getAll(-1);
+
+    }
+
+    @Override
+    public synchronized List<V> getAll(int ttlMillis) {
         lockForRead(absoluteBasePath);
         try {
-            return readAllData(absoluteBasePath, -1);
+            return readAllData(absoluteBasePath, ttlMillis);
         } finally {
             unlockForRead();
         }
@@ -124,14 +142,25 @@ public class ZkMultiData<V> implements MultiData<V> {
 
     @Override
     public synchronized String remove() {
-        return remove(DataValue.DEFAULT_INDEX);
+        return remove(DataValue.DEFAULT_INDEX, -1);
+    }
+
+    @Override
+    public synchronized String remove(int ttlMillis) {
+        return remove(DataValue.DEFAULT_INDEX, ttlMillis);
     }
 
     @Override
     public synchronized String remove(String index) {
+        return remove(index, -1);
+
+    }
+
+    @Override
+    public synchronized String remove(String index, int ttlMillis) {
         lockForWrite();
         try {
-            return remove(absoluteBasePath, index, -1);
+            return deleteData(absoluteBasePath, index, ttlMillis);
         } finally {
             unlockForWrite();
         }
@@ -140,14 +169,21 @@ public class ZkMultiData<V> implements MultiData<V> {
 
     @Override
     public synchronized List<String> removeAll() {
+        return removeAll(-1);
+    }
+
+    @Override
+    public synchronized List<String> removeAll(int ttlMillis) {
         lockForWrite();
         try {
-            return removeAll(absoluteBasePath, -1);
+            return deleteAllData(absoluteBasePath, ttlMillis);
         } finally {
             unlockForWrite();
         }
 
     }
+
+    /***** PRIVATE/PACKAGE Methods *****/
 
     void lockForWrite() {
         if (readWriteLock != null) {
@@ -252,22 +288,22 @@ public class ZkMultiData<V> implements MultiData<V> {
      *            remove data older than given threshold
      * @return
      */
-    String remove(String absoluteBasePath, String index, int thresholdMillis) {
+    String deleteData(String absoluteBasePath, String index, int ttlMillis) {
         try {
             String absoluteDataPath = pathScheme.joinPaths(absoluteBasePath, index);
 
             // try to get from path cache, use stat modified timestamp instead of cache entry modified timestamp because
             // we are more interested in when the data last changed
             byte[] bytes = null;
-            if (thresholdMillis > 0) {
-                bytes = getDataFromPathCache(absoluteDataPath, thresholdMillis);
+            if (ttlMillis > 0) {
+                bytes = getDataFromPathCache(absoluteDataPath, ttlMillis);
                 if (bytes == null) {
                     // read data from ZK
                     Stat stat = new Stat();
                     bytes = zkClient.getData(absoluteDataPath, true, stat);
 
                     // see if item is expired
-                    if (isExpired(stat.getMtime(), thresholdMillis)) {
+                    if (isExpired(stat.getMtime(), ttlMillis)) {
                         bytes = null;
                     }
                 }
@@ -310,10 +346,10 @@ public class ZkMultiData<V> implements MultiData<V> {
         }
     }
 
-    List<String> removeAll(String absoluteBasePath, int thresholdMillis) {
+    List<String> deleteAllData(String absoluteBasePath, int ttlMillis) {
         try {
             // get children
-            List<String> childList = getChildrenFromPathCache(absoluteBasePath, thresholdMillis);
+            List<String> childList = getChildrenFromPathCache(absoluteBasePath, ttlMillis);
             if (childList == null) {
                 Stat stat = new Stat();
                 childList = zkClient.getChildren(absoluteBasePath, true, stat);
@@ -326,7 +362,7 @@ public class ZkMultiData<V> implements MultiData<V> {
             if (childList.size() > 0) {
                 List<String> resultList = new ArrayList<String>(childList.size());
                 for (String child : childList) {
-                    String deletedPath = remove(absoluteBasePath, child, thresholdMillis);
+                    String deletedPath = deleteData(absoluteBasePath, child, ttlMillis);
 
                     // see if we deleted
                     if (deletedPath != null) {

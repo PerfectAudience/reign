@@ -86,8 +86,24 @@ public class DataServiceExample {
         double min = min(values);
         logger.debug("MultiData:  min({})={}", values, min);
 
-        Stats stats = stats(values);
-        logger.debug("MultiData:  stats({}):  avg={}; stdDev={}", new Object[] { values, stats.avg(), stats.stdDev() });
+        Stats<Double> stats = stats(values);
+        logger.debug("MultiData:  stats({}):  avg={}; stdDev={}; min={}; max={}; sum={}", new Object[] { values,
+                stats.avg(), stats.stdDev(), stats.min(), stats.max(), stats.sum() });
+
+        // sleep 5 seconds to allow data to "age"
+        Thread.sleep(5000);
+
+        // get data less than 10 seconds old, should return same results as before
+        values = multiData.getAll(10000);
+        stats = stats(values);
+        logger.debug("MultiData (10000 tll):  stats({}):  avg={}; stdDev={}; min={}; max={}; sum={}", new Object[] {
+                values, stats.avg(), stats.stdDev(), stats.min(), stats.max(), stats.sum() });
+
+        // get data less than 4 seconds old, should return nothing
+        values = multiData.getAll(4000);
+        stats = stats(values);
+        logger.debug("MultiData (4000 ttl):  stats({}):  avg={}; stdDev={}; min={}; max={}; sum={}", new Object[] {
+                values, stats.avg(), stats.stdDev(), stats.min(), stats.max(), stats.sum() });
 
         multiData.remove();
         values = multiData.getAll();
