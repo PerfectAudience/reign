@@ -103,8 +103,10 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
 ### Using the Web UI
 On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
-[http://localhost:33033](http://localhost:33033).
-
+[http://localhost:33033](http://localhost:33033).  
+  
+Take a look at a [UI screenshot](docs/screenshot-ui-1.png).
+  
 Run one of the examples and in the terminal, you should be able to send the following messages and see the corresponding responses (more information is available on the "Terminal Guide" tab):
 
 List available services in cluster namespace "examples":  
