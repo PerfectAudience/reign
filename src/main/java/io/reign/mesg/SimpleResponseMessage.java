@@ -16,6 +16,8 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
 
     private ResponseStatus status = ResponseStatus.OK;
 
+    private String comment = null;
+
     public SimpleResponseMessage() {
     }
 
@@ -34,8 +36,25 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
     }
 
     @Override
+    public String getComment() {
+        return comment;
+    }
+
+    @Override
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    @Override
     public ResponseMessage setStatus(ResponseStatus status) {
         this.status = status;
+        return this;
+    }
+
+    @Override
+    public ResponseMessage setStatus(ResponseStatus status, String comment) {
+        this.status = status;
+        this.comment = comment;
         return this;
     }
 

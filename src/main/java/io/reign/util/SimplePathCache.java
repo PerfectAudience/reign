@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.util;
 
@@ -54,6 +54,8 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
 
     private final ExecutorService executorService;
 
+    private volatile boolean shutdown;
+
     public SimplePathCache(int maxSize, int concurrencyLevel, ZkClient zkClient, int updaterThreads) {
         cache = new ConcurrentLinkedHashMap.Builder<String, PathCacheEntry>().maximumWeightedCapacity(maxSize)
                 .initialCapacity(maxSize).concurrencyLevel(concurrencyLevel).build();
@@ -70,6 +72,7 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
 
     @Override
     public void destroy() {
+        shutdown = true;
         executorService.shutdown();
     }
 
@@ -198,6 +201,11 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
 
     void updateCacheEntry(WatchedEvent event) {
         String path = event.getPath();
+
+        if (shutdown) {
+            logger.warn("Already shutdown:  ignoring event:  type={}; path={}", event.getType(), path);
+            return;
+        }
 
         try {
             byte[] bytes = null;

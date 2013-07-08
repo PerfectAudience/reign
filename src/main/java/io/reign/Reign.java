@@ -16,6 +16,8 @@
 
 package io.reign;
 
+import io.reign.mesg.MessagingService;
+import io.reign.presence.PresenceService;
 import io.reign.util.PathCache;
 import io.reign.util.SimplePathCache;
 
@@ -72,8 +74,6 @@ public class Reign implements Watcher {
 
     private PathCache pathCache;
 
-    // private String reservedClusterId;
-
     private ScheduledExecutorService executorService;
 
     private volatile boolean started = false;
@@ -97,8 +97,6 @@ public class Reign implements Watcher {
 
     public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, CanonicalIdMaker canonicalIdMaker) {
 
-        // this.reservedClusterId = reservedClusterId;
-
         this.zkClient = zkClient;
 
         this.pathScheme = pathScheme;
@@ -109,27 +107,28 @@ public class Reign implements Watcher {
 
     }
 
-    public CanonicalId getCanonicalId() {
+    public synchronized CanonicalId getCanonicalId() {
+        if (!started) {
+            throw new IllegalStateException("Cannot get canonicalId before framework is started!");
+        }
         return this.canonicalIdMaker.get();
     }
-
-    // public String getReservedClusterId() {
-    // return reservedClusterId;
-    // }
-    //
-    // public void setReservedClusterId(String reservedClusterId) {
-    // this.reservedClusterId = reservedClusterId;
-    // }
 
     public List<ACL> getDefaultAclList() {
         return defaultAclList;
     }
 
-    public void setDefaultAclList(List<ACL> defaultAclList) {
+    public synchronized void setDefaultAclList(List<ACL> defaultAclList) {
+        if (started) {
+            throw new IllegalStateException("Cannot set defaultAclList once started!");
+        }
         this.defaultAclList = defaultAclList;
     }
 
-    public void setCanonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
+    public synchronized void setCanonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
+        if (started) {
+            throw new IllegalStateException("Cannot set canonicalIdMaker once started!");
+        }
         this.canonicalIdMaker = canonicalIdMaker;
     }
 
@@ -142,6 +141,11 @@ public class Reign implements Watcher {
 
         }
 
+        if (shutdown) {
+            logger.warn("Already shutdown:  ignoring event:  type={}; path={}", event.getType(), event.getPath());
+            return;
+        }
+
         for (Watcher watcher : watcherList) {
             watcher.process(event);
         }
@@ -151,7 +155,7 @@ public class Reign implements Watcher {
         return zkClient;
     }
 
-    public void setZkClient(ZkClient zkClient) {
+    public synchronized void setZkClient(ZkClient zkClient) {
         if (started) {
             throw new IllegalStateException("Cannot set zkClient once started!");
         }
@@ -162,7 +166,7 @@ public class Reign implements Watcher {
         return pathScheme;
     }
 
-    public void setPathScheme(PathScheme pathScheme) {
+    public synchronized void setPathScheme(PathScheme pathScheme) {
         if (started) {
             throw new IllegalStateException("Cannot set pathScheme once started!");
         }
@@ -173,7 +177,7 @@ public class Reign implements Watcher {
         return pathCache;
     }
 
-    public void setPathCache(SimplePathCache pathCache) {
+    public synchronized void setPathCache(SimplePathCache pathCache) {
         if (started) {
             throw new IllegalStateException("Cannot set pathCache once started!");
         }
@@ -184,22 +188,22 @@ public class Reign implements Watcher {
         return threadPoolSize;
     }
 
-    public void setThreadPoolSize(int threadPoolSize) {
+    public synchronized void setThreadPoolSize(int threadPoolSize) {
         if (started) {
             throw new IllegalStateException("Cannot set threadPoolSize once started!");
         }
         this.threadPoolSize = threadPoolSize;
     }
 
-    public <T extends Service> T getService(String serviceName) {
-        // waitForInitializationIfNecessary();
+    public synchronized <T extends Service> T getService(String serviceName) {
+        if (!started) {
+            throw new IllegalStateException("Cannot get service before framework is started!");
+        }
         return context.getService(serviceName);
     }
 
     void register(String serviceName, Service service) {
         throwExceptionIfNotOkayToRegister();
-
-        // TODO: this is wrong without synchronization: use putIfAbsent here
 
         logger.info("Registering service:  serviceName={}", serviceName);
 
@@ -218,15 +222,6 @@ public class Reign implements Watcher {
             register(serviceName, serviceMap.get(serviceName));
         }
 
-    }
-
-    void throwExceptionIfNotOkayToRegister() {
-        if (started) {
-            throw new IllegalStateException("Cannot register services once started!");
-        }
-        if (zkClient == null || pathCache == null) {
-            throw new IllegalStateException("Cannot register services before zkClient, pathCache have been populated!");
-        }
     }
 
     public synchronized void start() {
@@ -343,16 +338,16 @@ public class Reign implements Watcher {
 
         logger.info("START:  done");
 
-        // /** announce messaging availability: must be done after all other start-up tasks are complete **/
-        // PresenceService presenceService = context.getService("presence");
-        // MessagingService messagingService = context.getService("messaging");
-        // if (presenceService != null && messagingService != null) {
-        // logger.info("START:  announcing framework availability via PresenceService");
-        // presenceService.announce(this.getReservedClusterId(), "messaging", pathScheme
-        // .getCanonicalId(messagingService.getPort()), true);
-        // } else {
-        // logger.warn("START:  could not announcing framework availability via PresenceService!");
-        // }
+        /** announce messaging availability: must be done after all other start-up tasks are complete **/
+        PresenceService presenceService = context.getService("presence");
+        MessagingService messagingService = context.getService("messaging");
+        if (presenceService != null && messagingService != null) {
+            logger.info("START:  announcing framework availability via PresenceService");
+            presenceService.announce(pathScheme.getReservedClusterId(), "messaging", true);
+        } else {
+            logger.warn("START:  did not announce framework messaging availability:  (presenceService==null)="
+                    + (presenceService == null) + "; (messagingService==null)=" + (messagingService == null));
+        }
     }
 
     public synchronized void stop() {
@@ -389,6 +384,15 @@ public class Reign implements Watcher {
         this.zkClient.close();
 
         logger.info("SHUTDOWN:  done");
+    }
+
+    private void throwExceptionIfNotOkayToRegister() {
+        if (started) {
+            throw new IllegalStateException("Cannot register services once started!");
+        }
+        if (zkClient == null || pathCache == null) {
+            throw new IllegalStateException("Cannot register services before zkClient, pathCache have been populated!");
+        }
     }
 
     private void waitForInitializationIfNecessary() {

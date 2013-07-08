@@ -12,6 +12,6 @@ public class ResponseStatusSerializer extends JsonSerializer<ResponseStatus> {
     @Override
     public void serialize(ResponseStatus value, JsonGenerator generator, SerializerProvider provider)
             throws IOException, JsonProcessingException {
-        generator.writeNumber(value.getCode());
+        generator.writeNumber(value.code());
     }
 }

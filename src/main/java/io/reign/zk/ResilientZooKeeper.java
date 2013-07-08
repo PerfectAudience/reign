@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.zk;
 
@@ -647,6 +647,7 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
      * @param cb
      * @param ctx
      */
+    @Override
     public void sync(final String path, final VoidCallback cb, final Object ctx) {
         VoidZooKeeperAction zkAction = new VoidZooKeeperAction(backoffStrategyFactory.get()) {
 
@@ -959,18 +960,11 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
     @Override
     public void process(WatchedEvent event) {
         /***** log event *****/
-        // log if DEBUG
-        if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
+        // log if TRACE
+        if (logger.isTraceEnabled()) {
+            logger.trace("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
                     ToStringStyle.DEFAULT_STYLE));
 
-        }
-
-        /***** pass event on to registered Watchers *****/
-        if (event.getType() != EventType.None) {
-            for (Watcher watcher : watcherSet) {
-                watcher.process(event);
-            }
         }
 
         /***** process events *****/
@@ -1041,6 +1035,19 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
             break;
         default:
             logger.warn("Unhandled event type:  eventType=" + event.getType() + "; eventState=" + event.getState());
+        }
+
+        /***** pass event on to registered Watchers *****/
+        if (event.getType() != EventType.None) {
+            if (shutdown) {
+                logger.warn("Already shutdown:  not passing event to registered watchers:  type={}; path={}", event
+                        .getType(), event.getPath());
+                return;
+            }
+
+            for (Watcher watcher : watcherSet) {
+                watcher.process(event);
+            }
         }
 
     }// process

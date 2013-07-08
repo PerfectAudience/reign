@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.presence;
 
@@ -111,8 +111,10 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     public List<String> lookupServices(String clusterId) {
         /** get node data from zk **/
-        String clusterPath = getPathScheme().joinTokens(clusterId);
-        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterPath);
+        if (!getPathScheme().isValidClusterId(clusterId)) {
+            throw new IllegalArgumentException("Invalid path token:  pathToken='" + clusterId + "'");
+        }
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId);
         List<String> children = null;
         try {
             Stat stat = new Stat();
@@ -659,7 +661,8 @@ public class PresenceService extends AbstractActiveService implements Observable
             }
 
             /** preprocess request **/
-            String resource = (String) requestMessage.getBody();
+            String requestResource = (String) requestMessage.getBody();
+            String resource = requestResource;
 
             // strip beginning and ending slashes "/"
             if (resource.startsWith("/")) {
@@ -686,19 +689,33 @@ public class PresenceService extends AbstractActiveService implements Observable
                 if (tokens.length == 1) {
                     // list available services
                     List<String> serviceList = this.lookupServices(resource);
+
                     responseMessage = new SimpleResponseMessage();
                     responseMessage.setBody(serviceList);
+                    if (serviceList == null) {
+                        responseMessage.setComment("Not found:  " + requestResource);
+                    }
 
                 } else if (tokens.length == 2) {
                     // list available nodes for a given service
                     ServiceInfo serviceInfo = this.lookupServiceInfo(tokens[0], tokens[1]);
+
                     responseMessage = new SimpleResponseMessage();
                     responseMessage.setBody(serviceInfo);
+                    if (serviceInfo == null) {
+                        responseMessage.setComment("Not found:  " + requestResource);
+                    }
+
                 } else if (tokens.length == 3) {
                     // list available nodes for a given service
                     NodeInfo nodeInfo = this.lookupNodeInfo(tokens[0], tokens[1], tokens[2]);
+
                     responseMessage = new SimpleResponseMessage();
                     responseMessage.setBody(nodeInfo);
+                    if (nodeInfo == null) {
+                        responseMessage.setComment("Not found:  " + requestResource);
+                    }
+
                 }
             }
 
