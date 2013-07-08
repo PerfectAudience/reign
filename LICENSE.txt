@@ -1,4 +1,4 @@
-Copyright 2013 Yen Pai ypai@kompany.org 
+Copyright 2013 Yen Pai ypai@reign.io
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this project except in compliance with the License.
