@@ -1,3 +1,19 @@
+/*
+ Copyright 2013 Yen Pai ypai@reign.io
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+
 package io.reign;
 
 import io.reign.conf.ConfService;
@@ -38,7 +54,9 @@ public class ReignMaker {
 
     private PathScheme pathScheme = null;
 
-    private String reservedClusterId;
+    private String frameworkClusterId;
+
+    private String frameworkBasePath;
 
     private Integer messagingPort = Reign.DEFAULT_MESSAGING_PORT;
 
@@ -178,8 +196,13 @@ public class ReignMaker {
         return this;
     }
 
-    public ReignMaker reservedClusterId(String reservedClusterId) {
-        this.reservedClusterId = reservedClusterId;
+    public ReignMaker frameworkBasePath(String frameworkBasePath) {
+        this.frameworkBasePath = frameworkBasePath;
+        return this;
+    }
+
+    public ReignMaker frameworkClusterId(String frameworkClusterId) {
+        this.frameworkClusterId = frameworkClusterId;
         return this;
     }
 
@@ -188,8 +211,11 @@ public class ReignMaker {
         Reign s = null;
 
         // see if we need to set defaults
-        if (reservedClusterId == null) {
-            reservedClusterId = "reign";
+        if (frameworkClusterId == null) {
+            frameworkClusterId = Reign.DEFAULT_FRAMEWORK_CLUSTER_ID;
+        }
+        if (frameworkBasePath == null) {
+            frameworkBasePath = Reign.DEFAULT_FRAMEWORK_BASE_PATH;
         }
         if (zkClient == null) {
             zkClient = defaultZkClient();
@@ -198,14 +224,14 @@ public class ReignMaker {
             pathCache = defaultPathCache();
         }
         if (pathScheme == null) {
-            pathScheme = defaultPathScheme(reservedClusterId);
+            pathScheme = defaultPathScheme(frameworkBasePath, frameworkClusterId);
         }
         if (canonicalIdMaker == null) {
             canonicalIdMaker = defaultCanonicalIdMaker();
         }
 
         // build
-        s = new Reign(reservedClusterId, zkClient, pathScheme, pathCache, canonicalIdMaker);
+        s = new Reign(zkClient, pathScheme, pathCache, canonicalIdMaker);
         s.registerServices(serviceMap);
 
         return s;
@@ -234,8 +260,8 @@ public class ReignMaker {
         return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel, zkClient, 1);
     }
 
-    PathScheme defaultPathScheme(String reservedClusterId) {
-        return new DefaultPathScheme("/" + reservedClusterId);
+    PathScheme defaultPathScheme(String basePath, String frameworkClusterId) {
+        return new DefaultPathScheme(basePath, frameworkClusterId);
     }
 
     CanonicalIdMaker defaultCanonicalIdMaker() {

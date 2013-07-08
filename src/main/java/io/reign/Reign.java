@@ -1,3 +1,19 @@
+/*
+ Copyright 2013 Yen Pai ypai@kompany.org
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
 package io.reign;
 
 import io.reign.util.PathCache;
@@ -33,6 +49,10 @@ public class Reign implements Watcher {
 
     private static final Logger logger = LoggerFactory.getLogger(Reign.class);
 
+    public static final String DEFAULT_FRAMEWORK_CLUSTER_ID = "reign";
+
+    public static final String DEFAULT_FRAMEWORK_BASE_PATH = "/reign";
+
     public static final List<ACL> DEFAULT_ACL_LIST = new ArrayList<ACL>();
     static {
         DEFAULT_ACL_LIST.add(new ACL(ZooDefs.Perms.ALL, new Id("world", "anyone")));
@@ -52,7 +72,7 @@ public class Reign implements Watcher {
 
     private PathCache pathCache;
 
-    private String reservedClusterId;
+    // private String reservedClusterId;
 
     private ScheduledExecutorService executorService;
 
@@ -75,10 +95,9 @@ public class Reign implements Watcher {
     public Reign() {
     }
 
-    public Reign(final String reservedClusterId, ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
-            CanonicalIdMaker canonicalIdMaker) {
+    public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, CanonicalIdMaker canonicalIdMaker) {
 
-        this.reservedClusterId = reservedClusterId;
+        // this.reservedClusterId = reservedClusterId;
 
         this.zkClient = zkClient;
 
@@ -94,13 +113,13 @@ public class Reign implements Watcher {
         return this.canonicalIdMaker.get();
     }
 
-    public String getReservedClusterId() {
-        return reservedClusterId;
-    }
-
-    public void setReservedClusterId(String reservedClusterId) {
-        this.reservedClusterId = reservedClusterId;
-    }
+    // public String getReservedClusterId() {
+    // return reservedClusterId;
+    // }
+    //
+    // public void setReservedClusterId(String reservedClusterId) {
+    // this.reservedClusterId = reservedClusterId;
+    // }
 
     public List<ACL> getDefaultAclList() {
         return defaultAclList;
@@ -205,9 +224,8 @@ public class Reign implements Watcher {
         if (started) {
             throw new IllegalStateException("Cannot register services once started!");
         }
-        if (reservedClusterId == null || zkClient == null || pathCache == null) {
-            throw new IllegalStateException(
-                    "Cannot register services before reservedClusterId, zkClient, and pathCache have been populated!");
+        if (zkClient == null || pathCache == null) {
+            throw new IllegalStateException("Cannot register services before zkClient, pathCache have been populated!");
         }
     }
 
@@ -235,10 +253,6 @@ public class Reign implements Watcher {
         /** create context object **/
         logger.info("START:  creating ReignContext...");
         this.context = new ReignContext() {
-            @Override
-            public String getReservedClusterId() {
-                return reservedClusterId;
-            }
 
             @Override
             public Service getService(String serviceName) {

@@ -27,8 +27,6 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     private volatile boolean shutdown = true;
 
-    // private ExecutorService executorService;
-
     private ReignContext serviceDirectory;
 
     private MessageProtocol messageProtocol;
@@ -112,9 +110,6 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         this.server = new WebSocketServer(port, serviceDirectory, messageProtocol);
         server.start();
 
-        // logger.info("START:  initializing executor");
-        // this.executorService = Executors.newFixedThreadPool(2);
-
         shutdown = false;
 
     }
@@ -127,11 +122,6 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
         logger.info("STOP:  shutting down websockets server");
         server.stop();
-
-        // logger.info("STOP:  shutting down executor");
-        // if (this.executorService != null) {
-        // executorService.shutdown();
-        // }
 
         this.shutdown = true;
     }

@@ -12,4 +12,6 @@ logs/**/*
 logs
 docs/*.graffle
 DESIGN*
+ignore/**/*
+ignore
 

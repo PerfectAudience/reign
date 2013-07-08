@@ -1,3 +1,19 @@
+/*
+ Copyright 2013 Yen Pai ypai@reign.io
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+
 package io.reign;
 
 import io.reign.util.JacksonUtil;
@@ -17,20 +33,23 @@ public class DefaultPathScheme implements PathScheme {
 
     private static final Pattern PATTERN_PATH_TOKENIZER = Pattern.compile("/");
 
-    private String basePath;
+    private final String basePath;
 
-    public DefaultPathScheme() {
+    private final String reservedClusterId;
 
+    public DefaultPathScheme(String basePath, String reservedClusterId) {
+        this.basePath = basePath;
+        this.reservedClusterId = reservedClusterId;
     }
 
-    public DefaultPathScheme(String basePath) {
-        this();
-        this.basePath = basePath;
-
+    @Override
+    public boolean isValidClusterId(String clusterId) {
+        return isValidToken(clusterId) && !clusterId.equals(this.reservedClusterId);
     }
 
-    public void setBasePath(String basePath) {
-        this.basePath = basePath;
+    @Override
+    public String getReservedClusterId() {
+        return this.reservedClusterId;
     }
 
     @Override
@@ -100,7 +119,7 @@ public class DefaultPathScheme implements PathScheme {
     public String joinTokens(String... pathTokens) {
         StringBuilder sb = new StringBuilder();
         for (String token : pathTokens) {
-            if (!isValidPathToken(token)) {
+            if (!isValidToken(token)) {
                 throw new IllegalArgumentException("Invalid path token:  pathToken='" + token + "'");
 
             }
@@ -111,13 +130,13 @@ public class DefaultPathScheme implements PathScheme {
     }
 
     @Override
-    public boolean isValidPathToken(String pathToken) {
+    public boolean isValidToken(String pathToken) {
         return !StringUtils.isBlank(pathToken) && pathToken.indexOf('/') == -1;
     }
 
     @Override
     public boolean isValidPath(String path) {
-        return !path.endsWith("/");
+        return !StringUtils.isBlank(path) && !path.endsWith("/");
     }
 
     @Override
