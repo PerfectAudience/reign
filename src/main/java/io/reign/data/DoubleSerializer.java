@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -28,14 +28,14 @@ import java.nio.ByteBuffer;
 public class DoubleSerializer implements DataSerializer<Double> {
 
     @Override
-    public synchronized byte[] serialize(Double data) throws Exception {
+    public byte[] serialize(Double data) throws Exception {
         byte[] bytes = new byte[8];
         ByteBuffer.wrap(bytes).putDouble(data);
         return bytes;
     }
 
     @Override
-    public synchronized Double deserialize(byte[] bytes) throws Exception {
+    public Double deserialize(byte[] bytes) throws Exception {
         return ByteBuffer.wrap(bytes).getDouble();
 
     }
