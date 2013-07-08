@@ -19,8 +19,9 @@ package io.reign.data;
 import java.util.List;
 
 /**
- * A collection of data points organized like a multimap, where keys can have multiple values. Values are assumed to be
- * loosely typed.
+ * A collection of data points organized like a multimap, where keys can have multiple values. A map is assumed to be
+ * able to hold multiple data types under different keys, though values under the same key are assumed to be of the same
+ * type.
  * 
  * @author ypai
  * 
@@ -48,6 +49,7 @@ public interface MultiMapData<K> extends BaseData {
      * 
      * @param <T>
      * @param key
+     * @param typeClass
      * @return
      */
     public <V> V get(K key, Class<V> typeClass);
@@ -57,6 +59,7 @@ public interface MultiMapData<K> extends BaseData {
      * 
      * @param <T>
      * @param key
+     * @param typeClass
      * @return
      */
     public <V> V get(K key, String index, Class<V> typeClass);
@@ -66,6 +69,7 @@ public interface MultiMapData<K> extends BaseData {
      * 
      * @param <T>
      * @param key
+     * @param typeClass
      * @return
      */
     public <V, T extends List<V>> T getAll(K key, Class<V> typeClass);
