@@ -182,6 +182,8 @@ List nodes comprising "service2":
 
         } finally {
             lock.unlock();
+            
+            // don't have to do this if re-using this lock object
             lock.destroy();
         }
 
@@ -196,6 +198,8 @@ List nodes comprising "service2":
 
         } finally {
             rwLock.readLock().unlock();
+            
+            // don't have to do this if re-using this lock object
             rwLock.destroy();
         }
 
