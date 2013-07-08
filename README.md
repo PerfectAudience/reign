@@ -29,8 +29,11 @@ Application using Reign quickly gain a high level of cluster-awareness and coord
 
 Quick Start
 -----------
-The following code and a simple Java `main()` hook can be found in  
-`io.reign.examples.QuickStartExample`
+Some of the following code and a simple Java `main()` hook can be found in  
+`io.reign.examples.QuickStartExample`  
+
+Other code examples are also available in the same package, for those that like to dive right in.
+  
 
 ### Prerequisites
 
