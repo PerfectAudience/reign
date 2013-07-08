@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -41,9 +41,9 @@ public interface PathScheme {
 
     public boolean isValidPath(String path);
 
-    public boolean isValidClusterId(String clusterId);
+    public boolean isFrameworkClusterId(String clusterId);
 
-    public String getReservedClusterId();
+    public String getFrameworkClusterId();
 
     public String getParentPath(String path);
 

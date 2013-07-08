@@ -12,34 +12,50 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
+import io.reign.DataSerializer;
 import io.reign.PathScheme;
+import io.reign.ReignContext;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.util.PathCache;
+import io.reign.util.PathCacheEntry;
 
 import java.util.List;
+import java.util.Map;
+
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Stat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
  * @author ypai
  * 
  * @param <K>
- * @param <V>
  */
-public class ZkMultiMapData<K, V> implements MultiMapData<K, V> {
+public class ZkMultiMapData<K> implements MultiMapData<K> {
+
+    private static final Logger logger = LoggerFactory.getLogger(ZkMultiMapData.class);
 
     private final DistributedReadWriteLock readWriteLock;
 
-    private final String relativeBasePath;
-
-    private final ZkClient zkClient;
-    private final PathCache pathCache;
+    private final String absoluteBasePath;
 
     private final PathScheme pathScheme;
+
+    private final List<ACL> aclList;
+
+    private final ZkClientMultiDataUtil zkClientMultiDataUtil;
+
+    private final ZkClient zkClient;
+
+    private final PathCache pathCache;
 
     /**
      * 
@@ -47,13 +63,23 @@ public class ZkMultiMapData<K, V> implements MultiMapData<K, V> {
      * @param readWriteLock
      *            for inter-process safety; can be null
      */
-    public ZkMultiMapData(String relativeBasePath, PathScheme pathScheme, DistributedReadWriteLock readWriteLock,
-            ZkClient zkClient, PathCache pathCache) {
-        this.relativeBasePath = relativeBasePath;
-        this.pathScheme = pathScheme;
+    public ZkMultiMapData(String absoluteBasePath, DistributedReadWriteLock readWriteLock, List<ACL> aclList,
+            Map<String, DataSerializer> dataSerializerMap, ReignContext context) {
+
+        this.absoluteBasePath = absoluteBasePath;
+
+        this.pathScheme = context.getPathScheme();
+
+        this.zkClient = context.getZkClient();
+
+        this.pathCache = context.getPathCache();
+
+        this.aclList = aclList;
         this.readWriteLock = readWriteLock;
-        this.zkClient = zkClient;
-        this.pathCache = pathCache;
+
+        this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(), context
+                .getPathCache(), dataSerializerMap);
+
     }
 
     @Override
@@ -64,146 +90,147 @@ public class ZkMultiMapData<K, V> implements MultiMapData<K, V> {
     }
 
     @Override
-    public synchronized void put(K key, String index, V value) {
-        lockForWrite();
+    public synchronized <V> void put(K key, String index, V value) {
+        throwExceptionIfKeyIsInvalid(key);
+        zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-
+            zkClientMultiDataUtil.writeData(absoluteKeyPath(key), index, value, aclList);
         } finally {
-            unlockForWrite();
+            zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
-        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public synchronized <V> void put(K key, V value) {
+        put(key, DataValue.DEFAULT_INDEX, value);
 
     }
 
     @Override
-    public synchronized void put(K key, V value) {
-        lockForWrite();
-        try {
-
-        } finally {
-            unlockForWrite();
-        }
-        // TODO Auto-generated method stub
-
+    public synchronized <V> V get(K key, Class<V> typeClass) {
+        return get(key, DataValue.DEFAULT_INDEX, typeClass);
     }
 
     @Override
-    public synchronized <T extends V> T get(K key) {
-        lockForRead();
+    public synchronized <V> V get(K key, String index, Class<V> typeClass) {
+        throwExceptionIfKeyIsInvalid(key);
+        zkClientMultiDataUtil.lockForRead(readWriteLock, pathScheme.joinPaths(absoluteBasePath, key.toString(), index),
+                this);
         try {
-
+            return zkClientMultiDataUtil.readData(absoluteKeyPath(key), index, -1, typeClass, readWriteLock == null);
         } finally {
-            unlockForRead();
+            zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
-        // TODO Auto-generated method stub
-        return null;
     }
 
     @Override
-    public synchronized <T extends V> T get(K key, String index) {
-        lockForRead();
+    public synchronized <V, T extends List<V>> T getAll(K key, Class<V> typeClass) {
+        throwExceptionIfKeyIsInvalid(key);
+        zkClientMultiDataUtil.lockForRead(readWriteLock, pathScheme.joinPaths(absoluteBasePath, key.toString()), this);
         try {
-
+            return (T) zkClientMultiDataUtil.readAllData(absoluteKeyPath(key), -1, typeClass, readWriteLock == null);
         } finally {
-            unlockForRead();
+            zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public synchronized <T extends List> T getAll(K key) {
-        lockForRead();
-        try {
-
-        } finally {
-            unlockForRead();
-        }
-        // TODO Auto-generated method stub
-        return null;
     }
 
     @Override
     public synchronized String remove(K key) {
-        lockForWrite();
-        try {
-
-        } finally {
-            unlockForWrite();
-        }
-        // TODO Auto-generated method stub
-        return null;
+        return remove(key, DataValue.DEFAULT_INDEX);
     }
 
     @Override
     public synchronized String remove(K key, String index) {
-        lockForWrite();
+        throwExceptionIfKeyIsInvalid(key);
+        zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-
+            return zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, -1, readWriteLock == null);
         } finally {
-            unlockForWrite();
+            zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
-        // TODO Auto-generated method stub
-        return null;
     }
 
     @Override
     public synchronized List<String> removeAll(K key) {
-        lockForWrite();
+        throwExceptionIfKeyIsInvalid(key);
+        zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-
+            return zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), -1, readWriteLock == null);
         } finally {
-            unlockForWrite();
+            zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
-        // TODO Auto-generated method stub
-        return null;
     }
 
     @Override
     public synchronized int size() {
-        lockForRead();
+        Stat stat = null;
+        zkClientMultiDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
         try {
+            if (readWriteLock == null) {
+                PathCacheEntry pce = pathCache.get(absoluteBasePath, -1);
+                stat = pce.getStat();
+            }
+
+            if (stat == null) {
+                // invalid or non-existent value in cache, so get direct
+                stat = zkClient.exists(absoluteBasePath, true);
+            }
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NONODE) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Path does not exist for data update:  " + e + ":  path=" + absoluteBasePath);
+                }
+            } else {
+                logger.error("" + e, e);
+            }
+        } catch (InterruptedException e) {
+            logger.warn("Interrupted:  " + e, e);
 
         } finally {
-            unlockForRead();
+            zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
-        // TODO Auto-generated method stub
-        return 0;
+
+        return stat != null ? stat.getNumChildren() : -1;
     }
 
     @Override
     public synchronized List<String> keys() {
-        lockForRead();
+        List<String> keys = null;
+        zkClientMultiDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
         try {
+            if (readWriteLock == null) {
+                keys = zkClientMultiDataUtil.getChildrenFromPathCache(absoluteBasePath, -1);
+            }
+
+            if (keys == null) {
+                // invalid or non-existent value in cache, so get direct
+                keys = zkClient.getChildren(absoluteBasePath, true);
+            }
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NONODE) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Path does not exist for data update:  " + e + ":  path=" + absoluteBasePath);
+                }
+            } else {
+                logger.error("" + e, e);
+            }
+        } catch (InterruptedException e) {
+            logger.warn("Interrupted:  " + e, e);
 
         } finally {
-            unlockForRead();
+            zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
-        // TODO Auto-generated method stub
-        return null;
+        return keys;
     }
 
-    void lockForWrite() {
-        if (readWriteLock != null) {
-            readWriteLock.writeLock().lock();
-        }
-    }
-
-    void unlockForWrite() {
-        if (readWriteLock != null) {
-            readWriteLock.writeLock().unlock();
+    void throwExceptionIfKeyIsInvalid(K key) {
+        if (!pathScheme.isValidToken(key.toString())) {
+            throw new IllegalArgumentException("Invalid key:  key='" + key + "'");
         }
     }
 
-    void lockForRead() {
-        if (readWriteLock != null) {
-            readWriteLock.readLock().lock();
-        }
+    String absoluteKeyPath(K key) {
+        return pathScheme.joinPaths(absoluteBasePath, key.toString());
     }
 
-    void unlockForRead() {
-        if (readWriteLock != null) {
-            readWriteLock.readLock().unlock();
-        }
-    }
 }

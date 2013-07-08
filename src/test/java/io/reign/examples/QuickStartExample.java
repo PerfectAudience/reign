@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.examples;
 
@@ -58,7 +58,7 @@ public class QuickStartExample {
         // springReignMaker.setZkConnectString("localhost:2181");
         // springReignMaker.setZkSessionTimeout(30000);
         // springReignMaker.setCore(true);
-        // springReignMaker.initializeAndStart();
+        // springReignMaker.initStart();
         // Reign reign = springReignMaker.get();
 
         /** presence service example **/

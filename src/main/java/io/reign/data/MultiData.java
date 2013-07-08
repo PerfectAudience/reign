@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -24,14 +24,14 @@ import java.util.List;
  * @author ypai
  * 
  */
-public interface MultiData<T> extends BaseData {
+public interface MultiData<V> extends BaseData {
 
     /**
      * Set value for DataValue.DEFAULT_INDEX
      * 
      * @param value
      */
-    public void set(T value);
+    public void set(V value);
 
     /**
      * Set value for a given index
@@ -39,31 +39,31 @@ public interface MultiData<T> extends BaseData {
      * @param index
      * @param value
      */
-    public void set(String index, T value);
+    public void set(String index, V value);
 
     /**
      * 
      * @return the value with DataValue.DEFAULT_INDEX
      */
-    public T get();
+    public V get(Class<V> typeClass);
 
-    public T get(int ttlMillis);
+    public V get(int ttlMillis, Class<V> typeClass);
 
     /**
      * @param index
      * @return the value with index
      */
-    public T get(String index);
+    public V get(String index, Class<V> typeClass);
 
-    public T get(String index, int ttlMillis);
+    public V get(String index, int ttlMillis, Class<V> typeClass);
 
     /**
      * 
      * @return all values
      */
-    public List<T> getAll();
+    public List<V> getAll(Class<V> typeClass);
 
-    public List<T> getAll(int ttlMillis);
+    public List<V> getAll(int ttlMillis, Class<V> typeClass);
 
     /**
      * Remove value for DataValue.DEFAULT_INDEX

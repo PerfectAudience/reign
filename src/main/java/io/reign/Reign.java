@@ -84,7 +84,7 @@ public class Reign implements Watcher {
     /** List to ensure Watcher(s) are called in a specific order */
     private final List<Watcher> watcherList = new ArrayList<Watcher>();
 
-    private List<ACL> defaultAclList = DEFAULT_ACL_LIST;
+    private List<ACL> defaultZkAclList = DEFAULT_ACL_LIST;
 
     private CanonicalIdMaker canonicalIdMaker;
 
@@ -114,15 +114,15 @@ public class Reign implements Watcher {
         return this.canonicalIdMaker.get();
     }
 
-    public List<ACL> getDefaultAclList() {
-        return defaultAclList;
+    public List<ACL> getDefaultZkAclList() {
+        return defaultZkAclList;
     }
 
-    public synchronized void setDefaultAclList(List<ACL> defaultAclList) {
+    public synchronized void setDefaultZkAclList(List<ACL> defaultZkAclList) {
         if (started) {
             throw new IllegalStateException("Cannot set defaultAclList once started!");
         }
-        this.defaultAclList = defaultAclList;
+        this.defaultZkAclList = defaultZkAclList;
     }
 
     public synchronized void setCanonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
@@ -247,6 +247,7 @@ public class Reign implements Watcher {
 
         /** create context object **/
         logger.info("START:  creating ReignContext...");
+        final List<ACL> finalDefaultZkAclList = defaultZkAclList;
         this.context = new ReignContext() {
 
             @Override
@@ -279,6 +280,16 @@ public class Reign implements Watcher {
                 return pathScheme;
             }
 
+            @Override
+            public List<ACL> getDefaultZkAclList() {
+                return finalDefaultZkAclList;
+            }
+
+            @Override
+            public PathCache getPathCache() {
+                return pathCache;
+            }
+
         };
 
         /** init services **/
@@ -290,7 +301,7 @@ public class Reign implements Watcher {
             service.setZkClient(zkClient);
             service.setPathCache(pathCache);
             service.setContext(context);
-            service.setDefaultAclList(defaultAclList);
+            service.setDefaultZkAclList(defaultZkAclList);
             service.init();
 
             // add to zkClient's list of watchers if Watcher interface is
@@ -343,7 +354,7 @@ public class Reign implements Watcher {
         MessagingService messagingService = context.getService("messaging");
         if (presenceService != null && messagingService != null) {
             logger.info("START:  announcing framework availability via PresenceService");
-            presenceService.announce(pathScheme.getReservedClusterId(), "messaging", true);
+            presenceService.announce(pathScheme.getFrameworkClusterId(), "messaging", true);
         } else {
             logger.warn("START:  did not announce framework messaging availability:  (presenceService==null)="
                     + (presenceService == null) + "; (messagingService==null)=" + (messagingService == null));

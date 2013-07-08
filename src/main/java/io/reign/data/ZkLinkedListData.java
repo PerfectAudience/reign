@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -20,6 +20,9 @@ import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.util.PathCache;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base implementation is thread-safe within the same JVM. Construct with read/write lock for inter-process safety.
@@ -29,6 +32,8 @@ import io.reign.util.PathCache;
  * @param <V>
  */
 public class ZkLinkedListData<V> implements LinkedListData<V> {
+
+    private static final Logger logger = LoggerFactory.getLogger(ZkLinkedListData.class);
 
     private final DistributedReadWriteLock readWriteLock;
 

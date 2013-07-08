@@ -81,7 +81,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @return
      */
     public DistributedReentrantLock getReentrantLock(String clusterId, String lockName) {
-        return getReentrantLock(clusterId, lockName, getDefaultAclList());
+        return getReentrantLock(clusterId, lockName, getDefaultZkAclList());
     }
 
     /**
@@ -110,7 +110,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @return
      */
     public DistributedLock getLock(String clusterId, String lockName) {
-        return getLock(clusterId, lockName, getDefaultAclList());
+        return getLock(clusterId, lockName, getDefaultZkAclList());
     }
 
     /**
@@ -138,7 +138,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @return
      */
     public DistributedReadWriteLock getReadWriteLock(String clusterId, String lockName) {
-        return getReadWriteLock(clusterId, lockName, getDefaultAclList());
+        return getReadWriteLock(clusterId, lockName, getDefaultZkAclList());
     }
 
     /**
@@ -175,7 +175,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @return
      */
     public DistributedSemaphore getFixedSemaphore(String clusterId, String semaphoreName, int permitPoolSize) {
-        return getSemaphore(clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize), getDefaultAclList());
+        return getSemaphore(clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize), getDefaultZkAclList());
     }
 
     public DistributedSemaphore getFixedSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
@@ -191,7 +191,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
      * @return
      */
     public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName) {
-        return getConfiguredSemaphore(clusterId, semaphoreName, -1, false, getDefaultAclList());
+        return getConfiguredSemaphore(clusterId, semaphoreName, -1, false, getDefaultZkAclList());
     }
 
     public DistributedSemaphore getConfiguredSemaphore(String ownerId, String clusterId, String semaphoreName,
@@ -210,7 +210,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
     public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
             boolean createConfigurationIfNecessary) {
         return getConfiguredSemaphore(clusterId, semaphoreName, permitPoolSize, createConfigurationIfNecessary,
-                getDefaultAclList());
+                getDefaultZkAclList());
     }
 
     public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
@@ -274,7 +274,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
     @Override
     public void perform() {
         /** get exclusive leader lock to perform maintenance duties **/
-        DistributedLock adminLock = getLock("reign", "admin", getDefaultAclList());
+        DistributedLock adminLock = getLock("reign", "admin", getDefaultZkAclList());
         adminLock.lock();
         logger.info("Performing administrative maintenance...");
         try {

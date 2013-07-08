@@ -112,7 +112,7 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
      */
     public static void setSemaphoreConf(ConfService confService, String clusterId, String semaphoreName,
             int permitPoolSize) {
-        setSemaphoreConf(confService, clusterId, semaphoreName, permitPoolSize, confService.getDefaultAclList());
+        setSemaphoreConf(confService, clusterId, semaphoreName, permitPoolSize, confService.getDefaultZkAclList());
     }
 
     public static void setSemaphoreConf(ConfService confService, String clusterId, String semaphoreName,

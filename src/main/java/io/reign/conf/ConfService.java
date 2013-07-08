@@ -141,7 +141,7 @@ public class ConfService extends AbstractService implements ObservableService {
             throw new IllegalArgumentException("Could not derive serializer from given information:  path="
                     + relativeConfPath);
         }
-        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, getDefaultAclList());
+        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, getDefaultZkAclList());
     }
 
     /**
@@ -151,7 +151,7 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param confSerializer
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer) {
-        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, getDefaultAclList());
+        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, getDefaultZkAclList());
     }
 
     /**

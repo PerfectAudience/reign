@@ -42,6 +42,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +81,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     private final ServiceObserverManager<PresenceObserverWrapper> observerManager = new ServiceObserverManager<PresenceObserverWrapper>();
 
-    private final ZkClientUtil zkUtil = new ZkClientUtil();
+    private final ZkClientUtil zkClientUtil = new ZkClientUtil();
 
     private volatile long lastZombieCheckTimestamp = System.currentTimeMillis();
 
@@ -111,7 +112,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     public List<String> lookupServices(String clusterId) {
         /** get node data from zk **/
-        if (!getPathScheme().isValidClusterId(clusterId)) {
+        if (!getPathScheme().isValidToken(clusterId)) {
             throw new IllegalArgumentException("Invalid path token:  pathToken='" + clusterId + "'");
         }
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId);
@@ -425,23 +426,54 @@ public class PresenceService extends AbstractActiveService implements Observable
         return result;
     }
 
+    /**
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param visible
+     */
     public void announce(String clusterId, String serviceId, boolean visible) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null);
+        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null,
+                getContext().getDefaultZkAclList());
     }
 
+    /**
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param visible
+     * @param attributeMap
+     */
     public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
         announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
-                attributeMap, null);
+                attributeMap, null, getContext().getDefaultZkAclList());
     }
 
-    // public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
-    // announce(clusterId, serviceId, nodeId, visible, null, null);
-    // }
-    //
-    // public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
-    // Map<String, String> attributeMap) {
-    // announce(clusterId, serviceId, nodeId, visible, attributeMap, null);
-    // }
+    /**
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param visible
+     * @param aclList
+     */
+    public void announce(String clusterId, String serviceId, boolean visible, List<ACL> aclList) {
+        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null,
+                aclList);
+    }
+
+    /**
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param visible
+     * @param attributeMap
+     * @param aclList
+     */
+    public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap,
+            List<ACL> aclList) {
+        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
+                attributeMap, null, aclList);
+    }
 
     /**
      * This method only has to be called once per service node and/or when node data changes. Announcements happen
@@ -456,7 +488,7 @@ public class PresenceService extends AbstractActiveService implements Observable
      * @param nodeAttributeSerializer
      */
     void announce(String clusterId, String serviceId, String nodeId, boolean visible, Map<String, String> attributeMap,
-            DataSerializer<Map<String, String>> nodeAttributeSerializer) {
+            DataSerializer<Map<String, String>> nodeAttributeSerializer, List<ACL> aclList) {
         // defaults
         if (nodeAttributeSerializer == null) {
             nodeAttributeSerializer = this.getNodeAttributeSerializer();
@@ -464,7 +496,7 @@ public class PresenceService extends AbstractActiveService implements Observable
 
         // get announcement using path to node
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
-        Announcement announcement = this.getAnnouncement(nodePath);
+        Announcement announcement = this.getAnnouncement(nodePath, aclList);
         announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
 
         // update announcement if node data is different
@@ -488,8 +520,8 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     void hide(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
-        Announcement announcement = this.getAnnouncement(nodePath);
-        if (!announcement.isHidden()) {
+        Announcement announcement = this.getAnnouncement(nodePath, null);
+        if (announcement != null && !announcement.isHidden()) {
             announcement.setHidden(true);
             announcement.setLastUpdated(-1);
         }
@@ -497,19 +529,26 @@ public class PresenceService extends AbstractActiveService implements Observable
 
     void show(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
-        Announcement announcement = this.getAnnouncement(nodePath);
-        if (announcement.isHidden()) {
+        Announcement announcement = this.getAnnouncement(nodePath, null);
+        if (announcement != null && announcement.isHidden()) {
             announcement.setHidden(false);
             announcement.setLastUpdated(-1);
         }
     }
 
-    Announcement getAnnouncement(String nodePath) {
+    /**
+     * 
+     * @param nodePath
+     * @param aclList
+     *            if null, will not create new Announcement if one does not currently exist
+     * @return
+     */
+    Announcement getAnnouncement(String nodePath, List<ACL> aclList) {
         // create announcement if necessary
         Announcement announcement = announcementMap.get(nodePath);
-        if (announcement == null) {
+        if (announcement == null && aclList != null) {
             Announcement newAnnouncement = new Announcement();
-            newAnnouncement.setAclList(getDefaultAclList());
+            newAnnouncement.setAclList(aclList);
 
             announcement = announcementMap.putIfAbsent(nodePath, newAnnouncement);
             if (announcement == null) {
@@ -569,8 +608,8 @@ public class PresenceService extends AbstractActiveService implements Observable
                     if (attributeMap.size() > 0) {
                         leafData = announcement.getNodeAttributeSerializer().serialize(attributeMap);
                     }
-                    String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), path, leafData, announcement
-                            .getAclList(), CreateMode.EPHEMERAL, -1);
+                    String pathUpdated = zkClientUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
+                            announcement.getAclList(), CreateMode.EPHEMERAL, -1);
 
                     // set last updated with some randomizer to spread out
                     // requests
@@ -588,7 +627,8 @@ public class PresenceService extends AbstractActiveService implements Observable
         if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
             // get exclusive leader lock to perform maintenance duties
             CoordinationService coordinationService = getContext().getService("coord");
-            DistributedLock adminLock = coordinationService.getLock("presence", "zombie-checker", getDefaultAclList());
+            DistributedLock adminLock = coordinationService
+                    .getLock("presence", "zombie-checker", getDefaultZkAclList());
             logger.info("Checking for zombie nodes...");
             if (adminLock.tryLock()) {
                 try {

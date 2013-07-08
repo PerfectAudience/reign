@@ -12,9 +12,15 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
+
+import io.reign.util.PathCache;
+
+import java.util.List;
+
+import org.apache.zookeeper.data.ACL;
 
 /**
  * Provides access to essential framework capabilities without exposing base framework object.
@@ -35,4 +41,8 @@ public interface ReignContext {
     public ZkClient getZkClient();
 
     public PathScheme getPathScheme();
+
+    public List<ACL> getDefaultZkAclList();
+
+    public PathCache getPathCache();
 }

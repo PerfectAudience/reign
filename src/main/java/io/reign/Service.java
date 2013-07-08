@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -46,7 +46,7 @@ public interface Service {
 
     public void setPathCache(PathCache pathCache);
 
-    public void setDefaultAclList(List<ACL> defaultAclList);
+    public void setDefaultZkAclList(List<ACL> defaultZkAclList);
 
     /**
      * 

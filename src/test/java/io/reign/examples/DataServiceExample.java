@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.examples;
 
@@ -48,7 +48,7 @@ public class DataServiceExample {
         // springReignMaker.setZkConnectString("localhost:2181");
         // springReignMaker.setZkSessionTimeout(30000);
         // springReignMaker.setCore(true);
-        // springReignMaker.initializeAndStart();
+        // springReignMaker.initStart();
         // Reign reign = springReignMaker.get();
 
         /** messaging example **/
@@ -81,16 +81,16 @@ public class DataServiceExample {
         multiData.set("1", 1000D);
         multiData.set("2", 2000D);
 
-        List<Double> values = multiData.getAll();
+        List<Double> values = multiData.getAll(Double.class);
         logger.debug("MultiData:  values={}", values);
 
-        Double value1 = multiData.get("1");
+        Double value1 = multiData.get("1", Double.class);
         logger.debug("MultiData:  value1={}", value1);
 
         multiData.set(19999.50);
         multiData.set("1", 10000D);
 
-        values = multiData.getAll();
+        values = multiData.getAll(Double.class);
         logger.debug("MultiData:  values={}", values);
 
         double sum = sum(values);
@@ -110,23 +110,23 @@ public class DataServiceExample {
         Thread.sleep(5000);
 
         // get data less than 10 seconds old, should return same results as before
-        values = multiData.getAll(10000);
+        values = multiData.getAll(10000, Double.class);
         stats = stats(values);
         logger.debug("MultiData (10000 tll):  stats({}):  avg={}; stdDev={}; min={}; max={}; sum={}", new Object[] {
                 values, stats.avg(), stats.stdDev(), stats.min(), stats.max(), stats.sum() });
 
         // get data less than 4 seconds old, should return nothing
-        values = multiData.getAll(4000);
+        values = multiData.getAll(4000, Double.class);
         stats = stats(values);
         logger.debug("MultiData (4000 ttl):  stats({}):  avg={}; stdDev={}; min={}; max={}; sum={}", new Object[] {
                 values, stats.avg(), stats.stdDev(), stats.min(), stats.max(), stats.sum() });
 
         multiData.remove();
-        values = multiData.getAll();
+        values = multiData.getAll(Double.class);
         logger.debug("MultiData:  values={}", values);
 
         multiData.removeAll();
-        values = multiData.getAll();
+        values = multiData.getAll(Double.class);
         logger.debug("MultiData:  values={}", values);
     }
 }

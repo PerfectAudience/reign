@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -35,21 +35,21 @@ public class DefaultPathScheme implements PathScheme {
 
     private final String basePath;
 
-    private final String reservedClusterId;
+    private final String frameworkClusterId;
 
-    public DefaultPathScheme(String basePath, String reservedClusterId) {
+    public DefaultPathScheme(String basePath, String frameworkClusterId) {
         this.basePath = basePath;
-        this.reservedClusterId = reservedClusterId;
+        this.frameworkClusterId = frameworkClusterId;
     }
 
     @Override
-    public boolean isValidClusterId(String clusterId) {
-        return isValidToken(clusterId) && !clusterId.equals(this.reservedClusterId);
+    public boolean isFrameworkClusterId(String clusterId) {
+        return clusterId != null && clusterId.equals(this.frameworkClusterId);
     }
 
     @Override
-    public String getReservedClusterId() {
-        return this.reservedClusterId;
+    public String getFrameworkClusterId() {
+        return this.frameworkClusterId;
     }
 
     @Override

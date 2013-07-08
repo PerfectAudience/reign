@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -24,7 +24,6 @@ import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
-import io.reign.util.ZkClientUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -54,8 +53,6 @@ public class DataService extends AbstractActiveService {
     private static final String MAP_PATH_SUFFIX = "{}";
     private static final String LIST_PATH_SUFFIX = "[]";
 
-    private final ZkClientUtil zkClientUtil = new ZkClientUtil();
-
     private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(33,
             0.9f, 1);
 
@@ -73,6 +70,10 @@ public class DataService extends AbstractActiveService {
 
     }
 
+    public <V> MultiData<V> getMulti(String clusterId, String dataPath, Class<V> typeClass, boolean processSafe) {
+        return getMulti(clusterId, dataPath, typeClass, processSafe, getContext().getDefaultZkAclList());
+    }
+
     public <V> MultiData<V> getMulti(String clusterId, String dataPath, Class<V> typeClass, boolean processSafe,
             List<ACL> aclList) {
         dataPath = dataPath + DATA_PATH_SUFFIX;
@@ -85,12 +86,10 @@ public class DataService extends AbstractActiveService {
         PathScheme pathScheme = getPathScheme();
         String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiData<V>(typeClass, absoluteBasePath, getPathScheme(), readWriteLock, getZkClient(),
-                getPathCache(), zkClientUtil, dataSerializerMap, aclList);
+        return new ZkMultiData<V>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
     }
 
-    public <K, V> MultiMapData<K, V> getMultiMap(String clusterId, String dataPath, boolean processSafe,
-            List<ACL> aclList) {
+    public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath, boolean processSafe, List<ACL> aclList) {
         dataPath = dataPath + MAP_PATH_SUFFIX;
 
         DistributedReadWriteLock readWriteLock = null;
@@ -101,7 +100,7 @@ public class DataService extends AbstractActiveService {
         PathScheme pathScheme = getPathScheme();
         String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiMapData<K, V>(absoluteBasePath, getPathScheme(), readWriteLock, getZkClient(), getPathCache());
+        return new ZkMultiMapData<K>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
     }
 
     public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath, int maxSize, int ttlMillis,

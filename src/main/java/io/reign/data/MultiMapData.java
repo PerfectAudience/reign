@@ -12,19 +12,20 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
 import java.util.List;
 
 /**
- * A collection of data points organized like a multimap, where keys can have multiple values.
+ * A collection of data points organized like a multimap, where keys can have multiple values. Values are assumed to be
+ * loosely typed.
  * 
  * @author ypai
  * 
  */
-public interface MultiMapData<K, V> extends BaseData {
+public interface MultiMapData<K> extends BaseData {
 
     /**
      * Put value using custom index
@@ -32,7 +33,7 @@ public interface MultiMapData<K, V> extends BaseData {
      * @param key
      * @param value
      */
-    public void put(K key, String index, V value);
+    public <V> void put(K key, String index, V value);
 
     /**
      * Put value using DataValue.DEFAULT_INDEX
@@ -40,7 +41,7 @@ public interface MultiMapData<K, V> extends BaseData {
      * @param key
      * @param value
      */
-    public void put(K key, V value);
+    public <V> void put(K key, V value);
 
     /**
      * Get a single value for key under DataValue.DEFAULT_INDEX; it is possible for value to be null.
@@ -49,7 +50,7 @@ public interface MultiMapData<K, V> extends BaseData {
      * @param key
      * @return
      */
-    public <T extends V> T get(K key);
+    public <V> V get(K key, Class<V> typeClass);
 
     /**
      * Get a single value for key for given index; it is possible for value to be null.
@@ -58,7 +59,7 @@ public interface MultiMapData<K, V> extends BaseData {
      * @param key
      * @return
      */
-    public <T extends V> T get(K key, String index);
+    public <V> V get(K key, String index, Class<V> typeClass);
 
     /**
      * Get all values for key; it is possible for values to be null.
@@ -67,7 +68,7 @@ public interface MultiMapData<K, V> extends BaseData {
      * @param key
      * @return
      */
-    public <T extends List> T getAll(K key);
+    public <V, T extends List<V>> T getAll(K key, Class<V> typeClass);
 
     /**
      * Remove value under key with index DataValue.DEFAULT_INDEX

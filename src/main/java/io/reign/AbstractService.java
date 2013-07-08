@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -42,20 +42,20 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
 
     private ReignContext context;
 
-    private List<ACL> defaultAclList;
+    private List<ACL> defaultZkAclList;
 
     @Override
     public ResponseMessage handleMessage(RequestMessage message) {
         return null;
     }
 
-    public List<ACL> getDefaultAclList() {
-        return defaultAclList;
+    public List<ACL> getDefaultZkAclList() {
+        return defaultZkAclList;
     }
 
     @Override
-    public void setDefaultAclList(List<ACL> defaultAclList) {
-        this.defaultAclList = defaultAclList;
+    public void setDefaultZkAclList(List<ACL> defaultZkAclList) {
+        this.defaultZkAclList = defaultZkAclList;
     }
 
     @Override
