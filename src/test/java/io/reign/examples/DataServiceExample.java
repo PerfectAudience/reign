@@ -23,6 +23,7 @@ import static io.reign.data.Operators.sum;
 import io.reign.Reign;
 import io.reign.data.DataService;
 import io.reign.data.MultiData;
+import io.reign.data.MultiMapData;
 import io.reign.data.Operators.Stats;
 
 import java.util.List;
@@ -51,8 +52,9 @@ public class DataServiceExample {
         // springReignMaker.initStart();
         // Reign reign = springReignMaker.get();
 
-        /** messaging example **/
-        multiDataExample(reign);
+        /** data examples **/
+        // multiDataExample(reign);
+        multiMapDataExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(600000);
@@ -64,15 +66,78 @@ public class DataServiceExample {
         Thread.sleep(10000);
     }
 
+    public static void multiMapDataExample(Reign reign) throws Exception {
+        DataService dataService = reign.getService("data");
+
+        MultiMapData<String> multiMapData = dataService.getMultiMap("examples", "my-multimap", false,
+                Reign.DEFAULT_ACL_LIST);
+        doMultiMapDataExample(multiMapData);
+
+        // multiMapData = dataService.getMultiMap("examples", "my-multimap-process-safe", true, Reign.DEFAULT_ACL_LIST);
+        // doMultiMapDataExample(multiMapData);
+
+    }
+
+    public static void doMultiMapDataExample(MultiMapData<String> multiMapData) throws Exception {
+        // logger.debug("stringKey1:  currentValue={}", multiMapData.get("stringKey1", String.class));
+        //
+        // logger.debug("intKey1Values:  currentValues={}", multiMapData.getAll("intKey1", Integer.class));
+        // logger.debug("intKey1Values:  max({})={}", multiMapData.getAll("intKey1", Integer.class), max(multiMapData
+        // .getAll("intKey1", Integer.class)));
+
+        multiMapData.put("stringKey1", "stringValue1");
+        logger.debug("stringKey1:  value={}", multiMapData.get("stringKey1", String.class));
+
+        multiMapData.put("intKey1", 1);
+        multiMapData.put("intKey1", "index1", 2);
+        multiMapData.put("intKey1", "index2", 3);
+        List<Integer> intKey1Values = multiMapData.getAll("intKey1", Integer.class);
+        logger.debug("intKey1Values:  values={}", intKey1Values);
+        logger.debug("intKey1Values:  max({})={}", intKey1Values, max(intKey1Values));
+
+        logger.debug("multiMapData.size()={}", multiMapData.size());
+        logger.debug("multiMapData.keys()={}", multiMapData.keys());
+
+        // get again, should be from cache this time
+        logger.debug("multiMapData.size()={}", multiMapData.size());
+
+        // remove an item from intKey1 and examine values again
+        multiMapData.remove("intKey1", "index2");
+        intKey1Values = multiMapData.getAll("intKey1", Integer.class);
+        logger.debug("After remove():  intKey1Values:  values={}", intKey1Values);
+        logger.debug("After remove():  intKey1Values:  max({})={}", intKey1Values, max(intKey1Values));
+
+        // remove default index value from stringKey1
+        multiMapData.remove("stringKey1");
+        logger.debug("After remove():  stringKey1:  value={}", multiMapData.get("stringKey1", String.class));
+
+        // check sizes after remove operations
+        logger.debug("After remove():  multiMapData.size()={}", multiMapData.size());
+        logger.debug("After remove():  multiMapData.keys()={}", multiMapData.keys());
+
+        // remove all values
+        multiMapData.removeAll("intKey1");
+        multiMapData.remove("stringKey1");
+
+        // check values after removeAll operations
+        intKey1Values = multiMapData.getAll("intKey1", Integer.class);
+        logger.debug("After removeAll(): intKey1Values:  values={}", intKey1Values);
+        logger.debug("After removeAll(): intKey1Values:  max({})={}", intKey1Values, max(intKey1Values));
+        logger.debug("After removeAll(): stringKey1:  value={}", multiMapData.get("stringKey1", String.class));
+
+        // check sizes after removeAll operations
+        logger.debug("After removeAll():  multiMapData.size()={}", multiMapData.size());
+        logger.debug("After removeAll():  multiMapData.keys()={}", multiMapData.keys());
+
+    }
+
     public static void multiDataExample(Reign reign) throws Exception {
         DataService dataService = reign.getService("data");
 
-        MultiData<Double> multiData = dataService.getMulti("examples", "my-data", Double.class, false,
-                Reign.DEFAULT_ACL_LIST);
+        MultiData<Double> multiData = dataService.getMulti("examples", "my-data", false, Reign.DEFAULT_ACL_LIST);
         doMultiDataExample(multiData);
 
-        multiData = dataService
-                .getMulti("examples", "my-data-process-safe", Double.class, true, Reign.DEFAULT_ACL_LIST);
+        multiData = dataService.getMulti("examples", "my-data-process-safe", true, Reign.DEFAULT_ACL_LIST);
         doMultiDataExample(multiData);
 
     }

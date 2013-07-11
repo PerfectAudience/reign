@@ -159,6 +159,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
                             newChildList.add(child);
                         }
                     }
+
                     pathCache
                             .put(absoluteParentPath, pathCacheEntry.getStat(), pathCacheEntry.getBytes(), newChildList);
                 }
@@ -167,7 +168,9 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             return deletedPath;
 
         } catch (KeeperException e) {
-            logger.error("" + e, e);
+            if (e.code() != KeeperException.Code.NONODE) {
+                logger.error("" + e, e);
+            }
             return null;
         } catch (Exception e) {
             logger.error("" + e, e);
@@ -257,7 +260,9 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             return data;
 
         } catch (KeeperException e) {
-            logger.error("" + e, e);
+            if (e.code() != KeeperException.Code.NONODE) {
+                logger.error("" + e, e);
+            }
             return null;
         } catch (Exception e) {
             logger.error("" + e, e);
@@ -274,8 +279,8 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
     List<String> getChildrenFromPathCache(String absoluteBasePath, int ttlMillis) {
 
         List<String> childList = null;
-        PathCacheEntry pathCacheEntry = pathCache.get(absoluteBasePath);
-        if (pathCacheEntry != null && !isExpired(pathCacheEntry.getLastUpdatedTimestampMillis(), ttlMillis)) {
+        PathCacheEntry pathCacheEntry = pathCache.get(absoluteBasePath, ttlMillis);
+        if (pathCacheEntry != null) {
             childList = pathCacheEntry.getChildren();
         }
 
@@ -283,6 +288,8 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
     }
 
     /**
+     * Different from regular path cache access method in that we are more interested in how old the data is, not the
+     * last time the cache entry has been updated.
      * 
      * @param absoluteDataPath
      * @param ttlMillis

@@ -102,22 +102,33 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
 
     @Override
     public synchronized <V> void put(K key, V value) {
-        put(key, DataValue.DEFAULT_INDEX, value);
+        put(key, DEFAULT_INDEX, value);
 
     }
 
     @Override
     public synchronized <V> V get(K key, Class<V> typeClass) {
-        return get(key, DataValue.DEFAULT_INDEX, typeClass);
+        return get(key, DEFAULT_INDEX, -1, typeClass);
+    }
+
+    @Override
+    public synchronized <V> V get(K key, int ttlMillis, Class<V> typeClass) {
+        return get(key, DEFAULT_INDEX, ttlMillis, typeClass);
     }
 
     @Override
     public synchronized <V> V get(K key, String index, Class<V> typeClass) {
+        return get(key, index, -1, typeClass);
+    }
+
+    @Override
+    public synchronized <V> V get(K key, String index, int ttlMillis, Class<V> typeClass) {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForRead(readWriteLock, pathScheme.joinPaths(absoluteBasePath, key.toString(), index),
                 this);
         try {
-            return zkClientMultiDataUtil.readData(absoluteKeyPath(key), index, -1, typeClass, readWriteLock == null);
+            return zkClientMultiDataUtil.readData(absoluteKeyPath(key), index, ttlMillis, typeClass,
+                    readWriteLock == null);
         } finally {
             zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
@@ -125,10 +136,16 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
 
     @Override
     public synchronized <V, T extends List<V>> T getAll(K key, Class<V> typeClass) {
+        return getAll(key, -1, typeClass);
+    }
+
+    @Override
+    public synchronized <V, T extends List<V>> T getAll(K key, int ttlMillis, Class<V> typeClass) {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForRead(readWriteLock, pathScheme.joinPaths(absoluteBasePath, key.toString()), this);
         try {
-            return (T) zkClientMultiDataUtil.readAllData(absoluteKeyPath(key), -1, typeClass, readWriteLock == null);
+            return (T) zkClientMultiDataUtil.readAllData(absoluteKeyPath(key), ttlMillis, typeClass,
+                    readWriteLock == null);
         } finally {
             zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
@@ -136,15 +153,25 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
 
     @Override
     public synchronized String remove(K key) {
-        return remove(key, DataValue.DEFAULT_INDEX);
+        return remove(key, DEFAULT_INDEX, -1);
+    }
+
+    @Override
+    public synchronized String remove(K key, int ttlMillis) {
+        return remove(key, DEFAULT_INDEX, ttlMillis);
     }
 
     @Override
     public synchronized String remove(K key, String index) {
+        return remove(key, index, -1);
+    }
+
+    @Override
+    public synchronized String remove(K key, String index, int ttlMillis) {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            return zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, -1, readWriteLock == null);
+            return zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, ttlMillis, readWriteLock == null);
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
@@ -152,10 +179,15 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
 
     @Override
     public synchronized List<String> removeAll(K key) {
+        return removeAll(key, -1);
+    }
+
+    @Override
+    public synchronized List<String> removeAll(K key, int ttlMillis) {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            return zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), -1, readWriteLock == null);
+            return zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), ttlMillis, readWriteLock == null);
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
@@ -168,12 +200,18 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         try {
             if (readWriteLock == null) {
                 PathCacheEntry pce = pathCache.get(absoluteBasePath, -1);
-                stat = pce.getStat();
+                if (pce != null) {
+                    stat = pce.getStat();
+                }
             }
 
             if (stat == null) {
                 // invalid or non-existent value in cache, so get direct
-                stat = zkClient.exists(absoluteBasePath, true);
+                stat = new Stat();
+                List<String> children = zkClient.getChildren(absoluteBasePath, true, stat);
+                pathCache.put(absoluteBasePath, stat, null, children);
+            } else {
+                logger.trace("Got from cache:  path={}; size={}", absoluteBasePath, stat.getNumChildren());
             }
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
@@ -204,7 +242,11 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
 
             if (keys == null) {
                 // invalid or non-existent value in cache, so get direct
-                keys = zkClient.getChildren(absoluteBasePath, true);
+                Stat stat = new Stat();
+                keys = zkClient.getChildren(absoluteBasePath, true, stat);
+                pathCache.put(absoluteBasePath, stat, null, keys);
+            } else {
+                logger.trace("Got from cache:  path={}; keys={}", absoluteBasePath, keys);
             }
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
@@ -222,6 +264,8 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         }
         return keys;
     }
+
+    /***** private/protected/package *****/
 
     void throwExceptionIfKeyIsInvalid(K key) {
         if (!pathScheme.isValidToken(key.toString())) {

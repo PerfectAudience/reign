@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.util;
 
@@ -32,11 +32,11 @@ public class PathCacheEntry {
     private final List<String> children;
     private final long lastUpdatedTimestampMillis;
 
-    public PathCacheEntry(Stat stat, byte[] bytes, List<String> children, long lastUpdateTimestampMillis) {
+    public PathCacheEntry(Stat stat, byte[] bytes, List<String> children, long lastUpdatedTimestampMillis) {
         this.stat = stat;
         this.bytes = bytes;
         this.children = children;
-        this.lastUpdatedTimestampMillis = lastUpdateTimestampMillis;
+        this.lastUpdatedTimestampMillis = lastUpdatedTimestampMillis;
     }
 
     public long getLastUpdatedTimestampMillis() {

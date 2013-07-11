@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.util;
 
@@ -34,7 +34,7 @@ public interface PathCache {
      * @param ttl
      * @return
      */
-    public PathCacheEntry get(String absolutePath, int ttl);
+    public PathCacheEntry get(String absolutePath, int ttlMillis);
 
     /**
      * Get with no TTL.
@@ -54,7 +54,8 @@ public interface PathCache {
      * @param updateThreshold
      * @return
      */
-    public PathCacheEntry get(String absolutePath, int ttl, PathCacheEntryUpdater updater, int updateThreshold);
+    public PathCacheEntry get(String absolutePath, int ttlMillis, PathCacheEntryUpdater updater,
+            int updateThresholdMillis);
 
     /**
      * Uses default updater (updates children, node stat, and node value).
@@ -64,7 +65,7 @@ public interface PathCache {
      * @param updateThreshold
      * @return
      */
-    public PathCacheEntry get(String absolutePath, int ttl, int updateThreshold);
+    public PathCacheEntry get(String absolutePath, int ttlMillis, int updateThresholdMillis);
 
     /**
      * 

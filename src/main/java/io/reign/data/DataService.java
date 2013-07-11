@@ -70,12 +70,11 @@ public class DataService extends AbstractActiveService {
 
     }
 
-    public <V> MultiData<V> getMulti(String clusterId, String dataPath, Class<V> typeClass, boolean processSafe) {
-        return getMulti(clusterId, dataPath, typeClass, processSafe, getContext().getDefaultZkAclList());
+    public <V> MultiData<V> getMulti(String clusterId, String dataPath, boolean processSafe) {
+        return getMulti(clusterId, dataPath, processSafe, getContext().getDefaultZkAclList());
     }
 
-    public <V> MultiData<V> getMulti(String clusterId, String dataPath, Class<V> typeClass, boolean processSafe,
-            List<ACL> aclList) {
+    public <V> MultiData<V> getMulti(String clusterId, String dataPath, boolean processSafe, List<ACL> aclList) {
         dataPath = dataPath + DATA_PATH_SUFFIX;
 
         DistributedReadWriteLock readWriteLock = null;

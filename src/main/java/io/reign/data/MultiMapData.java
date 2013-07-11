@@ -55,6 +55,17 @@ public interface MultiMapData<K> extends BaseData {
     public <V> V get(K key, Class<V> typeClass);
 
     /**
+     * Get value at DataValue.DEFAULT_INDEX with age within ttlMillis
+     * 
+     * @param <V>
+     * @param key
+     * @param ttlMillis
+     * @param typeClass
+     * @return
+     */
+    public <V> V get(K key, int ttlMillis, Class<V> typeClass);
+
+    /**
      * Get a single value for key for given index; it is possible for value to be null.
      * 
      * @param <T>
@@ -63,6 +74,18 @@ public interface MultiMapData<K> extends BaseData {
      * @return
      */
     public <V> V get(K key, String index, Class<V> typeClass);
+
+    /**
+     * Get value at key, index if data age is within ttlMillis
+     * 
+     * @param <V>
+     * @param key
+     * @param index
+     * @param ttlMillis
+     * @param typeClass
+     * @return
+     */
+    public <V> V get(K key, String index, int ttlMillis, Class<V> typeClass);
 
     /**
      * Get all values for key; it is possible for values to be null.
@@ -75,12 +98,33 @@ public interface MultiMapData<K> extends BaseData {
     public <V, T extends List<V>> T getAll(K key, Class<V> typeClass);
 
     /**
+     * Get all items at key with age under ttlMillis
+     * 
+     * @param <V>
+     * @param <T>
+     * @param key
+     * @param ttlMillis
+     * @param typeClass
+     * @return
+     */
+    public <V, T extends List<V>> T getAll(K key, int ttlMillis, Class<V> typeClass);
+
+    /**
      * Remove value under key with index DataValue.DEFAULT_INDEX
      * 
      * @param key
      * @return
      */
     public String remove(K key);
+
+    /**
+     * Remove all values for a specific key older than ttlMillis
+     * 
+     * @param key
+     * @param ttlMillis
+     * @return
+     */
+    public String remove(K key, int ttlMillis);
 
     /**
      * Remove a specific value for a given key
@@ -92,12 +136,31 @@ public interface MultiMapData<K> extends BaseData {
     public String remove(K key, String index);
 
     /**
+     * Remove value at key and index older than ttlMillis
+     * 
+     * @param key
+     * @param index
+     * @param ttlMillis
+     * @return
+     */
+    public String remove(K key, String index, int ttlMillis);
+
+    /**
      * Remove all values under key
      * 
      * @param key
      * @return
      */
     public List<String> removeAll(K key);
+
+    /**
+     * Remove all values under key older than ttlMillis
+     * 
+     * @param key
+     * @param ttlMillis
+     * @return
+     */
+    public List<String> removeAll(K key, int ttlMillis);
 
     /**
      * @return number of keys

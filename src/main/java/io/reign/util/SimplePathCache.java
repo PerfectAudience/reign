@@ -79,15 +79,15 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
     /**
      * 
      * @param absolutePath
-     * @param ttl
+     * @param ttlMillis
      * @return
      */
     @Override
-    public PathCacheEntry get(String absolutePath, int ttl) {
+    public PathCacheEntry get(String absolutePath, int ttlMillis) {
         PathCacheEntry cacheEntry = cache.get(absolutePath);
 
         // if item is expired, return null
-        if (System.currentTimeMillis() - cacheEntry.getLastUpdatedTimestampMillis() > ttl) {
+        if (cacheEntry == null || isExpired(cacheEntry, ttlMillis)) {
             missCount.incrementAndGet();
             return null;
         }
@@ -98,18 +98,24 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
     }
 
     @Override
-    public PathCacheEntry get(String absolutePath, int ttl, PathCacheEntryUpdater updater, int updateThreshold) {
+    public PathCacheEntry get(String absolutePath, int ttlMillis, PathCacheEntryUpdater updater,
+            int updateThresholdMillis) {
         PathCacheEntry cacheEntry = cache.get(absolutePath);
+
+        if (cacheEntry == null) {
+            missCount.incrementAndGet();
+            return null;
+        }
 
         long timeDiff = System.currentTimeMillis() - cacheEntry.getLastUpdatedTimestampMillis();
 
         // if item age is past updateThreshold, then schedule an async refresh to keep cache data fresh
-        if (timeDiff > updateThreshold) {
+        if (updateThresholdMillis > 0 && timeDiff > updateThresholdMillis) {
             executorService.submit(new PathCacheEntryUpdaterRunnable(absolutePath, updater, cache));
         }
 
         // if item is expired, return null
-        if (timeDiff > ttl) {
+        if (ttlMillis > 0 && timeDiff > ttlMillis) {
             missCount.incrementAndGet();
             return null;
         }
@@ -120,8 +126,8 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
     }
 
     @Override
-    public PathCacheEntry get(String absolutePath, int ttl, int updateThreshold) {
-        return get(absolutePath, ttl, new DefaultPathCacheEntryUpdater(absolutePath), updateThreshold);
+    public PathCacheEntry get(String absolutePath, int ttlMillis, int updateThreshold) {
+        return get(absolutePath, ttlMillis, new DefaultPathCacheEntryUpdater(absolutePath), updateThreshold);
     }
 
     /**
@@ -245,6 +251,10 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
                     + ":  path=" + path, e);
         }
 
+    }
+
+    boolean isExpired(PathCacheEntry cacheEntry, int ttlMillis) {
+        return (ttlMillis > 0 && System.currentTimeMillis() - cacheEntry.getLastUpdatedTimestampMillis() > ttlMillis);
     }
 
     /**

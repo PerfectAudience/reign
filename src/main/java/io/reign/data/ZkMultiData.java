@@ -82,7 +82,7 @@ public class ZkMultiData<V> implements MultiData<V> {
 
     @Override
     public synchronized void set(V value) {
-        set(DataValue.DEFAULT_INDEX, value);
+        set(DEFAULT_INDEX, value);
     }
 
     @Override
@@ -98,13 +98,13 @@ public class ZkMultiData<V> implements MultiData<V> {
 
     @Override
     public synchronized V get(Class<V> typeClass) {
-        return get(DataValue.DEFAULT_INDEX, -1, typeClass);
+        return get(DEFAULT_INDEX, -1, typeClass);
 
     }
 
     @Override
     public synchronized V get(int ttlMillis, Class<V> typeClass) {
-        return get(DataValue.DEFAULT_INDEX, ttlMillis, typeClass);
+        return get(DEFAULT_INDEX, ttlMillis, typeClass);
 
     }
 
@@ -144,12 +144,12 @@ public class ZkMultiData<V> implements MultiData<V> {
 
     @Override
     public synchronized String remove() {
-        return remove(DataValue.DEFAULT_INDEX, -1);
+        return remove(DEFAULT_INDEX, -1);
     }
 
     @Override
     public synchronized String remove(int ttlMillis) {
-        return remove(DataValue.DEFAULT_INDEX, ttlMillis);
+        return remove(DEFAULT_INDEX, ttlMillis);
     }
 
     @Override
