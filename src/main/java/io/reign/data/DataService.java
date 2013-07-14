@@ -102,36 +102,28 @@ public class DataService extends AbstractActiveService {
         return new ZkMultiMapData<K>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
     }
 
-    public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath, int maxSize, int ttlMillis,
-            boolean processSafe, List<ACL> aclList) {
-        if (maxSize == -1) {
-            dataPath = dataPath + LIST_PATH_SUFFIX;
-        } else {
-            dataPath = dataPath + LIST_PATH_SUFFIX.charAt(0) + maxSize + LIST_PATH_SUFFIX.charAt(1);
-        }
+    public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath, List<ACL> aclList) {
 
-        DistributedReadWriteLock readWriteLock = null;
-        if (processSafe) {
-            readWriteLock = getReadWriteLock(clusterId, dataPath);
-        }
+        dataPath = dataPath + LIST_PATH_SUFFIX;
+
+        DistributedReadWriteLock readWriteLock = getReadWriteLock(clusterId, dataPath);
 
         PathScheme pathScheme = getPathScheme();
         String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkLinkedListData<V>(maxSize, absoluteBasePath, getPathScheme(), readWriteLock, getZkClient(),
-                getPathCache(), ttlMillis);
+        return new ZkLinkedListData<V>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
     }
 
     public <V> QueueData<V> getQueue(String clusterId, String dataPath, int maxSize, int ttlMillis,
             boolean processSafe, List<ACL> aclList) {
-        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe, aclList);
+        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, aclList);
 
         return new ZkQueueData<V>(linkedListData);
     }
 
     public <V> StackData<V> getStack(String clusterId, String dataPath, int maxSize, int ttlMillis,
             boolean processSafe, List<ACL> aclList) {
-        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, maxSize, ttlMillis, processSafe, aclList);
+        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, aclList);
 
         return new ZkStackData<V>(linkedListData);
     }

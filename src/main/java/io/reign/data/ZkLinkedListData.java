@@ -16,11 +16,16 @@
 
 package io.reign.data;
 
+import io.reign.DataSerializer;
 import io.reign.PathScheme;
+import io.reign.ReignContext;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
-import io.reign.util.PathCache;
 
+import java.util.List;
+import java.util.Map;
+
+import org.apache.zookeeper.data.ACL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,32 +42,37 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
 
     private final DistributedReadWriteLock readWriteLock;
 
-    private final int maxSize;
-
-    private final String relativeBasePath;
+    private final String absoluteBasePath;
 
     private final PathScheme pathScheme;
-
     private final ZkClient zkClient;
-    private final PathCache pathCache;
+    // private final PathCache pathCache;
 
-    private final int ttlMillis;
+    private final List<ACL> aclList;
+
+    private final ZkClientLinkedListDataUtil zkClientLinkedListDataUtil;
 
     /**
      * @param maxSize
      * @param basePath
      * @param readWriteLock
-     *            for inter-process safety; can be null
+     *            for inter-process safety; cannot be null
      */
-    public ZkLinkedListData(int maxSize, String relativeBasePath, PathScheme pathScheme,
-            DistributedReadWriteLock readWriteLock, ZkClient zkClient, PathCache pathCache, int ttlMillis) {
-        this.maxSize = maxSize;
-        this.relativeBasePath = relativeBasePath;
-        this.pathScheme = pathScheme;
+    public ZkLinkedListData(String absoluteBasePath, DistributedReadWriteLock readWriteLock, List<ACL> aclList,
+            Map<String, DataSerializer> dataSerializerMap, ReignContext context) {
+        if (readWriteLock == null) {
+            throw new IllegalArgumentException("readWriteLock must not be null!");
+        }
+
+        this.absoluteBasePath = absoluteBasePath;
+        this.pathScheme = context.getPathScheme();
         this.readWriteLock = readWriteLock;
-        this.zkClient = zkClient;
-        this.pathCache = pathCache;
-        this.ttlMillis = ttlMillis;
+        this.zkClient = context.getZkClient();
+        // this.pathCache = context.getPathCache();
+        this.aclList = aclList;
+
+        this.zkClientLinkedListDataUtil = new ZkClientLinkedListDataUtil(context.getZkClient(),
+                context.getPathScheme(), context.getPathCache(), dataSerializerMap);
     }
 
     @Override
@@ -73,128 +83,96 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
     }
 
     @Override
-    public synchronized <T extends V> T popAt(int index) {
-        lockForWrite();
-        try {
-
-        } finally {
-            unlockForWrite();
-        }
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized <T extends V> T popAt(int index, Class<T> typeClass) {
+        return getValueAt(index, typeClass, true);
     }
 
     @Override
-    public synchronized <T extends V> T peekAt(int index) {
-        lockForRead();
-        try {
-
-        } finally {
-            unlockForRead();
-        }
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized <T extends V> T peekAt(int index, Class<T> typeClass) {
+        return getValueAt(index, typeClass, false);
     }
 
     @Override
-    public synchronized <T extends V> T popFirst() {
-        lockForWrite();
-        try {
-
-        } finally {
-            unlockForWrite();
-        }
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized <T extends V> T popFirst(Class<T> typeClass) {
+        return getValueAt(0, typeClass, true);
     }
 
     @Override
-    public synchronized <T extends V> T popLast() {
-        lockForWrite();
-        try {
-
-        } finally {
-            unlockForWrite();
-        }
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized <T extends V> T popLast(Class<T> typeClass) {
+        return getValueAt(-1, typeClass, true);
     }
 
     @Override
-    public synchronized <T extends V> T peekFirst() {
-        lockForRead();
-        try {
-
-        } finally {
-            unlockForRead();
-        }
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized <T extends V> T peekFirst(Class<T> typeClass) {
+        return getValueAt(0, typeClass, false);
     }
 
     @Override
-    public synchronized <T extends V> T peekLast() {
-        lockForRead();
-        try {
-
-        } finally {
-            unlockForRead();
-        }
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized <T extends V> T peekLast(Class<T> typeClass) {
+        return getValueAt(-1, typeClass, false);
     }
 
     @Override
     public synchronized boolean pushLast(V value) {
-        lockForWrite();
+        zkClientLinkedListDataUtil.lockForWrite(readWriteLock);
         try {
-
+            zkClientLinkedListDataUtil.writeData(absoluteBasePath, value, aclList);
         } finally {
-            unlockForWrite();
+            zkClientLinkedListDataUtil.unlockForWrite(readWriteLock);
         }
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public synchronized int size() {
-        lockForRead();
+        zkClientLinkedListDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
         try {
-
+            return zkClientLinkedListDataUtil.getSortedChildList(absoluteBasePath).size();
         } finally {
-            unlockForRead();
+            zkClientLinkedListDataUtil.unlockForRead(readWriteLock);
         }
-        // TODO Auto-generated method stub
-        return 0;
+
     }
 
-    @Override
-    public synchronized int maxSize() {
-        return maxSize;
-    }
+    synchronized <T extends V> T getValueAt(int index, Class<T> typeClass, boolean deleteAfterRead) {
+        if (deleteAfterRead) {
+            zkClientLinkedListDataUtil.lockForWrite(readWriteLock, absoluteBasePath, this);
+        } else {
+            zkClientLinkedListDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
+        }
+        try {
+            List<String> childList = zkClientLinkedListDataUtil.getSortedChildList(absoluteBasePath);
+            if (index < 0) {
+                index = childList.size() + index;
+            }
+            if (index >= 0 && childList.size() > index) {
+                // get child node to read
+                String child = childList.get(index);
+                String absoluteDataPath = pathScheme.joinPaths(absoluteBasePath, child);
 
-    void lockForWrite() {
-        if (readWriteLock != null) {
-            readWriteLock.writeLock().lock();
+                // sync connection on path before read
+                zkClientLinkedListDataUtil.syncZkClient(absoluteDataPath, this);
+
+                // read child node value
+                T childData = zkClientLinkedListDataUtil.readData(absoluteDataPath, -1, typeClass);
+
+                // delete node
+                if (deleteAfterRead) {
+                    zkClientLinkedListDataUtil.deleteData(absoluteDataPath, -1);
+                }
+
+                // return value
+                return childData;
+            } else {
+                throw new IndexOutOfBoundsException("index < 0 || index >= size():  index=" + index + "; size="
+                        + childList.size());
+            }
+        } finally {
+            if (deleteAfterRead) {
+                zkClientLinkedListDataUtil.unlockForWrite(readWriteLock);
+            } else {
+                zkClientLinkedListDataUtil.unlockForRead(readWriteLock);
+            }
         }
     }
-
-    void unlockForWrite() {
-        if (readWriteLock != null) {
-            readWriteLock.writeLock().unlock();
-        }
-    }
-
-    void lockForRead() {
-        if (readWriteLock != null) {
-            readWriteLock.readLock().lock();
-        }
-    }
-
-    void unlockForRead() {
-        if (readWriteLock != null) {
-            readWriteLock.readLock().unlock();
-        }
-    }
-
 }

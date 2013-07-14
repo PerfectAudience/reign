@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -35,13 +35,13 @@ public class ZkQueueData<V> implements QueueData<V> {
     }
 
     @Override
-    public synchronized V pop() {
-        return this.linkedListData.popFirst();
+    public synchronized <T extends V> T pop(Class<T> typeClass) {
+        return this.linkedListData.popFirst(typeClass);
     }
 
     @Override
-    public synchronized V peek() {
-        return this.linkedListData.peekFirst();
+    public synchronized <T extends V> T peek(Class<T> typeClass) {
+        return this.linkedListData.peekFirst(typeClass);
     }
 
     @Override
@@ -52,11 +52,6 @@ public class ZkQueueData<V> implements QueueData<V> {
     @Override
     public synchronized int size() {
         return this.linkedListData.size();
-    }
-
-    @Override
-    public synchronized int maxSize() {
-        return this.linkedListData.maxSize();
     }
 
 }

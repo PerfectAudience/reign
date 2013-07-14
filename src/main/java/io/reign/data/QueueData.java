@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -30,7 +30,7 @@ public interface QueueData<V> extends BaseData {
      * @param <T>
      * @return
      */
-    public <T extends V> T pop();
+    public <T extends V> T pop(Class<T> typeClass);
 
     /**
      * Return oldest inserted item without removing.
@@ -38,7 +38,7 @@ public interface QueueData<V> extends BaseData {
      * @param <T>
      * @return
      */
-    public <T extends V> T peek();
+    public <T extends V> T peek(Class<T> typeClass);
 
     /**
      * Insert item at end of queue
@@ -53,11 +53,5 @@ public interface QueueData<V> extends BaseData {
      * @return current number of items
      */
     public int size();
-
-    /**
-     * 
-     * @return max size limit; -1 if no limit
-     */
-    public int maxSize();
 
 }

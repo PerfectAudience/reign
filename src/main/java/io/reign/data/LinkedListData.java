@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -31,7 +31,7 @@ public interface LinkedListData<V> extends BaseData {
      * @param index
      * @return item at index
      */
-    public <T extends V> T popAt(int index);
+    public <T extends V> T popAt(int index, Class<T> typeClass);
 
     /**
      * Return item at index without removing.
@@ -40,7 +40,7 @@ public interface LinkedListData<V> extends BaseData {
      * @param index
      * @return item at index
      */
-    public <T extends V> T peekAt(int index);
+    public <T extends V> T peekAt(int index, Class<T> typeClass);
 
     /**
      * Remove first item and return it -- FIFO style
@@ -48,14 +48,14 @@ public interface LinkedListData<V> extends BaseData {
      * @param <T>
      * @return
      */
-    public <T extends V> T popFirst();
+    public <T extends V> T popFirst(Class<T> typeClass);
 
     /**
      * Remove last item and return it -- LIFO style
      * 
      * @return
      */
-    public <T extends V> T popLast();
+    public <T extends V> T popLast(Class<T> typeClass);
 
     /**
      * Return first item without removing.
@@ -63,14 +63,14 @@ public interface LinkedListData<V> extends BaseData {
      * @param <T>
      * @return
      */
-    public <T extends V> T peekFirst();
+    public <T extends V> T peekFirst(Class<T> typeClass);
 
     /**
      * Return last item without removing.
      * 
      * @return
      */
-    public <T extends V> T peekLast();
+    public <T extends V> T peekLast(Class<T> typeClass);
 
     /**
      * Insert item at end of queue
@@ -85,11 +85,5 @@ public interface LinkedListData<V> extends BaseData {
      * @return current number of items
      */
     public int size();
-
-    /**
-     * 
-     * @return max size limit; -1 if no limit
-     */
-    public int maxSize();
 
 }

@@ -58,6 +58,13 @@ public class ZkClientDataUtil extends ZkClientUtil {
         }// if
     }
 
+    void lockForWrite(DistributedReadWriteLock readWriteLock, String dataPath, final Object monitorObject) {
+        if (readWriteLock != null) {
+            readWriteLock.writeLock().lock();
+            syncZkClient(dataPath, monitorObject);
+        }// if
+    }
+
     void unlockForWrite(DistributedReadWriteLock readWriteLock) {
         if (readWriteLock != null) {
             readWriteLock.writeLock().unlock();
@@ -98,6 +105,10 @@ public class ZkClientDataUtil extends ZkClientUtil {
                 logger.warn("Interrupted while waiting for ZK sync():  " + e, e);
             }
         }
+    }
+
+    boolean isExpired(long lastModifiedMillis, int ttlMillis) {
+        return ttlMillis > 0 && lastModifiedMillis + ttlMillis < System.currentTimeMillis();
     }
 
 }

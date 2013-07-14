@@ -237,7 +237,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         zkClientMultiDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
         try {
             if (readWriteLock == null) {
-                keys = zkClientMultiDataUtil.getChildrenFromPathCache(absoluteBasePath, -1);
+                keys = zkClientMultiDataUtil.getChildListFromPathCache(absoluteBasePath, -1);
             }
 
             if (keys == null) {

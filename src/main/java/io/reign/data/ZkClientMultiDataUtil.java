@@ -183,7 +183,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             // get children
             List<String> childList = null;
             if (usePathCache) {
-                childList = getChildrenFromPathCache(absoluteBasePath, ttlMillis);
+                childList = getChildListFromPathCache(absoluteBasePath, ttlMillis);
             }
             if (childList == null) {
                 Stat stat = new Stat();
@@ -276,7 +276,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
      * @param ttlMillis
      * @return List of children; or null if data in cache is expired or missing
      */
-    List<String> getChildrenFromPathCache(String absoluteBasePath, int ttlMillis) {
+    List<String> getChildListFromPathCache(String absoluteBasePath, int ttlMillis) {
 
         List<String> childList = null;
         PathCacheEntry pathCacheEntry = pathCache.get(absoluteBasePath, ttlMillis);
@@ -318,7 +318,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             // get children
             List<String> childList = null;
             if (usePathCache) {
-                childList = getChildrenFromPathCache(absoluteBasePath, ttlMillis);
+                childList = getChildListFromPathCache(absoluteBasePath, ttlMillis);
             }
             if (childList == null) {
                 Stat stat = new Stat();
@@ -357,7 +357,4 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
         }
     }
 
-    boolean isExpired(long lastModifiedMillis, int ttlMillis) {
-        return ttlMillis > 0 && lastModifiedMillis + ttlMillis < System.currentTimeMillis();
-    }
 }
