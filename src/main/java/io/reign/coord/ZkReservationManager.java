@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
@@ -228,8 +228,16 @@ class ZkReservationManager {
 
             // log if not acquired
             if (acquiredPath == null) {
-                logger.info("Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}",
-                        new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs });
+                boolean relinquishLockReservationPath = this.relinquish(lockReservationPath);
+                if (!relinquishLockReservationPath) {
+                    logger.error(
+                            "Unable to relinquish the lockReservationPath; ownerId={}; relinquishLockReservationPath={};",
+                            ownerId, relinquishLockReservationPath);
+                }
+                logger.info(
+                        "Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}; relinquishLockReservationPath={};",
+                        new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs,
+                                relinquishLockReservationPath });
             }
 
             return acquiredPath;
@@ -369,8 +377,16 @@ class ZkReservationManager {
 
             // log if not acquired
             if (acquiredPath == null) {
-                logger.info("Could not acquire:  ownerId={}; lockType={}; entityPath={}; waitTimeoutMillis={}",
-                        new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs });
+                boolean relinquishLockReservationPath = this.relinquish(lockReservationPath);
+                if (!relinquishLockReservationPath) {
+                    logger.error(
+                            "Unable to relinquish the lockReservationPath; ownerId={}; relinquishLockReservationPath={};",
+                            ownerId, relinquishLockReservationPath);
+                }
+                logger.info(
+                        "Could not acquire:  ownerId={}; lockType={}; lockPath={}; waitTimeoutMillis={}; relinquishLockReservationPath={};",
+                        new Object[] { ownerId, reservationType, entityPath, waitTimeoutMs,
+                                relinquishLockReservationPath });
             }
 
             return acquiredPath;
