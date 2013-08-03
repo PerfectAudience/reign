@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.conf;
 
@@ -26,7 +26,7 @@ import io.reign.ServiceObserver;
 public abstract class SimpleConfObserver<T> implements ServiceObserver, ConfObserver<T> {
 
     @Override
-    public abstract void updated(T data);
+    public abstract void updated(T newData, T oldData);
 
     @Override
     public void stateReset(Object o) {

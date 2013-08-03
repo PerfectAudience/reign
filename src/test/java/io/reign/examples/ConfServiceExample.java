@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.examples;
 
@@ -39,8 +39,7 @@ public class ConfServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        final Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).core()
-                .get();
+        final Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).core().get();
         // reign.start();
 
         /** conf service example **/
@@ -91,9 +90,9 @@ public class ConfServiceExample {
         Properties loadedConf = null;
         confService.observe("examples", "config1.properties", new SimpleConfObserver<ConfProperties>() {
             @Override
-            public void updated(ConfProperties conf) {
+            public void updated(ConfProperties conf, ConfProperties oldConf) {
                 if (conf != null) {
-                    logger.info("***** Observer:  conf={}", conf);
+                    logger.info("***** Observer:  conf={}; oldConf={}", conf, oldConf);
 
                 } else {
                     logger.info("***** Observer:  conf deleted");
@@ -125,6 +124,6 @@ public class ConfServiceExample {
         loadedConf = confService.getConf("examples", "config1.properties");
 
         // remove configuration
-        confService.removeConf("examples", "config1.properties");
+        // confService.removeConf("examples", "config1.properties");
     }
 }

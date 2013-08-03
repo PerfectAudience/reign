@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.conf;
 
@@ -26,7 +26,8 @@ public interface ConfObserver<T> {
     /**
      * Called when T is updated.
      * 
-     * @param data
+     * @param newData
+     * @param oldData
      */
-    public void updated(T data);
+    public void updated(T newData, T oldData);
 }

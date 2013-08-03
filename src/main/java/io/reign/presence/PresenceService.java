@@ -409,8 +409,8 @@ public class PresenceService extends AbstractActiveService implements Observable
         NodeInfo result = null;
         if (!error) {
             try {
-                result = new NodeInfo(clusterId, serviceId, nodeId, bytes != null ? nodeAttributeSerializer
-                        .deserialize(bytes) : Collections.EMPTY_MAP);
+                result = new NodeInfo(clusterId, serviceId, nodeId,
+                        bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
             } catch (Throwable e) {
                 throw new IllegalStateException(
                         "lookup():  error trying to fetch node info:  path=" + path + ":  " + e, e);
@@ -696,8 +696,8 @@ public class PresenceService extends AbstractActiveService implements Observable
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(), requestMessage
-                        .getBody());
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
+                        requestMessage.getBody());
             }
 
             /** preprocess request **/
@@ -762,11 +762,12 @@ public class PresenceService extends AbstractActiveService implements Observable
             responseMessage.setId(requestMessage.getId());
 
             return responseMessage;
+
         } catch (Exception e) {
             logger.error("" + e, e);
+            return SimpleResponseMessage.DEFAULT_ERROR_RESPONSE;
         }
 
-        return null;
     }
 
     @Override
@@ -791,8 +792,10 @@ public class PresenceService extends AbstractActiveService implements Observable
         PresenceObserverWrapper observerWrapper = observerManager.getObserverWrapperSet(path).iterator().next();
         if (observerWrapper.isService()) {
             // only service nodes can have children
-            observerManager.signal(path, lookupServiceInfo(observerWrapper.getClusterId(), observerWrapper
-                    .getServiceId(), null, observerWrapper.getNodeAttributeSerializer(), true));
+            observerManager.signal(
+                    path,
+                    lookupServiceInfo(observerWrapper.getClusterId(), observerWrapper.getServiceId(), null,
+                            observerWrapper.getNodeAttributeSerializer(), true));
         }
     }
 

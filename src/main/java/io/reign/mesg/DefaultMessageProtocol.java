@@ -25,9 +25,6 @@ public class DefaultMessageProtocol implements MessageProtocol {
      */
     private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapperInstance();
 
-    private static final ResponseMessage DEFAULT_ERROR_RESPONSE = new SimpleResponseMessage(
-            ResponseStatus.ERROR_UNEXPECTED);
-
     /**
      * Simple ASCII protocol: [SERVICE_NAME][COLON][MESSAGE_PAYLOAD]
      */
@@ -93,7 +90,7 @@ public class DefaultMessageProtocol implements MessageProtocol {
             });
         } catch (Exception e) {
             logger.error("" + e, e);
-            return DEFAULT_ERROR_RESPONSE;
+            return SimpleResponseMessage.DEFAULT_ERROR_RESPONSE;
         }
     }
 

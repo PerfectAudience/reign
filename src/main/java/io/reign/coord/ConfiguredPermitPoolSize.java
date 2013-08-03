@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
@@ -99,8 +99,8 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
     }
 
     @Override
-    public void updated(Map<String, String> data) {
-        this.size = Integer.parseInt(data.get("permitPoolSize"));
+    public void updated(Map<String, String> newData, Map<String, String> oldData) {
+        this.size = Integer.parseInt(newData.get("permitPoolSize"));
         logger.info("Permit pool size updated:  size={}", size);
     }
 
@@ -124,8 +124,8 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
         // write out to ZK
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         confService.putConf(clusterId,
-                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName), semaphoreConf,
-                confSerializer, aclList);
+                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName),
+                semaphoreConf, confSerializer, aclList);
     }
 
     /**
@@ -143,8 +143,8 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
         // read configuration
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         Map<String, String> semaphoreConf = confService.getConf(clusterId,
-                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName), confSerializer,
-                confObserver);
+                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName),
+                confSerializer, confObserver);
         return semaphoreConf;
     }
 }

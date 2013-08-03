@@ -65,7 +65,9 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public String getAbsolutePath(PathType pathType, String relativePath) {
-
+        if (relativePath == null || "".equals(relativePath)) {
+            return getAbsolutePath(pathType);
+        }
         return basePath + "/" + pathType + "/" + relativePath;
     }
 

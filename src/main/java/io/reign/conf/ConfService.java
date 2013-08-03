@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.conf;
 
@@ -25,9 +25,11 @@ import io.reign.ServiceObserverManager;
 import io.reign.ServiceObserverWrapper;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.SimpleResponseMessage;
 import io.reign.util.PathCacheEntry;
 import io.reign.util.ZkClientUtil;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.zookeeper.CreateMode;
@@ -171,7 +173,8 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param relativePath
      */
     public void removeConf(String clusterId, String relativeConfPath) {
-        String path = getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath));
+        String path = getPathScheme().getAbsolutePath(PathType.CONF,
+                getPathScheme().joinPaths(clusterId, relativeConfPath));
         try {
             getZkClient().delete(path, -1);
 
@@ -367,7 +370,105 @@ public class ConfService extends AbstractService implements ObservableService {
      */
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
-        return null;
+        ResponseMessage responseMessage;
+        try {
+            /** preprocess request **/
+            String requestBody = (String) requestMessage.getBody();
+            int newlineIndex = requestBody.indexOf("\n");
+            String resourceLine = requestBody;
+            String confBody = null;
+            if (newlineIndex != -1) {
+                resourceLine = requestBody.substring(0, newlineIndex);
+                confBody = requestBody.substring(newlineIndex + 1);
+            }
+
+            // get meta
+            String meta = null;
+            String resource = null;
+            int hashLastIndex = resourceLine.lastIndexOf("#");
+            if (hashLastIndex != -1) {
+                meta = resourceLine.substring(hashLastIndex + 1);
+                resource = resourceLine.substring(0, hashLastIndex);
+            } else {
+                resource = resourceLine;
+            }
+
+            // get resource; strip beginning and ending slashes "/"
+            if (resource.startsWith("/")) {
+                resource = resource.substring(1);
+            }
+            if (resource.endsWith("/")) {
+                resource = resource.substring(0, resource.length() - 1);
+            }
+
+            /** get response **/
+            String[] tokens = getPathScheme().tokenizePath(resource);
+            responseMessage = new SimpleResponseMessage();
+
+            String clusterId = null;
+            String relativePath = null;
+            if (tokens.length == 1) {
+                // list configurations in cluster
+                clusterId = tokens[0];
+
+            } else if (tokens.length > 1) {
+                clusterId = tokens[0];
+
+                String[] relativePathTokens = Arrays.<String> copyOfRange(tokens, 1, tokens.length);
+                relativePath = getPathScheme().joinTokens(relativePathTokens);
+
+            }
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("clusterId={}; relativePath={}; meta={}", new Object[] { clusterId, relativePath, meta });
+            }
+
+            /** decide what to do based on meta value **/
+            if (meta == null) {
+                // get conf or list conf(s) available
+                if (clusterId != null && relativePath != null) {
+                    Object conf = getConf(clusterId, relativePath);
+                    if (conf != null) {
+                        responseMessage.setBody(conf);
+                    } else {
+                        // no configuration data, so list configuration data available at path
+                        String absolutePath = getPathScheme().getAbsolutePath(PathType.CONF,
+                                getPathScheme().joinPaths(clusterId, relativePath));
+                        List<String> childList = getZkClient().getChildren(absolutePath, false);
+                        responseMessage.setBody(childList);
+                    }
+
+                } else if (clusterId != null && relativePath == null) {
+                    // list configs in cluster
+                    String absolutePath = getPathScheme().getAbsolutePath(PathType.CONF, clusterId);
+                    List<String> childList = getZkClient().getChildren(absolutePath, false);
+                    responseMessage.setBody(childList);
+
+                } else {
+                    // both clusterId and relativePath are null: just list available clusters
+                    String absolutePath = getPathScheme().getAbsolutePath(PathType.CONF);
+                    List<String> childList = getZkClient().getChildren(absolutePath, false);
+                    responseMessage.setBody(childList);
+                }
+
+            } else if ("update".equals(meta)) {
+                // edit conf
+
+            } else if ("delete".equals(meta)) {
+                // delete conf
+                removeConf(clusterId, relativePath);
+
+            } else {
+                responseMessage.setComment("Invalid request (do not understand '" + meta + "'):  " + requestBody);
+            }
+
+            return responseMessage;
+
+        } catch (Exception e) {
+            logger.error("handleMessage():  " + e, e);
+            return SimpleResponseMessage.DEFAULT_ERROR_RESPONSE;
+        }
+
     }
 
     private static class ConfObserverWrapper<T> extends ServiceObserverWrapper<SimpleConfObserver<T>> {
@@ -390,7 +491,7 @@ public class ConfService extends AbstractService implements ObservableService {
 
         @Override
         public void signalObserver(Object o) {
-            this.observer.updated((T) o);
+            this.observer.updated((T) o, this.currentValue);
 
             // update current value for comparison against any future events
             // (sometimes we get a ZK event even if relevant value has not
