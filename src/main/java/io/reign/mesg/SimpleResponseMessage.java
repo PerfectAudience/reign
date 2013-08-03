@@ -35,6 +35,12 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
         setBody(body);
     }
 
+    public SimpleResponseMessage(ResponseStatus status, Object body, String comment) {
+        setStatus(status);
+        setBody(body);
+        setComment(comment);
+    }
+
     @Override
     public ResponseStatus getStatus() {
         return status;

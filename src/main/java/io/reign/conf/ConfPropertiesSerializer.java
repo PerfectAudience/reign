@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.conf;
 
@@ -21,7 +21,6 @@ import io.reign.DataSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Properties;
-
 
 public class ConfPropertiesSerializer<T extends Properties> implements DataSerializer<T> {
 

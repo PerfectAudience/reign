@@ -70,7 +70,7 @@ public class ConfServiceExample {
         logger.info("DONE");
 
         /** sleep to allow examples to run for a bit **/
-        Thread.sleep(60000);
+        Thread.sleep(600000);
 
         /** shutdown reign **/
         reign.stop();
@@ -124,6 +124,6 @@ public class ConfServiceExample {
         loadedConf = confService.getConf("examples", "config1.properties");
 
         // remove configuration
-        // confService.removeConf("examples", "config1.properties");
+        confService.removeConf("examples", "config1.properties");
     }
 }

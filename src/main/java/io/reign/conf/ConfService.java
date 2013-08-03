@@ -25,12 +25,17 @@ import io.reign.ServiceObserverManager;
 import io.reign.ServiceObserverWrapper;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.ResponseStatus;
 import io.reign.mesg.SimpleResponseMessage;
 import io.reign.util.PathCacheEntry;
 import io.reign.util.ZkClientUtil;
 
+import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -55,24 +60,69 @@ public class ConfService extends AbstractService implements ObservableService {
 
     private final ServiceObserverManager<ConfObserverWrapper> observerManager = new ServiceObserverManager<ConfObserverWrapper>();
 
+    private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(17,
+            0.9f, 1);
+
+    public ConfService() {
+        dataSerializerMap.put("properties", new ConfPropertiesSerializer<ConfProperties>(false));
+        dataSerializerMap.put("props", dataSerializerMap.get("properties"));
+        dataSerializerMap.put("json", new JsonDataSerializer());
+        dataSerializerMap.put("js", dataSerializerMap.get("json"));
+    }
+
+    /**
+     * 
+     * @param extension
+     *            "file" extension of path: would be "properties" in the following path:
+     *            /my-cluster/my-config.properties
+     * @param dataSerializer
+     */
+    public void registerSerializer(String extension, DataSerializer dataSerializer) {
+        dataSerializerMap.put(extension, dataSerializer);
+    }
+
+    static DataSerializer getDataSerializer(String path, Map<String, DataSerializer> dataSerializerMap) {
+        int lastDotIndex = path.lastIndexOf(".");
+        String extension = path.substring(lastDotIndex + 1);
+        DataSerializer result = dataSerializerMap.get(extension);
+        if (result == null) {
+            throw new IllegalArgumentException("Could not derive serializer from given information:  path=" + path);
+        }
+        return result;
+    }
+
+    static boolean isValidConfPath(String path) {
+        if (path == null) {
+            return false;
+        }
+
+        int lastSlashIndex = path.lastIndexOf("/");
+        int lastDotIndex = path.lastIndexOf(".");
+        if (lastDotIndex == -1 || lastSlashIndex > lastDotIndex || lastDotIndex - lastSlashIndex < 2
+                || lastDotIndex < 1 || lastDotIndex == path.length() - 1) {
+            return false;
+        }
+        return true;
+    }
+
+    static void throwExceptionIfInvalidConfPath(String path) {
+        if (!isValidConfPath(path)) {
+            throw new IllegalArgumentException("Invalid configuration path:  path=" + path);
+        }
+    }
+
     public <T> void observe(String clusterId, String relativeConfPath, SimpleConfObserver<T> observer) {
         observe(PathType.CONF, clusterId, relativeConfPath, observer);
     }
 
     <T> void observe(PathType pathType, String clusterId, String relativeConfPath, SimpleConfObserver<T> observer) {
 
+        throwExceptionIfInvalidConfPath(relativeConfPath);
+
         String absolutePath = getPathScheme().getAbsolutePath(pathType,
                 getPathScheme().joinPaths(clusterId, relativeConfPath));
 
-        DataSerializer confSerializer = null;
-        if (relativeConfPath.endsWith(".properties")) {
-            confSerializer = new ConfPropertiesSerializer<ConfProperties>(false);
-        } else if (relativeConfPath.endsWith(".json") || relativeConfPath.endsWith(".js")) {
-            confSerializer = new JsonDataSerializer();
-        } else {
-            throw new IllegalArgumentException("Could not derive serializer from given information:  path="
-                    + relativeConfPath);
-        }
+        DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
 
         Object result = getConfValue(absolutePath, confSerializer, false);
 
@@ -88,15 +138,10 @@ public class ConfService extends AbstractService implements ObservableService {
      * @return
      */
     public <T> T getConf(String clusterId, String relativeConfPath) {
-        DataSerializer confSerializer = null;
-        if (relativeConfPath.endsWith(".properties")) {
-            confSerializer = new ConfPropertiesSerializer<ConfProperties>(false);
-        } else if (relativeConfPath.endsWith(".json") || relativeConfPath.endsWith(".js")) {
-            confSerializer = new JsonDataSerializer<T>();
-        } else {
-            throw new IllegalArgumentException("Could not derive serializer from given information:  path="
-                    + relativeConfPath);
-        }
+        throwExceptionIfInvalidConfPath(relativeConfPath);
+
+        DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
+
         return (T) getConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, confSerializer, null, true);
 
     }
@@ -134,16 +179,9 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param conf
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf) {
-        DataSerializer confSerializer = null;
-        if (relativeConfPath.endsWith(".properties")) {
-            confSerializer = new ConfPropertiesSerializer<ConfProperties>(false);
-        } else if (relativeConfPath.endsWith(".json") || relativeConfPath.endsWith(".js")) {
-            confSerializer = new JsonDataSerializer<T>();
-        } else {
-            throw new IllegalArgumentException("Could not derive serializer from given information:  path="
-                    + relativeConfPath);
-        }
-        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, getDefaultZkAclList());
+        DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
+        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF,
+                getPathScheme().joinPaths(clusterId, relativeConfPath)), conf, confSerializer, getDefaultZkAclList());
     }
 
     /**
@@ -153,7 +191,8 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param confSerializer
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer) {
-        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, getDefaultZkAclList());
+        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF,
+                getPathScheme().joinPaths(clusterId, relativeConfPath)), conf, confSerializer, getDefaultZkAclList());
     }
 
     /**
@@ -165,7 +204,8 @@ public class ConfService extends AbstractService implements ObservableService {
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer,
             List<ACL> aclList) {
-        putConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, conf, confSerializer, aclList);
+        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF,
+                getPathScheme().joinPaths(clusterId, relativeConfPath)), conf, confSerializer, aclList);
     }
 
     /**
@@ -175,6 +215,7 @@ public class ConfService extends AbstractService implements ObservableService {
     public void removeConf(String clusterId, String relativeConfPath) {
         String path = getPathScheme().getAbsolutePath(PathType.CONF,
                 getPathScheme().joinPaths(clusterId, relativeConfPath));
+
         try {
             getZkClient().delete(path, -1);
 
@@ -206,6 +247,7 @@ public class ConfService extends AbstractService implements ObservableService {
      */
     <T> T getConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath,
             DataSerializer<T> confSerializer, SimpleConfObserver<T> observer, boolean useCache) {
+
         String absolutePath = getPathScheme().getAbsolutePath(pathType,
                 getPathScheme().joinPaths(clusterId, relativeConfPath));
         return getConfAbsolutePath(absolutePath, confSerializer, observer, useCache);
@@ -237,6 +279,9 @@ public class ConfService extends AbstractService implements ObservableService {
     }
 
     <T> T getConfValue(String absolutePath, DataSerializer<T> confSerializer, boolean useCache) {
+
+        throwExceptionIfInvalidConfPath(absolutePath);
+
         byte[] bytes = null;
         T result = null;
 
@@ -265,8 +310,8 @@ public class ConfService extends AbstractService implements ObservableService {
                     logger.error("getConfValue():  error trying to watch node:  " + e1 + ":  path=" + absolutePath, e1);
                 }
 
-                logger.debug("getConfValue():  error trying to fetch node info:  {}:  node does not exist:  path={}",
-                        e.getMessage(), absolutePath);
+                logger.debug("getConfValue():  error trying to fetch node info:  {}:  node does not exist:  path={}", e
+                        .getMessage(), absolutePath);
             } else {
                 logger.error("getConfValue():  error trying to fetch node info:  " + e, e);
             }
@@ -288,14 +333,30 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param confSerializer
      * @param aclList
      */
-    <T> void putConfAbsolutePath(PathType pathType, String clusterId, String relativeConfPath, T conf,
-            DataSerializer<T> confSerializer, List<ACL> aclList) {
-        String absolutePath = getPathScheme().getAbsolutePath(pathType,
-                getPathScheme().joinPaths(clusterId, relativeConfPath));
+    <T> void putConfAbsolutePath(String absolutePath, T conf, DataSerializer<T> confSerializer, List<ACL> aclList) {
+
+        throwExceptionIfInvalidConfPath(absolutePath);
+
         try {
             // write to ZK
             byte[] leafData = confSerializer.serialize(conf);
             String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), absolutePath, leafData, aclList,
+                    CreateMode.PERSISTENT, -1);
+
+            logger.debug("putConfAbsolutePath():  saved configuration:  path={}", pathUpdated);
+        } catch (Exception e) {
+            logger.error("putConfAbsolutePath():  error while saving configuration:  " + e + ":  path=" + absolutePath,
+                    e);
+        }
+    }
+
+    void putConfAbsolutePath(String absolutePath, byte[] bytes, List<ACL> aclList) {
+
+        throwExceptionIfInvalidConfPath(absolutePath);
+
+        try {
+            // write to ZK
+            String pathUpdated = zkUtil.updatePath(getZkClient(), getPathScheme(), absolutePath, bytes, aclList,
                     CreateMode.PERSISTENT, -1);
 
             logger.debug("putConfAbsolutePath():  saved configuration:  path={}", pathUpdated);
@@ -370,7 +431,7 @@ public class ConfService extends AbstractService implements ObservableService {
      */
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
-        ResponseMessage responseMessage;
+        ResponseMessage responseMessage = new SimpleResponseMessage();
         try {
             /** preprocess request **/
             String requestBody = (String) requestMessage.getBody();
@@ -403,7 +464,6 @@ public class ConfService extends AbstractService implements ObservableService {
 
             /** get response **/
             String[] tokens = getPathScheme().tokenizePath(resource);
-            responseMessage = new SimpleResponseMessage();
 
             String clusterId = null;
             String relativePath = null;
@@ -427,11 +487,13 @@ public class ConfService extends AbstractService implements ObservableService {
             if (meta == null) {
                 // get conf or list conf(s) available
                 if (clusterId != null && relativePath != null) {
-                    Object conf = getConf(clusterId, relativePath);
-                    if (conf != null) {
-                        responseMessage.setBody(conf);
+                    if (isValidConfPath(relativePath)) {
+                        Object conf = getConf(clusterId, relativePath);
+                        if (conf != null) {
+                            responseMessage.setBody(conf);
+                        }
                     } else {
-                        // no configuration data, so list configuration data available at path
+                        // list items available
                         String absolutePath = getPathScheme().getAbsolutePath(PathType.CONF,
                                 getPathScheme().joinPaths(clusterId, relativePath));
                         List<String> childList = getZkClient().getChildren(absolutePath, false);
@@ -451,10 +513,64 @@ public class ConfService extends AbstractService implements ObservableService {
                     responseMessage.setBody(childList);
                 }
 
-            } else if ("update".equals(meta)) {
-                // edit conf
+            } else if ("update".equals(meta) || "put".equals(meta)) {
+                // edit conf (add, remove, or update properties)
+                Map conf;
+                if ("put".equals(meta)) {
+                    logger.info("PUT configuration:  clusterId={}; path={}", clusterId, relativePath);
+
+                    conf = new Properties();
+
+                } else {
+                    logger.info("UPDATE configuration:  clusterId={}; path={}", clusterId, relativePath);
+
+                    conf = getConf(clusterId, relativePath);
+
+                    // set existing configuration in response now so even if we get unexpected error, it will show in
+                    // response
+                    responseMessage.setBody(conf);
+
+                    // create one to build upon if doesn't exist yet
+                    if (conf == null) {
+                        // if this is a new configuration
+                        conf = new Properties();
+                    }
+                }
+
+                // TODO: use UTF-8 universally in the future?
+                // read in api body as properties for easier processing
+                Properties updateProperties = new Properties();
+                updateProperties.load(new ByteArrayInputStream(confBody.getBytes("ISO-8859-1")));
+                for (Object keyObject : updateProperties.keySet()) {
+                    String key = (String) keyObject;
+                    if (key.startsWith("+")) {
+                        key = key.substring(1);
+
+                        // only add if doesn't already exist
+                        if (conf.get(key) == null) {
+                            conf.put(key, castValueIfNecessary(updateProperties.getProperty(key)));
+                        }
+
+                    } else if (key.startsWith("-")) {
+                        key = key.substring(1);
+
+                        // remove key
+                        conf.remove(key);
+                    } else {
+                        // add or overwrite existing property
+                        conf.put(key, castToMatchExistingTypeIfNecessary(updateProperties.getProperty(key), conf
+                                .get(key)));
+                    }
+                }// for
+
+                putConf(clusterId, relativePath, conf);
+
+                // set if it's a "put"
+                responseMessage.setBody(conf);
 
             } else if ("delete".equals(meta)) {
+                logger.info("DELETE configuration:  clusterId={}; path={}", clusterId, relativePath);
+
                 // delete conf
                 removeConf(clusterId, relativePath);
 
@@ -462,11 +578,70 @@ public class ConfService extends AbstractService implements ObservableService {
                 responseMessage.setComment("Invalid request (do not understand '" + meta + "'):  " + requestBody);
             }
 
-            return responseMessage;
-
         } catch (Exception e) {
             logger.error("handleMessage():  " + e, e);
-            return SimpleResponseMessage.DEFAULT_ERROR_RESPONSE;
+            responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
+        }
+
+        return responseMessage;
+    }
+
+    /**
+     * 
+     * @param value
+     * @param matchValue
+     * @return object of the same type as matchValue
+     */
+    static Object castToMatchExistingTypeIfNecessary(String value, Object matchValue) {
+        // try to cast value
+        Object castedValue = castValueIfNecessary(value);
+
+        if (matchValue == null || castedValue == null || !value.equals(castedValue) || matchValue instanceof String) {
+            // favor explicit cast
+            return castedValue;
+        } else if (matchValue instanceof Integer) {
+            return Integer.parseInt(value);
+        } else if (matchValue instanceof Long) {
+            return Long.parseLong(value);
+        } else if (matchValue instanceof Double) {
+            return Double.parseDouble(value);
+        } else if (matchValue instanceof Float) {
+            return Float.parseFloat(value);
+        } else if (matchValue instanceof Short) {
+            return Short.parseShort(value);
+        } else if (matchValue instanceof Byte) {
+            return Byte.parseByte(value);
+        }
+
+        logger.warn("matchType():  cannot handle type, so defaulting to String:  {}", matchValue.getClass().getName());
+        return value;
+    }
+
+    /**
+     * 
+     * @param value
+     * @param matchValue
+     * @return object of the same type as matchValue
+     */
+    static Object castValueIfNecessary(String value) {
+        if (value == null) {
+            return value;
+        } else if (value.startsWith("(int)")) {
+            return Integer.parseInt(value.substring(5));
+        } else if (value.startsWith("(long)")) {
+            return Long.parseLong(value.substring(6));
+        } else if (value.startsWith("(double)")) {
+            return Double.parseDouble(value.substring(8));
+        } else if (value.startsWith("(float)")) {
+            return Float.parseFloat(value.substring(7));
+        } else if (value.startsWith("(short)")) {
+            return Short.parseShort(value.substring(7));
+        } else if (value.startsWith("(byte)")) {
+            return Byte.parseByte(value.substring(6));
+        } else if (value.startsWith("(string)")) {
+            return value.substring(8);
+        } else {
+            return value;
         }
 
     }
