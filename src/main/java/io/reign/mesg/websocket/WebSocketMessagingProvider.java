@@ -81,15 +81,18 @@ public class WebSocketMessagingProvider implements MessagingProvider {
     WebSocketClient getClient(String endpointUri) {
         WebSocketClient client = clientMap.get(endpointUri);
         if (client == null) {
-            try {
-                WebSocketClient newClient = new WebSocketClient(endpointUri);
-                client = clientMap.putIfAbsent(endpointUri, newClient);
-                if (client == null) {
-                    client = newClient;
-                    newClient.connect();
+            synchronized (clientMap) {
+                try {
+                    WebSocketClient newClient = new WebSocketClient(endpointUri);
+                    client = clientMap.putIfAbsent(endpointUri, newClient);
+                    if (client == null) {
+                        logger.info("Establishing connection:  remote={}", endpointUri);
+                        client = newClient;
+                        newClient.connect();
+                    }
+                } catch (Exception e) {
+                    throw new UnexpectedReignException(e);
                 }
-            } catch (Exception e) {
-                throw new UnexpectedReignException(e);
             }
         }// if
         return client;
@@ -110,6 +113,33 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         this.server = new WebSocketServer(port, serviceDirectory, messageProtocol);
         server.start();
 
+        // start connection maintenance thread
+        Thread adminThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!shutdown) {
+                    for (String key : clientMap.keySet()) {
+                        WebSocketClient client = clientMap.get(key);
+
+                        logger.info("Sending PING:  remote={}", key);
+                        if (!client.isClosed()) {
+                            client.ping();
+                        }
+                    }
+
+                    try {
+                        Thread.sleep(20000);
+                    } catch (InterruptedException e) {
+                        logger.warn("Interrupted:  " + e, e);
+                    }
+                }
+            }
+        });
+        adminThread.setPriority(Thread.MIN_PRIORITY);
+        adminThread.setDaemon(true);
+        adminThread.setName("Reign:WebSocketMessagingProvider.adminThread");
+        adminThread.start();
+
         shutdown = false;
 
     }
@@ -122,6 +152,14 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
         logger.info("STOP:  shutting down websockets server");
         server.stop();
+
+        logger.info("STOP:  closing client connections");
+        for (String key : clientMap.keySet()) {
+            WebSocketClient client = clientMap.get(key);
+
+            logger.info("STOP:  closing client connection:  remote={}", key);
+            client.close();
+        }
 
         this.shutdown = true;
     }

@@ -57,7 +57,10 @@ public class WebSocketClient {
         this.uri = uri;
     }
 
-    public void connect() throws Exception {
+    public synchronized void connect() throws Exception {
+        if (channel != null && channel.isConnected()) {
+            return;
+        }
 
         logger.info("Connecting:  uri={}", uri);
 
@@ -148,10 +151,12 @@ public class WebSocketClient {
         channel.write(new PingWebSocketFrame(ChannelBuffers.copiedBuffer(new byte[] { 1 })));
     }
 
-    public void close() {
+    public synchronized void close() {
         try {
-            logger.debug("WebSocket Client sending close");
-            channel.write(new CloseWebSocketFrame());
+            if (channel.isConnected()) {
+                logger.debug("WebSocket Client sending close");
+                channel.write(new CloseWebSocketFrame());
+            }
 
             // WebSocketClientHandler will close the connection when the server
             // responds to the CloseWebSocketFrame.
@@ -162,6 +167,10 @@ public class WebSocketClient {
             }
         }
         bootstrap.releaseExternalResources();
+    }
+
+    public synchronized boolean isClosed() {
+        return !channel.isConnected();
     }
 
     // public void run() throws Exception {

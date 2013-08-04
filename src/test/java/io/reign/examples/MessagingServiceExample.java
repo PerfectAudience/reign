@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.examples;
 
@@ -54,7 +54,7 @@ public class MessagingServiceExample {
         messagingExample(reign);
 
         /** sleep to allow examples to run for a bit **/
-        Thread.sleep(600000);
+        Thread.sleep(60000);
 
         /** shutdown reign **/
         reign.stop();

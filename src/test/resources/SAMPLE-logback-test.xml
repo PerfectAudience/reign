@@ -40,7 +40,7 @@
         <level value="WARN" />
     </logger>
     
-    <logger name="io.reign.messaging">
+    <logger name="io.reign.mesg">
         <level value="WARN" />
     </logger>
     
@@ -48,7 +48,7 @@
         <level value="TRACE" />
     </logger>    
     
-    <logger name="io.reign.zookeeper">
+    <logger name="io.reign.zk">
         <level value="TRACE" />
     </logger>
     
@@ -57,7 +57,7 @@
     </logger>    
     
     <logger name="org.apache.zookeeper">
-        <level value="INFO" />
+        <level value="WARN" />
     </logger>
    
 </configuration>
