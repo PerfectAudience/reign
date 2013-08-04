@@ -114,13 +114,13 @@ Take a look at a [UI screenshot](docs/screenshot-ui-1.png).
 Run one of the examples and in the terminal, you should be able to send the following messages and see the corresponding responses (more information is available on the "Terminal Guide" tab):
 
 List available services in cluster namespace "examples":  
-`presence:/examples`
+`presence:/examples`  
 
 List nodes comprising "service1":  
-`presence:/examples/service1`
+`presence:/examples/service1`  
 
 List nodes comprising "service2":  
-`presence:/examples/service2`
+`presence:/examples/service2`  
 
 ### Storing configuration in ZooKeeper
 
