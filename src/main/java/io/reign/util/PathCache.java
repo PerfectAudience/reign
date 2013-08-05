@@ -44,28 +44,28 @@ public interface PathCache {
      */
     public PathCacheEntry get(String absolutePath);
 
-    /**
-     * Behaves the same as get(String absolutePath, int ttl) but will update cache entry in the background if cache
-     * entry age is past updateThreshold.
-     * 
-     * @param absolutePath
-     * @param ttl
-     * @param updater
-     * @param updateThreshold
-     * @return
-     */
-    public PathCacheEntry get(String absolutePath, int ttlMillis, PathCacheEntryUpdater updater,
-            int updateThresholdMillis);
+    // /**
+    // * Behaves the same as get(String absolutePath, int ttl) but will update cache entry in the background if cache
+    // * entry age is past updateThreshold.
+    // *
+    // * @param absolutePath
+    // * @param ttl
+    // * @param updater
+    // * @param updateThreshold
+    // * @return
+    // */
+    // public PathCacheEntry get(String absolutePath, int ttlMillis, PathCacheEntryUpdater updater,
+    // int updateThresholdMillis);
 
-    /**
-     * Uses default updater (updates children, node stat, and node value).
-     * 
-     * @param absolutePath
-     * @param ttl
-     * @param updateThreshold
-     * @return
-     */
-    public PathCacheEntry get(String absolutePath, int ttlMillis, int updateThresholdMillis);
+    // /**
+    // * Uses default updater (updates children, node stat, and node value).
+    // *
+    // * @param absolutePath
+    // * @param ttl
+    // * @param updateThreshold
+    // * @return
+    // */
+    // public PathCacheEntry get(String absolutePath, int ttlMillis, int updateThresholdMillis);
 
     /**
      * 

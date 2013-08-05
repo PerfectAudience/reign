@@ -16,12 +16,13 @@
 
 package io.reign.data;
 
-import io.reign.AbstractActiveService;
+import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.PathScheme;
 import io.reign.PathType;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedReadWriteLock;
+import io.reign.coord.CoordinationService.AdminRunnable;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 
@@ -29,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.data.ACL;
 import org.slf4j.Logger;
@@ -39,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class DataService extends AbstractActiveService {
+public class DataService extends AbstractService {
 
     private static final Logger logger = LoggerFactory.getLogger(DataService.class);
 
@@ -55,6 +58,8 @@ public class DataService extends AbstractActiveService {
 
     private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(33,
             0.9f, 1);
+
+    private ScheduledThreadPoolExecutor executorService;
 
     public DataService() {
         // register default serializers
@@ -135,27 +140,15 @@ public class DataService extends AbstractActiveService {
     }
 
     @Override
-    public void perform() {
-        /** check data cache and see if we need to do reads to keep data cache warm **/
-
-        /** do operations in task queue **/
-
-        /** groom data **/
-        // get lock on path, check data point TTLs, and clean up data nodes as necessary
-    }
-
-    @Override
     public void init() {
-        // minimum of 1 second intervals between updating data
-        if (this.getExecutionIntervalMillis() < 1000) {
-            this.setExecutionIntervalMillis(DEFAULT_EXECUTION_INTERVAL_MILLIS);
-        }
-
+        executorService = new ScheduledThreadPoolExecutor(1);
+        Runnable adminRunnable = new AdminRunnable();
+        executorService.scheduleAtFixedRate(adminRunnable, 600000, 600000, TimeUnit.MILLISECONDS);
     }
 
     @Override
     public void destroy() {
-
+        executorService.shutdown();
     }
 
     public void registerSerializer(String className, DataSerializer dataSerializer) {
@@ -166,14 +159,28 @@ public class DataService extends AbstractActiveService {
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
         if (logger.isTraceEnabled()) {
             try {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(), requestMessage
-                        .getBody());
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
+                        requestMessage.getBody());
             } catch (Exception e) {
                 logger.error("" + e, e);
             }
         }
 
         return null;
+    }
+
+    /**
+     * TODO: implement
+     * 
+     * @author ypai
+     * 
+     */
+    public class AdminRunnable implements Runnable {
+        @Override
+        public void run() {
+            /** groom data **/
+            // get lock on path, check data point TTLs, and clean up data nodes as necessary
+        }
     }
 
 }

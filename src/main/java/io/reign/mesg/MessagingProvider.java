@@ -9,10 +9,6 @@ import io.reign.ReignContext;
  */
 public interface MessagingProvider {
 
-    // public MessageQueue getRequestQueue();
-    //
-    // public MessageQueue getResponseQueue();
-
     /**
      * Automatically set during bootstrapping.
      * 
@@ -32,8 +28,8 @@ public interface MessagingProvider {
 
     public int getPort();
 
-    public void start();
+    public void init();
 
-    public void stop();
+    public void destroy();
 
 }

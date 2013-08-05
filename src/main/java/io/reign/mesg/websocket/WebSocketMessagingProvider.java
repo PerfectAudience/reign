@@ -99,7 +99,7 @@ public class WebSocketMessagingProvider implements MessagingProvider {
     }
 
     @Override
-    public synchronized void start() {
+    public synchronized void init() {
         if (!shutdown) {
             return;
         }
@@ -145,7 +145,7 @@ public class WebSocketMessagingProvider implements MessagingProvider {
     }
 
     @Override
-    public synchronized void stop() {
+    public synchronized void destroy() {
         if (shutdown) {
             return;
         }

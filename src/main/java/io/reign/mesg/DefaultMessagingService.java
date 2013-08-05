@@ -135,14 +135,14 @@ public class DefaultMessagingService extends AbstractService implements Messagin
         this.messagingProvider.setMessageProtocol(messageProtocol);
         this.messagingProvider.setServiceDirectory(getContext());
         this.messagingProvider.setPort(port);
-        this.messagingProvider.start();
+        this.messagingProvider.init();
     }
 
     @Override
     public void destroy() {
         logger.info("Shutting down messaging service:  port={}", port);
 
-        this.messagingProvider.stop();
+        this.messagingProvider.destroy();
     }
 
 }

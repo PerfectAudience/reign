@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -158,12 +158,16 @@ public class MockZkClient implements ZkClient, Watcher {
 
     private void dataWatchNode(String path, Watcher watcher) {
         MockZkNode node = findNode(path);
-        node.getDataWatcherSet().add(watcher);
+        if (node != null) {
+            node.getDataWatcherSet().add(watcher);
+        }
     }
 
     private void childWatchNode(String path, Watcher watcher) {
         MockZkNode node = findNode(path);
-        node.getChildWatcherSet().add(watcher);
+        if (node != null) {
+            node.getChildWatcherSet().add(watcher);
+        }
     }
 
     void emitWatchedEvent(String path, EventType eventType, KeeperState keeperState) {
@@ -184,8 +188,8 @@ public class MockZkClient implements ZkClient, Watcher {
                 // remove watches after single use, like real ZK behavior
                 if (watchersToRemove.size() > 0) {
                     if (logger.isDebugEnabled()) {
-                        logger.debug("Removing {} data watchers after emitting event:  path={}", watchersToRemove
-                                .size(), path);
+                        logger.debug("Removing {} data watchers after emitting event:  path={}",
+                                watchersToRemove.size(), path);
                     }
                     for (Watcher watcher : watchersToRemove) {
                         node.getDataWatcherSet().remove(watcher);
@@ -200,8 +204,8 @@ public class MockZkClient implements ZkClient, Watcher {
                 // remove watches after single use, like real ZK behavior
                 if (watchersToRemove.size() > 0) {
                     if (logger.isDebugEnabled()) {
-                        logger.debug("Removing {} child watchers after emitting event:  path={}", watchersToRemove
-                                .size(), path);
+                        logger.debug("Removing {} child watchers after emitting event:  path={}",
+                                watchersToRemove.size(), path);
                     }
                     for (Watcher watcher : watchersToRemove) {
                         node.getChildWatcherSet().remove(watcher);
@@ -340,7 +344,9 @@ public class MockZkClient implements ZkClient, Watcher {
             childWatchNode(path, this);
         }
         MockZkNode node = findNode(path);
-        copyStat(node.getStat(), stat);
+        if (node != null) {
+            copyStat(node.getStat(), stat);
+        }
         return node != null ? node.getChildList() : null;
     }
 

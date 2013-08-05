@@ -12,11 +12,11 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
-import io.reign.AbstractActiveService;
+import io.reign.AbstractService;
 import io.reign.ObservableService;
 import io.reign.PathScheme;
 import io.reign.PathType;
@@ -27,6 +27,8 @@ import io.reign.conf.ConfService;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.ACL;
@@ -39,17 +41,22 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class CoordinationService extends AbstractActiveService implements ObservableService {
+public class CoordinationService extends AbstractService implements ObservableService {
     private static final Logger logger = LoggerFactory.getLogger(CoordinationService.class);
 
     private ZkReservationManager zkReservationManager;
 
-    /** what is the maximum amount of time a lock can be held: -1 for indefinite */
-    private final long maxLockHoldTimeMillis = -1;
+    /**
+     * what is the maximum amount of time a reservation can be held: -1 for indefinite (used to kill reservations held
+     * by zombie processes as a safety)
+     */
+    private volatile long maxReservationHoldTimeMillis = -1;
 
     private final ServiceObserverManager<CoordObserverWrapper> observerManager = new ServiceObserverManager<CoordObserverWrapper>();
 
     private final CoordinationServiceCache coordinationServiceCache;
+
+    private ScheduledThreadPoolExecutor executorService;
 
     public CoordinationService() {
         super();
@@ -57,7 +64,7 @@ public class CoordinationService extends AbstractActiveService implements Observ
         coordinationServiceCache = new CoordinationServiceCache();
 
         // by default, check/clean-up locks every minute
-        this.setExecutionIntervalMillis(60000);
+        // this.setExecutionIntervalMillis(60000);
     }
 
     public void observe(String clusterId, String lockName, SimpleLockObserver observer) {
@@ -267,50 +274,35 @@ public class CoordinationService extends AbstractActiveService implements Observ
         return semaphore;
     }
 
-    public long getMaxLockHoldTimeMillis() {
-        return maxLockHoldTimeMillis;
+    public long getMaxReservationHoldTimeMillis() {
+        return maxReservationHoldTimeMillis;
     }
 
-    @Override
-    public void perform() {
-        /** get exclusive leader lock to perform maintenance duties **/
-        DistributedLock adminLock = getLock("reign", "admin", getDefaultZkAclList());
-        adminLock.lock();
-        logger.info("Performing administrative maintenance...");
-        try {
-            /** semaphore maintenance **/
-            // list semaphores
-
-            // acquire lock on a semaphore
-
-            // revoke any permits that have exceeded the limit
-
-            /** lock maintenance **/
-            // list locks
-
-            // get exclusive lock on a given lock to perform long held lock
-            // checking
-
-            // traverse lock tree and remove any long held locks that exceed
-            // threshold
-
-            /** barrier maintenance **/
-        } finally {
-            adminLock.unlock();
-            adminLock.destroy();
-        }
+    public void setMaxReservationHoldTimeMillis(long maxReservationHoldTimeMillis) {
+        this.maxReservationHoldTimeMillis = maxReservationHoldTimeMillis;
     }
+
+    // @Override
+    // public void perform() {
+    //
+    // }
 
     @Override
     public void init() {
         zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), getPathCache(),
                 coordinationServiceCache);
 
+        executorService = new ScheduledThreadPoolExecutor(1);
+
+        Runnable adminRunnable = new AdminRunnable();
+        executorService.scheduleAtFixedRate(adminRunnable, 60000, 60000, TimeUnit.MILLISECONDS);
+
     }
 
     @Override
     public void destroy() {
         zkReservationManager.shutdown();
+        executorService.shutdown();
 
     }
 
@@ -418,6 +410,11 @@ public class CoordinationService extends AbstractActiveService implements Observ
         }
     }// class
 
+    /**
+     * 
+     * @author ypai
+     * 
+     */
     private static class SemaphoreObserverWrapper extends CoordObserverWrapper<SimpleSemaphoreObserver> {
 
         private final PathScheme pathScheme;
@@ -445,4 +442,41 @@ public class CoordinationService extends AbstractActiveService implements Observ
 
         }
     }// class
+
+    /**
+     * 
+     * @author ypai
+     * 
+     */
+    public class AdminRunnable implements Runnable {
+        @Override
+        public void run() {
+            /** get exclusive leader lock to perform maintenance duties **/
+            DistributedLock adminLock = getLock("reign", "admin", getDefaultZkAclList());
+            adminLock.lock();
+            logger.info("Performing administrative maintenance...");
+            try {
+                /** semaphore maintenance **/
+                // list semaphores
+
+                // acquire lock on a semaphore
+
+                // revoke any permits that have exceeded the limit
+
+                /** lock maintenance **/
+                // list locks
+
+                // get exclusive lock on a given lock to perform long held lock
+                // checking
+
+                // traverse lock tree and remove any long held locks that exceed
+                // threshold
+
+                /** barrier maintenance **/
+            } finally {
+                adminLock.unlock();
+                adminLock.destroy();
+            }
+        }// run
+    }// AdminRunnable
 }

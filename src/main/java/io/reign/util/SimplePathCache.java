@@ -97,38 +97,38 @@ public class SimplePathCache extends AbstractZkEventHandler implements PathCache
         return cacheEntry;
     }
 
-    @Override
-    public PathCacheEntry get(String absolutePath, int ttlMillis, PathCacheEntryUpdater updater,
-            int updateThresholdMillis) {
-        PathCacheEntry cacheEntry = cache.get(absolutePath);
+    // @Override
+    // public PathCacheEntry get(String absolutePath, int ttlMillis, PathCacheEntryUpdater updater,
+    // int updateThresholdMillis) {
+    // PathCacheEntry cacheEntry = cache.get(absolutePath);
+    //
+    // if (cacheEntry == null) {
+    // missCount.incrementAndGet();
+    // return null;
+    // }
+    //
+    // long timeDiff = System.currentTimeMillis() - cacheEntry.getLastUpdatedTimestampMillis();
+    //
+    // // if item age is past updateThreshold, then schedule an async refresh to keep cache data fresh
+    // if (updateThresholdMillis > 0 && timeDiff > updateThresholdMillis) {
+    // executorService.submit(new PathCacheEntryUpdaterRunnable(absolutePath, updater, cache));
+    // }
+    //
+    // // if item is expired, return null
+    // if (ttlMillis > 0 && timeDiff > ttlMillis) {
+    // missCount.incrementAndGet();
+    // return null;
+    // }
+    //
+    // hitCount.incrementAndGet();
+    //
+    // return cacheEntry;
+    // }
 
-        if (cacheEntry == null) {
-            missCount.incrementAndGet();
-            return null;
-        }
-
-        long timeDiff = System.currentTimeMillis() - cacheEntry.getLastUpdatedTimestampMillis();
-
-        // if item age is past updateThreshold, then schedule an async refresh to keep cache data fresh
-        if (updateThresholdMillis > 0 && timeDiff > updateThresholdMillis) {
-            executorService.submit(new PathCacheEntryUpdaterRunnable(absolutePath, updater, cache));
-        }
-
-        // if item is expired, return null
-        if (ttlMillis > 0 && timeDiff > ttlMillis) {
-            missCount.incrementAndGet();
-            return null;
-        }
-
-        hitCount.incrementAndGet();
-
-        return cacheEntry;
-    }
-
-    @Override
-    public PathCacheEntry get(String absolutePath, int ttlMillis, int updateThreshold) {
-        return get(absolutePath, ttlMillis, new DefaultPathCacheEntryUpdater(absolutePath), updateThreshold);
-    }
+    // @Override
+    // public PathCacheEntry get(String absolutePath, int ttlMillis, int updateThreshold) {
+    // return get(absolutePath, ttlMillis, new DefaultPathCacheEntryUpdater(absolutePath), updateThreshold);
+    // }
 
     /**
      * Get with no TTL.

@@ -74,7 +74,7 @@ public class Reign implements Watcher {
 
     private PathCache pathCache;
 
-    private ScheduledExecutorService executorService;
+    // private ScheduledExecutorService executorService;
 
     private volatile boolean started = false;
     private volatile boolean shutdown = false;
@@ -136,8 +136,8 @@ public class Reign implements Watcher {
     public void process(WatchedEvent event) {
         // log if TRACE
         if (logger.isTraceEnabled()) {
-            logger.trace("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
-                    ToStringStyle.DEFAULT_STYLE));
+            logger.trace("***** Received ZooKeeper Event:  {}",
+                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
 
@@ -322,24 +322,24 @@ public class Reign implements Watcher {
             this.watcherList.add(0, (Watcher) pathCache);
         }
 
-        /** init executor **/
-        logger.info("START:  initializing executor");
-        this.executorService = this.createExecutorService();
+        // /** init executor **/
+        // logger.info("START:  initializing executor");
+        // this.executorService = this.createExecutorService();
 
-        /** start services running **/
-        logger.info("START:  schedule service tasks");
-        for (String serviceName : serviceMap.keySet()) {
-            ServiceWrapper serviceWrapper = serviceMap.get(serviceName);
-            logger.debug("Checking service:  {}", serviceWrapper.getService().getClass().getName());
-
-            // execute if not a continuously running service and not shutdown
-            if (!this.shutdown && serviceWrapper.isSubmittable()) {
-                logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
-                Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, serviceWrapper
-                        .getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
-                futureMap.put(serviceName, future);
-            }// if
-        }// for
+        // /** start services running **/
+        // logger.info("START:  schedule service tasks");
+        // for (String serviceName : serviceMap.keySet()) {
+        // ServiceWrapper serviceWrapper = serviceMap.get(serviceName);
+        // logger.debug("Checking service:  {}", serviceWrapper.getService().getClass().getName());
+        //
+        // // execute if not a continuously running service and not shutdown
+        // if (!this.shutdown && serviceWrapper.isSubmittable()) {
+        // logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
+        // Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, serviceWrapper
+        // .getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
+        // futureMap.put(serviceName, future);
+        // }// if
+        // }// for
 
         started = true;
 
@@ -376,9 +376,9 @@ public class Reign implements Watcher {
             future.cancel(false);
         }
 
-        /** stop executor **/
-        logger.info("SHUTDOWN:  shutting down executor");
-        executorService.shutdown();
+        // /** stop executor **/
+        // logger.info("SHUTDOWN:  shutting down executor");
+        // executorService.shutdown();
 
         /** clean up services **/
         logger.info("SHUTDOWN:  cleaning up services");
@@ -423,21 +423,21 @@ public class Reign implements Watcher {
         }// if
     }
 
-    /**
-     * Creates and appropriately sizes executor service for services configured.
-     * 
-     * @return
-     */
-    private ScheduledExecutorService createExecutorService() {
-        // get number of continuously running services
-        int continuouslyRunningCount = 0;
-        for (ServiceWrapper serviceWrapper : serviceMap.values()) {
-            if (serviceWrapper.isActiveService() && serviceWrapper.isAlwaysActive()) {
-                continuouslyRunningCount++;
-            }
-        }
-        return new ScheduledThreadPoolExecutor(continuouslyRunningCount + this.getThreadPoolSize());
-    }
+    // /**
+    // * Creates and appropriately sizes executor service for services configured.
+    // *
+    // * @return
+    // */
+    // private ScheduledExecutorService createExecutorService() {
+    // // get number of continuously running services
+    // int continuouslyRunningCount = 0;
+    // for (ServiceWrapper serviceWrapper : serviceMap.values()) {
+    // if (serviceWrapper.isActiveService()) {
+    // continuouslyRunningCount++;
+    // }
+    // }
+    // return new ScheduledThreadPoolExecutor(continuouslyRunningCount + this.getThreadPoolSize());
+    // }
 
     /**
      * Convenience wrapper providing methods for interpreting service metadata.
@@ -445,9 +445,10 @@ public class Reign implements Watcher {
      * @author ypai
      * 
      */
-    private static class ServiceWrapper implements Runnable {
+    private static class ServiceWrapper {
         private final Service service;
-        private boolean running = false;
+
+        // private boolean running = false;
 
         public ServiceWrapper(Service service) {
             this.service = service;
@@ -457,35 +458,35 @@ public class Reign implements Watcher {
             return service;
         }
 
-        public boolean isActiveService() {
-            return service instanceof ActiveService;
-        }
+        // public boolean isActiveService() {
+        // return service instanceof ActiveService;
+        // }
 
-        public boolean isSubmittable() {
-            return isActiveService() && !isRunning();
-        }
+        // public boolean isSubmittable() {
+        // return isActiveService() && !isRunning();
+        // }
 
-        public synchronized boolean isAlwaysActive() {
-            return ((ActiveService) this.service).getExecutionIntervalMillis() < 1;
-        }
+        // public synchronized boolean isAlwaysActive() {
+        // return ((ActiveService) this.service).getExecutionIntervalMillis() < 1;
+        // }
 
-        public synchronized boolean isRunning() {
-            return running;
-        }
+        // public synchronized boolean isRunning() {
+        // return running;
+        // }
 
-        public long getIntervalMillis() {
-            return ((ActiveService) service).getExecutionIntervalMillis();
-        }
+        // public long getIntervalMillis() {
+        // return ((ActiveService) service).getExecutionIntervalMillis();
+        // }
 
-        @Override
-        public synchronized void run() {
-            this.running = true;
-
-            logger.debug("Calling {}.perform()", service.getClass().getName());
-            ((ActiveService) this.service).perform();
-
-            this.running = false;
-        }
+        // @Override
+        // public synchronized void run() {
+        // this.running = true;
+        //
+        // logger.debug("Calling {}.perform()", service.getClass().getName());
+        // ((ActiveService) this.service).perform();
+        //
+        // this.running = false;
+        // }
 
     }
 
