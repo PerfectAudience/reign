@@ -130,7 +130,7 @@ public class PresenceService extends AbstractService implements ObservableServic
             return Collections.EMPTY_LIST;
         }
 
-        return children;
+        return children != null ? children : Collections.EMPTY_LIST;
     }
 
     public List<String> lookupServices(String clusterId) {
@@ -202,13 +202,18 @@ public class PresenceService extends AbstractService implements ObservableServic
             boolean useCache, long timeoutMillis) {
 
         ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
+
         if (result == null || result.getNodeIdList().size() < 1) {
             String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
             String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
 
             // set exists watch
+            List<String> childList = Collections.EMPTY_LIST;
             try {
-                getZkClient().exists(path, true);
+                Stat stat = getZkClient().exists(path, true);
+                if (stat != null) {
+                    childList = getZkClient().getChildren(path, true);
+                }
             } catch (KeeperException e1) {
                 logger.error("" + e1, e1);
             } catch (InterruptedException e1) {
@@ -219,26 +224,29 @@ public class PresenceService extends AbstractService implements ObservableServic
             this.observerManager.put(path, new PresenceObserverWrapper<ServiceInfo>(clusterId, serviceId, null,
                     notifyObserver, nodeAttributeSerializer, result));
 
-            logger.info("Waiting until service is available:  path={}", path);
-
             synchronized (notifyObserver) {
                 long waitStartTimestamp = System.currentTimeMillis();
                 while ((result == null || result.getNodeIdList().size() < 1)
                         && (System.currentTimeMillis() - waitStartTimestamp < timeoutMillis || timeoutMillis < 0)) {
-                    try {
-                        if (timeoutMillis < 0) {
-                            notifyObserver.wait();
-                        } else {
-                            notifyObserver.wait(timeoutMillis);
-                        }
-                    } catch (InterruptedException e) {
-                        logger.warn("Interrupted while waiting for ServiceInfo:  " + e, e);
-                    }
-                    result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
-                }
-            }
+                    if (childList == null || childList.size() < 1) {
+                        logger.info("Waiting until service is available:  path={}", path);
+                        try {
+                            if (timeoutMillis < 0) {
+                                notifyObserver.wait();
+                            } else {
+                                notifyObserver.wait(timeoutMillis);
+                            }
+                        } catch (InterruptedException e) {
+                            logger.warn("Interrupted while waiting for ServiceInfo:  " + e, e);
+                        } // try
+                    }// if
 
-        }
+                    result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, useCache);
+                }// while
+            }// synchronized
+
+        } // if
+
         return result;
     }
 

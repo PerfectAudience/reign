@@ -19,6 +19,7 @@ package io.reign.zk;
 import io.reign.ZkClient;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -38,9 +39,11 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -962,8 +965,8 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         /***** log event *****/
         // log if TRACE
         if (logger.isTraceEnabled()) {
-            logger.trace("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
-                    ToStringStyle.DEFAULT_STYLE));
+            logger.trace("***** Received ZooKeeper Event:  {}",
+                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
 
@@ -1040,8 +1043,8 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
         /***** pass event on to registered Watchers *****/
         if (event.getType() != EventType.None) {
             if (shutdown) {
-                logger.warn("Already shutdown:  not passing event to registered watchers:  type={}; path={}", event
-                        .getType(), event.getPath());
+                logger.warn("Already shutdown:  not passing event to registered watchers:  type={}; path={}",
+                        event.getType(), event.getPath());
                 return;
             }
 
@@ -1191,4 +1194,27 @@ public class ResilientZooKeeper implements ZkClient, Watcher {
 
     }// class
 
+    // public static void main(String[] args) throws Exception {
+    // List<ACL> aclList = new ArrayList<ACL>();
+    // aclList.add(new ACL(ZooDefs.Perms.ALL, new Id("world", "anyone")));
+    //
+    // ZooKeeper zk = new ZooKeeper("localhost", 5000, new Watcher() {
+    // @Override
+    // public void process(WatchedEvent event) {
+    // System.out.println("***** Received ZooKeeper Event:  "
+    // + ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+    //
+    // }
+    // });
+    //
+    // Stat stat = zk.exists("/yentest1234", true);
+    // System.out.println("***** Received ZooKeeper Event:  "
+    // + ReflectionToStringBuilder.toString(stat, ToStringStyle.DEFAULT_STYLE));
+    //
+    // zk.create("/yentest1234", null, aclList, CreateMode.EPHEMERAL);
+    //
+    // Thread.sleep(10000);
+    // zk.delete("/yentest1234", -1);
+    //
+    // }
 }

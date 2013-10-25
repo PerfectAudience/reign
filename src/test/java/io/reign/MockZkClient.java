@@ -20,14 +20,19 @@ import io.reign.zk.ResilientZooKeeper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -43,14 +48,79 @@ import org.slf4j.LoggerFactory;
 /**
  * Mock ZkClient that mimics ZooKeeper functionality for unit tests.
  * 
+ * Additional detail about ZK watches from http://zookeeper.apache.org/doc/trunk/zookeeperProgrammers.html#ch_zkWatches:
+ * 
+ * This refers to the different ways a node can change. It helps to think of ZooKeeper as maintaining two lists of
+ * watches: data watches and child watches. getData() and exists() set data watches. getChildren() sets child watches.
+ * Alternatively, it may help to think of watches being set according to the kind of data returned. getData() and
+ * exists() return information about the data of the node, whereas getChildren() returns a list of children. Thus,
+ * setData() will trigger data watches for the znode being set (assuming the set is successful). A successful create()
+ * will trigger a data watch for the znode being created and a child watch for the parent znode. A successful delete()
+ * will trigger both a data watch and a child watch (since there can be no more children) for a znode being deleted as
+ * well as a child watch for the parent znode.
+ * 
  * @author ypai
  * 
  */
-public class MockZkClient implements ZkClient, Watcher {
+public class MockZkClient implements ZkClient {
 
     private static final Logger logger = LoggerFactory.getLogger(MockZkClient.class);
 
     private static final Pattern PATTERN_PATH_TOKENIZER = Pattern.compile("/");
+
+    /** Map of String (path) --> Watcher */
+    private final ConcurrentMap<String, Set<Watcher>> dataWatcherMap = new ConcurrentHashMap<String, Set<Watcher>>(64,
+            0.9f, 2);
+
+    /** Map of String (path) --> Watcher */
+    private final ConcurrentMap<String, Set<Watcher>> childWatcherMap = new ConcurrentHashMap<String, Set<Watcher>>(64,
+            0.9f, 2);
+
+    void addDataWatcher(String path, Watcher watcher) {
+        logger.debug("Adding data watcher:  path={}", path);
+
+        Set<Watcher> watcherSet = dataWatcherMap.get(path);
+        if (watcherSet == null) {
+            Set<Watcher> newWatcherSet = Collections.newSetFromMap(new ConcurrentHashMap<Watcher, Boolean>(8, 0.9f, 1));
+            watcherSet = dataWatcherMap.putIfAbsent(path, newWatcherSet);
+            if (watcherSet == null) {
+                watcherSet = newWatcherSet;
+            }
+        }
+        watcherSet.add(watcher);
+    }
+
+    Set<Watcher> getDataWatcherSet(String path) {
+        Set<Watcher> result = dataWatcherMap.get(path);
+        if (result != null) {
+            return result;
+        } else {
+            return Collections.EMPTY_SET;
+        }
+    }
+
+    void addChildWatcher(String path, Watcher watcher) {
+        logger.debug("Adding child watcher:  path={}", path);
+
+        Set<Watcher> watcherSet = childWatcherMap.get(path);
+        if (watcherSet == null) {
+            Set<Watcher> newWatcherSet = Collections.newSetFromMap(new ConcurrentHashMap<Watcher, Boolean>(8, 0.9f, 1));
+            watcherSet = childWatcherMap.putIfAbsent(path, newWatcherSet);
+            if (watcherSet == null) {
+                watcherSet = newWatcherSet;
+            }
+        }
+        watcherSet.add(watcher);
+    }
+
+    Set<Watcher> getChildWatcherSet(String path) {
+        Set<Watcher> result = childWatcherMap.get(path);
+        if (result != null) {
+            return result;
+        } else {
+            return Collections.EMPTY_SET;
+        }
+    }
 
     public static class MockZkNode {
         private byte[] data;
@@ -60,8 +130,6 @@ public class MockZkClient implements ZkClient, Watcher {
         private final MockZkNode parent;
         private final String name;
         private CreateMode createMode;
-        private final Set<Watcher> dataWatcherSet = new HashSet<Watcher>();
-        private final Set<Watcher> childWatcherSet = new HashSet<Watcher>();
 
         public MockZkNode(MockZkNode parent, String name, byte[] data, CreateMode createMode) {
             this.parent = parent;
@@ -136,37 +204,58 @@ public class MockZkClient implements ZkClient, Watcher {
             return removed;
         }
 
-        public Set<Watcher> getDataWatcherSet() {
-            return dataWatcherSet;
-        }
-
-        public Set<Watcher> getChildWatcherSet() {
-            return childWatcherSet;
-        }
     }
 
     private final MockZkNode rootNode = new MockZkNode(null, "", null, CreateMode.PERSISTENT);
 
-    private final Set<Watcher> watcherSet = new HashSet<Watcher>(8, 0.9f);
+    private static class DefaultWatcher implements Watcher {
+        private final Set<Watcher> defaultWatcherSet = Collections
+                .newSetFromMap(new ConcurrentHashMap<Watcher, Boolean>(8, 0.9f, 1));
 
-    @Override
-    public void process(WatchedEvent event) {
-        for (Watcher watcher : watcherSet) {
-            watcher.process(event);
+        @Override
+        public void process(WatchedEvent event) {
+            for (Watcher watcher : defaultWatcherSet) {
+                logger.debug("Notifying registered watcher:  {}",
+                        ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+                watcher.process(event);
+            }
+        }
+
+        public void register(Watcher watcher) {
+            this.defaultWatcherSet.add(watcher);
         }
     }
+
+    private final DefaultWatcher defaultWatcher = new DefaultWatcher();
+
+    // @Override
+    // public void process(WatchedEvent event) {
+    // if (logger.isDebugEnabled()) {
+    // logger.debug("***** Received ZooKeeper Event:  {}",
+    // ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
+    //
+    // }
+    //
+    // // for (Watcher watcher : defaultWatcherSet) {
+    // // watcher.process(event);
+    // // }
+    // }
 
     private void dataWatchNode(String path, Watcher watcher) {
-        MockZkNode node = findNode(path);
-        if (node != null) {
-            node.getDataWatcherSet().add(watcher);
-        }
+        // MockZkNode node = findNode(path);
+        addDataWatcher(path, watcher);
     }
 
+    /**
+     * TODO: check behavior if we try to add child watch to node that doesn't exist
+     * 
+     * @param path
+     * @param watcher
+     */
     private void childWatchNode(String path, Watcher watcher) {
         MockZkNode node = findNode(path);
         if (node != null) {
-            node.getChildWatcherSet().add(watcher);
+            addChildWatcher(path, watcher);
         }
     }
 
@@ -175,52 +264,92 @@ public class MockZkClient implements ZkClient, Watcher {
                 keeperState });
 
         WatchedEvent event = new WatchedEvent(eventType, keeperState, path);
-        MockZkNode node = findNode(path);
-        if (node != null) {
-            ArrayList<Watcher> watchersToRemove = new ArrayList<Watcher>();
-            if (eventType == EventType.NodeDataChanged || eventType == EventType.NodeCreated
-                    || eventType == EventType.NodeDeleted) {
-                for (Watcher watcher : node.getDataWatcherSet()) {
-                    watcher.process(event);
-                    watchersToRemove.add(watcher);
-                }
 
-                // remove watches after single use, like real ZK behavior
-                if (watchersToRemove.size() > 0) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Removing {} data watchers after emitting event:  path={}",
-                                watchersToRemove.size(), path);
-                    }
-                    for (Watcher watcher : watchersToRemove) {
-                        node.getDataWatcherSet().remove(watcher);
-                    }
-                }
-            } else if (eventType == EventType.NodeChildrenChanged) {
-                for (Watcher watcher : node.getChildWatcherSet()) {
-                    watcher.process(event);
-                    watchersToRemove.add(watcher);
-                }
+        ArrayList<Watcher> watchersToRemove = new ArrayList<Watcher>();
+        if (eventType == EventType.NodeDataChanged || eventType == EventType.NodeCreated
+                || eventType == EventType.NodeDeleted) {
 
-                // remove watches after single use, like real ZK behavior
-                if (watchersToRemove.size() > 0) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Removing {} child watchers after emitting event:  path={}",
-                                watchersToRemove.size(), path);
-                    }
-                    for (Watcher watcher : watchersToRemove) {
-                        node.getChildWatcherSet().remove(watcher);
-                    }
+            // notify watchers on that node
+            for (Watcher watcher : getDataWatcherSet(path)) {
+                logger.debug("Notifying data watcher:  path={}; eventType={}; keeperState={}", new Object[] { path,
+                        eventType, keeperState });
+                watcher.process(event);
+                watchersToRemove.add(watcher);
+            }
+
+            // remove watches after single use, like real ZK behavior
+            if (watchersToRemove.size() > 0) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Removing {} data watchers after emitting event:  path={}", watchersToRemove.size(),
+                            path);
+                }
+                for (Watcher watcher : watchersToRemove) {
+                    getDataWatcherSet(path).remove(watcher);
                 }
             }
 
+            // notify parents if necessary for child watches
+            if (eventType == EventType.NodeCreated || eventType == EventType.NodeDeleted) {
+                // ArrayList<Watcher> childWatchersToRemove = new ArrayList<Watcher>();
+
+                String parentPath = getParentPath(path);
+                emitWatchedEvent(parentPath, EventType.NodeChildrenChanged, keeperState);
+
+                // for (Watcher watcher : getChildWatcherSet(parentPath)) {
+                // logger.debug("Notifying child watcher:  parentPath={}; childPath={}; eventType={}; keeperState={}",
+                // new Object[] { parentPath, path, eventType, keeperState });
+                // watcher.process(event);
+                // childWatchersToRemove.add(watcher);
+                // }
+                //
+                // // remove watches after single use, like real ZK behavior
+                // if (childWatchersToRemove.size() > 0) {
+                // if (logger.isDebugEnabled()) {
+                // logger.debug("Removing {} child watchers after emitting event:  parentPath={}",
+                // childWatchersToRemove.size(), parentPath);
+                // }
+                // for (Watcher watcher : childWatchersToRemove) {
+                // getChildWatcherSet(parentPath).remove(watcher);
+                // }
+                // }
+            }// if
+
+        } else if (eventType == EventType.NodeChildrenChanged) {
+
+            // notify watchers on that node
+            for (Watcher watcher : getChildWatcherSet(path)) {
+                logger.debug("Notifying child watcher:  path={}; eventType={}; keeperState={}", new Object[] { path,
+                        eventType, keeperState });
+                watcher.process(event);
+                watchersToRemove.add(watcher);
+            }
+
+            // remove watches after single use, like real ZK behavior
+            if (watchersToRemove.size() > 0) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Removing {} child watchers after emitting event:  path={}", watchersToRemove.size(),
+                            path);
+                }
+                for (Watcher watcher : watchersToRemove) {
+                    getChildWatcherSet(path).remove(watcher);
+                }
+            }
         }
 
         // alert all watchers for this event type
         if (eventType == EventType.None) {
-            for (Watcher watcher : watcherSet) {
-                watcher.process(event);
-            }
+            // for (Watcher watcher : defaultWatcherSet) {
+            // watcher.process(event);
+            // }
+            defaultWatcher.process(event);
         }
+    }
+
+    String getParentPath(String path) {
+        if ("/".equals(path)) {
+            return null;
+        }
+        return path.substring(0, path.lastIndexOf("/"));
     }
 
     MockZkNode findNode(String path) {
@@ -253,10 +382,10 @@ public class MockZkClient implements ZkClient, Watcher {
             }
 
             if (currentNode == null) {
-                logger.debug("Did not find node:  token='{}'", token);
+                logger.trace("Did not find node:  token='{}'", token);
                 return null;
             } else {
-                logger.debug("Found node:  token='{}'", token);
+                logger.trace("Found node:  token='{}'", token);
             }
         }
         return currentNode;
@@ -322,7 +451,8 @@ public class MockZkClient implements ZkClient, Watcher {
 
     @Override
     public void register(Watcher watcher) {
-        watcherSet.add(watcher);
+        logger.debug("register():  adding watcher:  " + watcher);
+        defaultWatcher.register(watcher);
     }
 
     @Override
@@ -332,7 +462,7 @@ public class MockZkClient implements ZkClient, Watcher {
     @Override
     public Stat exists(String path, boolean watch) throws KeeperException, InterruptedException {
         if (watch) {
-            dataWatchNode(path, this);
+            dataWatchNode(path, defaultWatcher);
         }
         MockZkNode node = findNode(path);
         return node != null ? node.getStat() : null;
@@ -341,7 +471,7 @@ public class MockZkClient implements ZkClient, Watcher {
     @Override
     public List<String> getChildren(String path, boolean watch, Stat stat) throws KeeperException, InterruptedException {
         if (watch) {
-            childWatchNode(path, this);
+            childWatchNode(path, defaultWatcher);
         }
         MockZkNode node = findNode(path);
         if (node != null) {
@@ -362,7 +492,7 @@ public class MockZkClient implements ZkClient, Watcher {
     @Override
     public List<String> getChildren(String path, boolean watch) throws KeeperException, InterruptedException {
         if (watch) {
-            childWatchNode(path, this);
+            childWatchNode(path, defaultWatcher);
         }
         MockZkNode node = findNode(path);
         return node != null ? node.getChildList() : null;
@@ -389,7 +519,7 @@ public class MockZkClient implements ZkClient, Watcher {
     @Override
     public byte[] getData(String path, boolean watch, Stat stat) throws KeeperException, InterruptedException {
         if (watch) {
-            dataWatchNode(path, this);
+            dataWatchNode(path, defaultWatcher);
         }
 
         MockZkNode node = findNode(path);
@@ -413,12 +543,24 @@ public class MockZkClient implements ZkClient, Watcher {
     @Override
     public String create(String path, byte[] data, List<ACL> acl, CreateMode createMode) throws KeeperException,
             InterruptedException {
-        MockZkNode nodeToCreateIn = findNode(path, -1);
-        if (nodeToCreateIn == null) {
-            throw new KeeperException.NoNodeException();
+
+        logger.debug("Creating node:  path={}", path);
+
+        // no parent
+        MockZkNode parentNode = findNode(path, -1);
+        if (parentNode == null) {
+            throw new KeeperException.NoNodeException("Parent for path '" + path + "' does not exist!");
         }
 
-        nodeToCreateIn.putChild(new MockZkNode(nodeToCreateIn, pathLeaf(path), data, createMode));
+        // already exists
+        MockZkNode nodeToCreate = findNode(path);
+        if (nodeToCreate != null) {
+            throw new KeeperException.NodeExistsException(path);
+        }
+
+        parentNode.putChild(new MockZkNode(parentNode, pathLeaf(path), data, createMode));
+
+        this.emitWatchedEvent(path, EventType.NodeCreated, KeeperState.SyncConnected);
 
         return path;
     }
@@ -436,16 +578,16 @@ public class MockZkClient implements ZkClient, Watcher {
         return null;
     }
 
-    public static void main(String[] args) throws Exception {
-        ZkClient zkClient = new ResilientZooKeeper("localhost:2181", 15000);
-        zkClient.delete("/test", -1);
-        zkClient.close();
-        zkClient.exists("/test", false);
-
-        // ZooKeeper zkClient = new ZooKeeper("localhost:2181", 15000, null);
-        // zkClient.exists("/test", false);
-        // zkClient.close();
-        // zkClient.exists("/test", false);
-
-    }
+    // public static void main(String[] args) throws Exception {
+    // ZkClient zkClient = new ResilientZooKeeper("localhost:2181", 15000);
+    // zkClient.delete("/test", -1);
+    // zkClient.close();
+    // zkClient.exists("/test", false);
+    //
+    // // ZooKeeper zkClient = new ZooKeeper("localhost:2181", 15000, null);
+    // // zkClient.exists("/test", false);
+    // // zkClient.close();
+    // // zkClient.exists("/test", false);
+    //
+    // }
 }

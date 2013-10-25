@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -37,8 +37,12 @@ public class DefaultPathSchemeTest {
     @Test
     public void testGetParentPath() throws Exception {
         String value;
+
         value = pathScheme.getParentPath("/a/b/c");
         assertTrue("/a/b".equals(value));
+
+        value = pathScheme.getParentPath("/");
+        assertTrue("Expected null, got '" + value + "'", value == null);
 
         try {
             value = pathScheme.getParentPath("/a/b/c/");

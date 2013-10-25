@@ -81,6 +81,9 @@ public class DefaultPathScheme implements PathScheme {
         if (!isValidPath(path)) {
             throw new IllegalArgumentException("Invalid path:  path=" + path);
         }
+        if ("/".equals(path)) {
+            return null;
+        }
         return path.substring(0, path.lastIndexOf("/"));
     }
 
@@ -138,7 +141,7 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public boolean isValidPath(String path) {
-        return !StringUtils.isBlank(path) && !path.endsWith("/");
+        return (!StringUtils.isBlank(path) && !path.endsWith("/")) || "/".equals(path);
     }
 
     @Override

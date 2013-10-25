@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -127,12 +127,29 @@ public class MockZkClientTest {
 
     @Test
     public void testExistsStringBoolean() throws Exception {
+        assertTrue(zkClient.exists("/testExistsStringBoolean", true) == null);
+
+        // register watcher before node exists
+        final AtomicBoolean eventReceived = new AtomicBoolean(false);
+        Watcher watcher = new Watcher() {
+            @Override
+            public void process(WatchedEvent arg0) {
+                eventReceived.set(true);
+            }
+        };
+        zkClient.register(watcher);
+
+        // create node
         zkClient.create("/testExistsStringBoolean", null, DEFAULT_ACL_LIST, CreateMode.PERSISTENT);
+
+        // first watcher should have received event
+        assertTrue(eventReceived.get());
+
         assertTrue(zkClient.exists("/testExistsStringBoolean", true) != null);
 
         // register watcher
-        final AtomicBoolean eventReceived = new AtomicBoolean(false);
-        Watcher watcher = new Watcher() {
+        eventReceived.set(false);
+        watcher = new Watcher() {
             @Override
             public void process(WatchedEvent arg0) {
                 eventReceived.set(true);
