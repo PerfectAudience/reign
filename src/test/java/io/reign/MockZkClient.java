@@ -18,6 +18,7 @@ package io.reign;
 
 import io.reign.zk.ResilientZooKeeper;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -131,9 +132,23 @@ public class MockZkClient implements ZkClient {
         private final String name;
         private CreateMode createMode;
 
+        private static final ThreadLocal<DecimalFormat> dfThreadLocal = new ThreadLocal<DecimalFormat>() {
+            @Override
+            public DecimalFormat initialValue() {
+                return new DecimalFormat("0000000000");
+            }
+
+        };
+
         public MockZkNode(MockZkNode parent, String name, byte[] data, CreateMode createMode) {
             this.parent = parent;
+
+            // append sequence if sequential node
+            if (createMode == CreateMode.EPHEMERAL_SEQUENTIAL || createMode == CreateMode.PERSISTENT_SEQUENTIAL) {
+                name = name + getNextSequenceId();
+            }
             this.name = name;
+
             this.data = data;
             this.createMode = createMode;
             stat.setCtime(System.currentTimeMillis());
@@ -147,8 +162,8 @@ public class MockZkClient implements ZkClient {
             this.createMode = createMode;
         }
 
-        public int getNextSequenceId() {
-            return sequence.getAndIncrement();
+        public String getNextSequenceId() {
+            return dfThreadLocal.get().format(sequence.getAndIncrement());
         }
 
         public MockZkNode getParent() {
@@ -578,16 +593,19 @@ public class MockZkClient implements ZkClient {
         return null;
     }
 
-    // public static void main(String[] args) throws Exception {
-    // ZkClient zkClient = new ResilientZooKeeper("localhost:2181", 15000);
-    // zkClient.delete("/test", -1);
-    // zkClient.close();
-    // zkClient.exists("/test", false);
-    //
-    // // ZooKeeper zkClient = new ZooKeeper("localhost:2181", 15000, null);
-    // // zkClient.exists("/test", false);
-    // // zkClient.close();
-    // // zkClient.exists("/test", false);
-    //
-    // }
+    public static void main(String[] args) throws Exception {
+        // ZkClient zkClient = new ResilientZooKeeper("localhost:2181", 15000);
+        // zkClient.delete("/test", -1);
+        // zkClient.close();
+        // zkClient.exists("/test", false);
+
+        // DecimalFormat df = new DecimalFormat("000000000");
+        // System.out.println(df.format(12345));
+
+        // ZooKeeper zkClient = new ZooKeeper("localhost:2181", 15000, null);
+        // zkClient.exists("/test", false);
+        // zkClient.close();
+        // zkClient.exists("/test", false);
+
+    }
 }
