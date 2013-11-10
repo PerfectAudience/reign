@@ -10,11 +10,11 @@ Features
 
 Out of the box, the framework provides the following:
 * Service presence - monitor for nodes coming up and going down in services.
-* Messaging - nodes can can message each other directly and/or broadcast a message to member nodes of a specific service.
+* Messaging - nodes can message each other directly and/or broadcast a message to member nodes of a specific service.
 * Constructs for distributed coordination - read/write locks, exclusive locks, semaphores, and barriers (coming soon).
 * Reliable ZooKeeper client wrapper that handles common ZooKeeper connection/session errors and re-connects as necessary.
 * A standardized way of organizing information in ZooKeeper for ease of maintenance and consistency between deployments.
-* Shared Maps, Queues, Stacks, Lists persisted in ZooKeeper.
+* ZooKeeper-based Maps, Queues, Stacks, Lists to support common patterns such as queue/worker pool; sharing common state between nodes.
 
 Common use cases:
 * Zero configuration applications - deploy to different environments or change application properties without needing to edit configuration files or restart services.  Edit configuration in one place and push changes out to many nodes at once. 
