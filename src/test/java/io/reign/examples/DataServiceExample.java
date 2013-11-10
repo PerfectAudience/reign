@@ -25,6 +25,8 @@ import io.reign.data.DataService;
 import io.reign.data.MultiData;
 import io.reign.data.MultiMapData;
 import io.reign.data.Operators.Stats;
+import io.reign.data.QueueData;
+import io.reign.data.StackData;
 
 import java.util.List;
 
@@ -54,7 +56,9 @@ public class DataServiceExample {
 
         /** data examples **/
         // multiDataExample(reign);
-        multiMapDataExample(reign);
+        // multiMapDataExample(reign);
+        // queueExample(reign);
+        stackExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(600000);
@@ -66,15 +70,46 @@ public class DataServiceExample {
         Thread.sleep(10000);
     }
 
+    public static void queueExample(Reign reign) throws Exception {
+        DataService dataService = reign.getService("data");
+        QueueData<String> queueData = dataService.getQueue("examples", "my-queue-process-safe", 3600000, true,
+                Reign.DEFAULT_ACL_LIST);
+        queueData.push("value1");
+        queueData.push("value2");
+        queueData.push("value3");
+        queueData.push("value4");
+        queueData.push("value5");
+
+        for (int i = 1; i < 6; i++) {
+            logger.debug("Expected '{}'; received '{}'", "value" + i, queueData.pop(String.class));
+        }
+    }
+
+    public static void stackExample(Reign reign) throws Exception {
+        DataService dataService = reign.getService("data");
+        StackData<String> stackData = dataService.getStack("examples", "my-stack-process-safe", 3600000, true,
+                Reign.DEFAULT_ACL_LIST);
+        stackData.push("value1");
+        stackData.push("value2");
+        stackData.push("value3");
+        stackData.push("value4");
+        stackData.push("value5");
+
+        for (int i = 5; i > 0; i--) {
+            logger.debug("Expected '{}'; received '{}'", "value" + i, stackData.pop(String.class));
+        }
+    }
+
     public static void multiMapDataExample(Reign reign) throws Exception {
         DataService dataService = reign.getService("data");
 
-        MultiMapData<String> multiMapData = dataService.getMultiMap("examples", "my-multimap", false,
-                Reign.DEFAULT_ACL_LIST);
-        doMultiMapDataExample(multiMapData);
+        MultiMapData<String> multiMapData;
 
-        // multiMapData = dataService.getMultiMap("examples", "my-multimap-process-safe", true, Reign.DEFAULT_ACL_LIST);
+        // multiMapData = dataService.getMultiMap("examples", "my-multimap", false, Reign.DEFAULT_ACL_LIST);
         // doMultiMapDataExample(multiMapData);
+
+        multiMapData = dataService.getMultiMap("examples", "my-multimap-process-safe", true, Reign.DEFAULT_ACL_LIST);
+        doMultiMapDataExample(multiMapData);
 
     }
 
@@ -134,7 +169,9 @@ public class DataServiceExample {
     public static void multiDataExample(Reign reign) throws Exception {
         DataService dataService = reign.getService("data");
 
-        MultiData<Double> multiData = dataService.getMulti("examples", "my-data", false, Reign.DEFAULT_ACL_LIST);
+        MultiData<Double> multiData;
+
+        multiData = dataService.getMulti("examples", "my-data", false, Reign.DEFAULT_ACL_LIST);
         doMultiDataExample(multiData);
 
         multiData = dataService.getMulti("examples", "my-data-process-safe", true, Reign.DEFAULT_ACL_LIST);
@@ -168,8 +205,8 @@ public class DataServiceExample {
         logger.debug("MultiData:  min({})={}", values, min);
 
         Stats<Double> stats = stats(values);
-        logger.debug("MultiData:  stats({}):  avg={}; stdDev={}; min={}; max={}; sum={}", new Object[] { values,
-                stats.avg(), stats.stdDev(), stats.min(), stats.max(), stats.sum() });
+        logger.debug("MultiData:  stats({}):  avg={}; stdDev={}; min={}; max={}; sum={}",
+                new Object[] { values, stats.avg(), stats.stdDev(), stats.min(), stats.max(), stats.sum() });
 
         // sleep 5 seconds to allow data to "age"
         Thread.sleep(5000);
