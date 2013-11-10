@@ -7,6 +7,7 @@ import java.util.List;
 import io.reign.CanonicalId;
 import io.reign.DefaultCanonicalId;
 import io.reign.DefaultPathScheme;
+import io.reign.MasterTestSuite;
 import io.reign.MockZkClient;
 import io.reign.PathScheme;
 import io.reign.Reign;
@@ -23,56 +24,60 @@ import org.junit.Test;
 
 public class PresenceServiceTest {
 
-    private PathScheme pathScheme;
-    private ZkClient zkClient;
-    private PathCache pathCache;
+    // private PathScheme pathScheme;
+    // private ZkClient zkClient;
+    // private PathCache pathCache;
     private PresenceService presenceService;
+
+    // private Reign reign;
 
     @Before
     public void setUp() throws Exception {
-        pathScheme = new DefaultPathScheme("/reign", "reign");
-        zkClient = new MockZkClient();
-        pathCache = new NullPathCache();
+        // pathScheme = new DefaultPathScheme("/reign", "reign");
+        // zkClient = new MockZkClient();
+        // pathCache = new NullPathCache();
+        //
+        // presenceService = new PresenceService();
+        // presenceService.setZkClient(zkClient);
+        // presenceService.setPathScheme(pathScheme);
+        // presenceService.setPathCache(pathCache);
+        // presenceService.setContext(new ReignContext() {
+        // @Override
+        // public <T extends Service> T getService(String serviceName) {
+        // return null;
+        // }
+        //
+        // @Override
+        // public CanonicalId getCanonicalId() {
+        // return new DefaultCanonicalId("pid123", "1.1.1.1", "test.reign.io", 80, 33033);
+        // }
+        //
+        // @Override
+        // public ZkClient getZkClient() {
+        // return zkClient;
+        // }
+        //
+        // @Override
+        // public PathScheme getPathScheme() {
+        // return pathScheme;
+        // }
+        //
+        // @Override
+        // public List<ACL> getDefaultZkAclList() {
+        // return Reign.DEFAULT_ACL_LIST;
+        // }
+        //
+        // @Override
+        // public PathCache getPathCache() {
+        // return pathCache;
+        // }
+        // });
+        //
+        // zkClient.register(presenceService);
+        //
+        // presenceService.init();
 
-        presenceService = new PresenceService();
-        presenceService.setZkClient(zkClient);
-        presenceService.setPathScheme(pathScheme);
-        presenceService.setPathCache(pathCache);
-        presenceService.setContext(new ReignContext() {
-            @Override
-            public <T extends Service> T getService(String serviceName) {
-                return null;
-            }
-
-            @Override
-            public CanonicalId getCanonicalId() {
-                return new DefaultCanonicalId("pid123", "1.1.1.1", "test.reign.io", 80, 33033);
-            }
-
-            @Override
-            public ZkClient getZkClient() {
-                return zkClient;
-            }
-
-            @Override
-            public PathScheme getPathScheme() {
-                return pathScheme;
-            }
-
-            @Override
-            public List<ACL> getDefaultZkAclList() {
-                return Reign.DEFAULT_ACL_LIST;
-            }
-
-            @Override
-            public PathCache getPathCache() {
-                return pathCache;
-            }
-        });
-
-        zkClient.register(presenceService);
-
-        presenceService.init();
+        presenceService = MasterTestSuite.getReign().getService("presence");
 
         // add some services
         presenceService.announce("clusterA", "serviceA", true);
@@ -84,7 +89,7 @@ public class PresenceServiceTest {
 
     @After
     public void tearDown() throws Exception {
-        presenceService.destroy();
+
     }
 
     @Test
@@ -93,7 +98,9 @@ public class PresenceServiceTest {
         presenceService.waitUntilAvailable("clusterA", "serviceA", -1);
 
         List<String> clusterIdList = presenceService.lookupClusters();
-        assertTrue("Should be 2 but got " + clusterIdList.size(), clusterIdList.size() == 2);
+
+        // should be 3 clusters, including the default "reign" cluster
+        assertTrue("Should be 3 but got " + clusterIdList.size() + ":  " + clusterIdList, clusterIdList.size() == 3);
         assertTrue(clusterIdList.contains("clusterA"));
         assertTrue(clusterIdList.contains("clusterB"));
     }

@@ -3,6 +3,7 @@ package io.reign;
 import io.reign.data.DataServiceTestSuite;
 import io.reign.presence.PresenceServiceTestSuite;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.curator.test.TestingServer;
@@ -22,23 +23,40 @@ public class MasterTestSuite {
 
     private static TestingServer zkTestServer;
 
+    private static Reign reign;
+
+    public static final int ZK_TEST_SERVER_PORT = 21810;
+
+    public static Reign getReign() {
+        return reign;
+    }
+
     @BeforeClass
     public static void setUpClass() {
 
-        // bootstrap a real ZooKeeper instance
+        /** bootstrap a real ZooKeeper instance **/
         logger.debug("Starting Test ZooKeeper server...");
         try {
-            zkTestServer = new TestingServer(21818);
+            String dataDirectory = System.getProperty("java.io.tmpdir");
+            File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
+            zkTestServer = new TestingServer(ZK_TEST_SERVER_PORT, dir);
         } catch (Exception e) {
             logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
         }
 
+        /** init and start reign using builder **/
+        reign = Reign.maker().zkClient("localhost:" + MasterTestSuite.ZK_TEST_SERVER_PORT, 30000).pathCache(1024, 8)
+                .core().get();
+        reign.start();
     }
 
     @AfterClass
     public static void tearDownClass() {
 
-        // shutdown ZooKeeper instance
+        /** stop reign **/
+        reign.stop();
+
+        /** shutdown ZooKeeper instance **/
         try {
             logger.debug("Stopping Test ZooKeeper server...");
             zkTestServer.stop();
