@@ -1,0 +1,3 @@
+# Install cpsuite library to local Maven
+mvn install:install-file -Dfile=cpsuite-1.2.6.jar -DgroupId=cpsuite -DartifactId=cpsuite -Dversion=1.2.6 -Dpackaging=jar -DgeneratePom=true -DcreateChecksum=true
+
