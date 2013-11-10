@@ -94,10 +94,6 @@ public class PresenceService extends AbstractService implements ObservableServic
             this.setHeartbeatIntervalMillis(DEFAULT_HEARTBEAT_INTERVAL_MILLIS);
         }
 
-        // if (this.getExecutionIntervalMillis() < 1000) {
-        // this.setExecutionIntervalMillis(DEFAULT_EXECUTION_INTERVAL_MILLIS);
-        // }
-
         // schedule admin activity
         Runnable adminRunnable = new AdminRunnable();// Runnable
         executorService.scheduleAtFixedRate(adminRunnable, 5000, this.heartbeatIntervalMillis, TimeUnit.MILLISECONDS);
