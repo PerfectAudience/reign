@@ -77,8 +77,8 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         this.aclList = aclList;
         this.readWriteLock = readWriteLock;
 
-        this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(), context
-                .getPathCache(), dataSerializerMap);
+        this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(),
+                context.getPathCache(), dataSerializerMap);
 
     }
 
@@ -152,42 +152,46 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
     }
 
     @Override
-    public synchronized String remove(K key) {
-        return remove(key, DEFAULT_INDEX, -1);
+    public synchronized void remove(K key) {
+        remove(key, DEFAULT_INDEX, -1);
     }
 
     @Override
-    public synchronized String remove(K key, int ttlMillis) {
-        return remove(key, DEFAULT_INDEX, ttlMillis);
+    public synchronized void remove(K key, int ttlMillis) {
+        remove(key, DEFAULT_INDEX, ttlMillis);
     }
 
     @Override
-    public synchronized String remove(K key, String index) {
-        return remove(key, index, -1);
+    public synchronized void remove(K key, String index) {
+        remove(key, index, -1);
     }
 
     @Override
-    public synchronized String remove(K key, String index, int ttlMillis) {
+    public synchronized void remove(K key, String index, int ttlMillis) {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            return zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, ttlMillis, readWriteLock == null);
+            zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, ttlMillis, readWriteLock == null);
+            deleteKey(key);
+
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
     }
 
     @Override
-    public synchronized List<String> removeAll(K key) {
-        return removeAll(key, -1);
+    public synchronized void removeAll(K key) {
+        removeAll(key, -1);
     }
 
     @Override
-    public synchronized List<String> removeAll(K key, int ttlMillis) {
+    public synchronized void removeAll(K key, int ttlMillis) {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            return zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), ttlMillis, readWriteLock == null);
+            zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), ttlMillis, readWriteLock == null);
+            deleteKey(key);
+
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
@@ -266,6 +270,14 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
     }
 
     /***** private/protected/package *****/
+
+    void deleteKey(K key) {
+        try {
+            zkClient.delete(absoluteKeyPath(key), -1);
+        } catch (Exception e1) {
+            logger.error("Trouble deleting key:  key=" + key, e1);
+        }
+    }
 
     void throwExceptionIfKeyIsInvalid(K key) {
         if (!pathScheme.isValidToken(key.toString())) {

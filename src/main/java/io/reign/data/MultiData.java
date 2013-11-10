@@ -70,9 +70,9 @@ public interface MultiData<V> extends BaseData {
      * 
      * @return
      */
-    public String remove();
+    public void remove();
 
-    public String remove(int ttlMillis);
+    public void remove(int ttlMillis);
 
     /**
      * Remove value at index
@@ -80,17 +80,17 @@ public interface MultiData<V> extends BaseData {
      * @param index
      * @return
      */
-    public String remove(String index);
+    public void remove(String index);
 
-    public String remove(String index, int ttlMillis);
+    public void remove(String index, int ttlMillis);
 
     /**
-     * Remove all values associated with this point.
+     * Remove all values associated with this data point.
      * 
      * @return
      */
-    public List<String> removeAll();
+    public void removeAll();
 
-    public List<String> removeAll(int ttlMillis);
+    public void removeAll(int ttlMillis);
 
 }

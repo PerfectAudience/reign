@@ -114,7 +114,7 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
 
             // write data to ZK
             AtomicReference<Stat> statRef = new AtomicReference<Stat>();
-            String absoluteDataValuePath = updatePath(zkClient, pathScheme, absoluteDataPath, bytes, aclList,
+            String absoluteDataValuePath = updatePath(zkClient, pathScheme, absoluteDataPath + "/I_", bytes, aclList,
                     CreateMode.PERSISTENT_SEQUENTIAL, -1, statRef);
 
             // get stat if it was not returned from updatePath

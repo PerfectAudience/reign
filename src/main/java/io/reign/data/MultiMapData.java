@@ -115,7 +115,7 @@ public interface MultiMapData<K> extends BaseData {
      * @param key
      * @return
      */
-    public String remove(K key);
+    public void remove(K key);
 
     /**
      * Remove all values for a specific key older than ttlMillis
@@ -124,7 +124,7 @@ public interface MultiMapData<K> extends BaseData {
      * @param ttlMillis
      * @return
      */
-    public String remove(K key, int ttlMillis);
+    public void remove(K key, int ttlMillis);
 
     /**
      * Remove a specific value for a given key
@@ -133,7 +133,7 @@ public interface MultiMapData<K> extends BaseData {
      * @param index
      * @return
      */
-    public String remove(K key, String index);
+    public void remove(K key, String index);
 
     /**
      * Remove value at key and index older than ttlMillis
@@ -143,7 +143,7 @@ public interface MultiMapData<K> extends BaseData {
      * @param ttlMillis
      * @return
      */
-    public String remove(K key, String index, int ttlMillis);
+    public void remove(K key, String index, int ttlMillis);
 
     /**
      * Remove all values under key
@@ -151,7 +151,7 @@ public interface MultiMapData<K> extends BaseData {
      * @param key
      * @return
      */
-    public List<String> removeAll(K key);
+    public void removeAll(K key);
 
     /**
      * Remove all values under key older than ttlMillis
@@ -160,7 +160,7 @@ public interface MultiMapData<K> extends BaseData {
      * @param ttlMillis
      * @return
      */
-    public List<String> removeAll(K key, int ttlMillis);
+    public void removeAll(K key, int ttlMillis);
 
     /**
      * @return number of keys

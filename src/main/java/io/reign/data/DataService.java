@@ -25,6 +25,9 @@ import io.reign.coord.DistributedReadWriteLock;
 import io.reign.coord.CoordinationService.AdminRunnable;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.SimpleResponseMessage;
+import io.reign.presence.NodeInfo;
+import io.reign.presence.ServiceInfo;
 
 import java.util.List;
 import java.util.Map;
@@ -75,8 +78,8 @@ public class DataService extends AbstractService {
 
     }
 
-    public <V> MultiData<V> getMulti(String clusterId, String dataPath, boolean processSafe) {
-        return getMulti(clusterId, dataPath, processSafe, getContext().getDefaultZkAclList());
+    public <V> MultiData<V> getMulti(String clusterId, String dataPath) {
+        return getMulti(clusterId, dataPath, true, getContext().getDefaultZkAclList());
     }
 
     public <V> MultiData<V> getMulti(String clusterId, String dataPath, boolean processSafe, List<ACL> aclList) {
@@ -93,6 +96,10 @@ public class DataService extends AbstractService {
         return new ZkMultiData<V>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
     }
 
+    public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath) {
+        return getMultiMap(clusterId, dataPath, true, getContext().getDefaultZkAclList());
+    }
+
     public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath, boolean processSafe, List<ACL> aclList) {
         dataPath = dataPath + MAP_PATH_SUFFIX;
 
@@ -107,6 +114,10 @@ public class DataService extends AbstractService {
         return new ZkMultiMapData<K>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
     }
 
+    public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath) {
+        return getLinkedList(clusterId, dataPath, getContext().getDefaultZkAclList());
+    }
+
     public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath, List<ACL> aclList) {
 
         dataPath = dataPath + LIST_PATH_SUFFIX;
@@ -119,15 +130,21 @@ public class DataService extends AbstractService {
         return new ZkLinkedListData<V>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
     }
 
-    public <V> QueueData<V> getQueue(String clusterId, String dataPath, int maxSize, int ttlMillis,
-            boolean processSafe, List<ACL> aclList) {
+    public <V> QueueData<V> getQueue(String clusterId, String dataPath) {
+        return getQueue(clusterId, dataPath, getContext().getDefaultZkAclList());
+    }
+
+    public <V> QueueData<V> getQueue(String clusterId, String dataPath, List<ACL> aclList) {
         LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, aclList);
 
         return new ZkQueueData<V>(linkedListData);
     }
 
-    public <V> StackData<V> getStack(String clusterId, String dataPath, int maxSize, int ttlMillis,
-            boolean processSafe, List<ACL> aclList) {
+    public <V> StackData<V> getStack(String clusterId, String dataPath) {
+        return getStack(clusterId, dataPath, getContext().getDefaultZkAclList());
+    }
+
+    public <V> StackData<V> getStack(String clusterId, String dataPath, List<ACL> aclList) {
         LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, aclList);
 
         return new ZkStackData<V>(linkedListData);
@@ -157,13 +174,66 @@ public class DataService extends AbstractService {
 
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
-        if (logger.isTraceEnabled()) {
-            try {
+
+        try {
+            if (logger.isTraceEnabled()) {
                 logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
                         requestMessage.getBody());
-            } catch (Exception e) {
-                logger.error("" + e, e);
             }
+
+            /** preprocess request **/
+            String requestResource = (String) requestMessage.getBody();
+            String resource = requestResource;
+
+            // strip beginning and ending slashes "/"
+            if (resource.startsWith("/")) {
+                resource = resource.substring(1);
+            }
+            if (resource.endsWith("/")) {
+                resource = resource.substring(0, resource.length() - 1);
+            }
+
+            /** get response **/
+            ResponseMessage responseMessage = null;
+
+            // if base path, just return available clusters
+            if (resource.length() == 0) {
+                // list available clusters
+                List<String> clusterList = getZkClient().getChildren(getPathScheme().getAbsolutePath(PathType.DATA),
+                        false);
+                responseMessage = new SimpleResponseMessage();
+                responseMessage.setBody(clusterList);
+
+            } else {
+                String[] tokens = getPathScheme().tokenizePath(resource);
+                // logger.debug("tokens.length={}", tokens.length);
+
+                if (tokens.length >= 1) {
+                    PathScheme pathScheme = getPathScheme();
+
+                    String path = pathScheme.getAbsolutePath(PathType.DATA);
+                    for (String token : tokens) {
+                        path = pathScheme.joinPaths(path, token);
+                    }
+
+                    // list data
+                    List<String> dataList = getZkClient().getChildren(path, false);
+
+                    responseMessage = new SimpleResponseMessage();
+                    responseMessage.setBody(dataList);
+                    if (dataList == null) {
+                        responseMessage.setComment("Not found:  " + requestResource);
+                    }
+
+                }
+            }
+
+            responseMessage.setId(requestMessage.getId());
+
+            return responseMessage;
+
+        } catch (Exception e) {
+            logger.error("" + e, e);
         }
 
         return null;

@@ -134,6 +134,14 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
 
     }
 
+    /**
+     * 
+     * @param index
+     *            if negative, designates reading from the end: -1 meaning last element, -2 second from last, etc.
+     * @param typeClass
+     * @param deleteAfterRead
+     * @return
+     */
     synchronized <T extends V> T getValueAt(int index, Class<T> typeClass, boolean deleteAfterRead) {
         if (deleteAfterRead) {
             zkClientLinkedListDataUtil.lockForWrite(readWriteLock, absoluteBasePath, this);

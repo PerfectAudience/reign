@@ -57,8 +57,8 @@ public class DataServiceExample {
         /** data examples **/
         // multiDataExample(reign);
         // multiMapDataExample(reign);
-        // queueExample(reign);
-        stackExample(reign);
+        queueExample(reign);
+        // stackExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(600000);
@@ -72,8 +72,7 @@ public class DataServiceExample {
 
     public static void queueExample(Reign reign) throws Exception {
         DataService dataService = reign.getService("data");
-        QueueData<String> queueData = dataService.getQueue("examples", "my-queue-process-safe", 3600000, true,
-                Reign.DEFAULT_ACL_LIST);
+        QueueData<String> queueData = dataService.getQueue("examples", "my-queue-process-safe", Reign.DEFAULT_ACL_LIST);
         queueData.push("value1");
         queueData.push("value2");
         queueData.push("value3");
@@ -87,8 +86,7 @@ public class DataServiceExample {
 
     public static void stackExample(Reign reign) throws Exception {
         DataService dataService = reign.getService("data");
-        StackData<String> stackData = dataService.getStack("examples", "my-stack-process-safe", 3600000, true,
-                Reign.DEFAULT_ACL_LIST);
+        StackData<String> stackData = dataService.getStack("examples", "my-stack-process-safe", Reign.DEFAULT_ACL_LIST);
         stackData.push("value1");
         stackData.push("value2");
         stackData.push("value3");

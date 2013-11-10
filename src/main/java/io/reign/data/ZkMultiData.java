@@ -68,8 +68,8 @@ public class ZkMultiData<V> implements MultiData<V> {
         this.aclList = aclList;
         this.readWriteLock = readWriteLock;
 
-        this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(), context
-                .getPathCache(), dataSerializerMap);
+        this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(),
+                context.getPathCache(), dataSerializerMap);
 
     }
 
@@ -143,26 +143,26 @@ public class ZkMultiData<V> implements MultiData<V> {
     }
 
     @Override
-    public synchronized String remove() {
-        return remove(DEFAULT_INDEX, -1);
+    public synchronized void remove() {
+        remove(DEFAULT_INDEX, -1);
     }
 
     @Override
-    public synchronized String remove(int ttlMillis) {
-        return remove(DEFAULT_INDEX, ttlMillis);
+    public synchronized void remove(int ttlMillis) {
+        remove(DEFAULT_INDEX, ttlMillis);
     }
 
     @Override
-    public synchronized String remove(String index) {
-        return remove(index, -1);
+    public synchronized void remove(String index) {
+        remove(index, -1);
 
     }
 
     @Override
-    public synchronized String remove(String index, int ttlMillis) {
+    public synchronized void remove(String index, int ttlMillis) {
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            return zkClientMultiDataUtil.deleteData(absoluteBasePath, index, ttlMillis, readWriteLock == null);
+            zkClientMultiDataUtil.deleteData(absoluteBasePath, index, ttlMillis, readWriteLock == null);
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
@@ -170,15 +170,15 @@ public class ZkMultiData<V> implements MultiData<V> {
     }
 
     @Override
-    public synchronized List<String> removeAll() {
-        return removeAll(-1);
+    public synchronized void removeAll() {
+        removeAll(-1);
     }
 
     @Override
-    public synchronized List<String> removeAll(int ttlMillis) {
+    public synchronized void removeAll(int ttlMillis) {
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            return zkClientMultiDataUtil.deleteAllData(absoluteBasePath, ttlMillis, readWriteLock == null);
+            zkClientMultiDataUtil.deleteAllData(absoluteBasePath, ttlMillis, readWriteLock == null);
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
