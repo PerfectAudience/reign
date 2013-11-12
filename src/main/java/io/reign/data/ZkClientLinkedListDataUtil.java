@@ -44,8 +44,8 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
     private static final Logger logger = LoggerFactory.getLogger(ZkClientLinkedListDataUtil.class);
 
     ZkClientLinkedListDataUtil(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
-            Map<String, DataSerializer> dataSerializerMap) {
-        super(zkClient, pathScheme, pathCache, dataSerializerMap);
+            TranscodingScheme transcodingScheme) {
+        super(zkClient, pathScheme, pathCache, transcodingScheme);
 
     }
 
@@ -72,11 +72,7 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
             // deserialize
             V data = null;
             if (bytes != null) {
-                DataSerializer<V> dataSerializer = dataSerializerMap.get(typeClass.getName());
-                if (dataSerializer == null) {
-                    throw new IllegalStateException("No data serializer/deserializer found for " + typeClass.getName());
-                }
-                data = dataSerializer.deserialize(bytes);
+                data = transcodingScheme.fromBytes(bytes, typeClass);
             }
 
             // logger.debug("readData():  absoluteDataPath={}; index={}; value={}", new Object[] { absoluteDataPath,
@@ -100,12 +96,7 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
 
             byte[] bytes = null;
             if (value != null) {
-                DataSerializer<V> dataSerializer = dataSerializerMap.get(value.getClass().getName());
-                if (dataSerializer == null) {
-                    throw new IllegalStateException("No data serializer/deserializer found for "
-                            + value.getClass().getName());
-                }
-                bytes = dataSerializer.serialize(value);
+                bytes = transcodingScheme.toBytes(value);
             } else {
                 logger.warn("Attempting to write null data:  doing nothing:  absoluteDataPath={}; value={}",
                         new Object[] { absoluteDataPath, value });
@@ -131,7 +122,7 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
 
             PathCacheEntry pce = pathCache.get(absoluteDataValuePath);
             logger.debug("writeData():  absoluteDataValuePath={}; pathCacheEntry={}", absoluteDataValuePath,
-                    dataSerializerMap.get(value.getClass().getName()).deserialize(pce.getBytes()));
+                    transcodingScheme.fromBytes(pce.getBytes(), value.getClass()));
 
             return absoluteDataValuePath;
 

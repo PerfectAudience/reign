@@ -41,6 +41,13 @@
 			<version>${logback.version}</version>
 		</dependency>
 
+        <!-- Kryo object serialization framework with dependencies: http://code.google.com/p/kryo/ -->
+        <dependency>
+            <groupId>com.esotericsoftware.kryo</groupId>
+            <artifactId>kryo</artifactId>
+            <version>2.22</version>          
+        </dependency>
+
 		<!-- Testing -->
 		<dependency>
 			<groupId>junit</groupId>

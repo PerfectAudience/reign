@@ -59,7 +59,7 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
      *            for inter-process safety; cannot be null
      */
     public ZkLinkedListData(String absoluteBasePath, DistributedReadWriteLock readWriteLock, List<ACL> aclList,
-            Map<String, DataSerializer> dataSerializerMap, ReignContext context) {
+            TranscodingScheme transcodingScheme, ReignContext context) {
         if (readWriteLock == null) {
             throw new IllegalArgumentException("readWriteLock must not be null!");
         }
@@ -72,7 +72,7 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
         this.aclList = aclList;
 
         this.zkClientLinkedListDataUtil = new ZkClientLinkedListDataUtil(context.getZkClient(),
-                context.getPathScheme(), context.getPathCache(), dataSerializerMap);
+                context.getPathScheme(), context.getPathCache(), transcodingScheme);
     }
 
     @Override

@@ -40,15 +40,14 @@ public class ZkClientDataUtil extends ZkClientUtil {
     protected final ZkClient zkClient;
     protected final PathScheme pathScheme;
     protected final PathCache pathCache;
-    protected final Map<String, DataSerializer> dataSerializerMap;
+    protected final TranscodingScheme transcodingScheme;
 
-    ZkClientDataUtil(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
-            Map<String, DataSerializer> dataSerializerMap) {
+    ZkClientDataUtil(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, TranscodingScheme transcodingScheme) {
 
         this.zkClient = zkClient;
         this.pathScheme = pathScheme;
         this.pathCache = pathCache;
-        this.dataSerializerMap = dataSerializerMap;
+        this.transcodingScheme = transcodingScheme;
 
     }
 

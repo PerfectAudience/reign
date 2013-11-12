@@ -59,7 +59,7 @@ public class ZkMultiData<V> implements MultiData<V> {
      * @param context
      */
     public ZkMultiData(String absoluteBasePath, DistributedReadWriteLock readWriteLock, List<ACL> aclList,
-            Map<String, DataSerializer> dataSerializerMap, ReignContext context) {
+            TranscodingScheme transcodingScheme, ReignContext context) {
 
         this.absoluteBasePath = absoluteBasePath;
 
@@ -69,7 +69,7 @@ public class ZkMultiData<V> implements MultiData<V> {
         this.readWriteLock = readWriteLock;
 
         this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(),
-                context.getPathCache(), dataSerializerMap);
+                context.getPathCache(), transcodingScheme);
 
     }
 

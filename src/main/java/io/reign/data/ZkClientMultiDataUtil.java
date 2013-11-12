@@ -16,7 +16,6 @@
 
 package io.reign.data;
 
-import io.reign.DataSerializer;
 import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.util.PathCache;
@@ -25,7 +24,6 @@ import io.reign.util.PathCacheEntry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.zookeeper.CreateMode;
@@ -49,8 +47,8 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     ZkClientMultiDataUtil(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
-            Map<String, DataSerializer> dataSerializerMap) {
-        super(zkClient, pathScheme, pathCache, dataSerializerMap);
+            TranscodingScheme transcodingScheme) {
+        super(zkClient, pathScheme, pathCache, transcodingScheme);
 
     }
 
@@ -59,12 +57,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
 
             byte[] bytes = null;
             if (value != null) {
-                DataSerializer<V> dataSerializer = dataSerializerMap.get(value.getClass().getName());
-                if (dataSerializer == null) {
-                    throw new IllegalStateException("No data serializer/deserializer found for "
-                            + value.getClass().getName());
-                }
-                bytes = dataSerializer.serialize(value);
+                bytes = transcodingScheme.toBytes(value);
             } else {
                 logger.warn("Attempting to write null data:  doing nothing:  absoluteBasePath={}; index={}; value={}",
                         new Object[] { absoluteBasePath, index, value });
@@ -73,8 +66,8 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
 
             // write data to ZK
             AtomicReference<Stat> statRef = new AtomicReference<Stat>();
-            String absoluteDataValuePath = updatePath(zkClient, pathScheme, pathScheme.joinPaths(absoluteBasePath,
-                    index), bytes, aclList, CreateMode.PERSISTENT, -1, statRef);
+            String absoluteDataValuePath = updatePath(zkClient, pathScheme,
+                    pathScheme.joinPaths(absoluteBasePath, index), bytes, aclList, CreateMode.PERSISTENT, -1, statRef);
 
             // logger.debug("writeData():  absoluteBasePath={}; index={}; absoluteDataValuePath={}; value={}",
             // new Object[] { absoluteBasePath, index, absoluteDataValuePath, value });
@@ -93,7 +86,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
 
             PathCacheEntry pce = pathCache.get(absoluteDataValuePath);
             logger.debug("writeData():  absoluteDataValuePath={}; pathCacheEntry={}", absoluteDataValuePath,
-                    dataSerializerMap.get(value.getClass().getName()).deserialize(pce.getBytes()));
+                    transcodingScheme.fromBytes(pce.getBytes(), value.getClass()));
 
             return absoluteDataValuePath;
 
@@ -247,11 +240,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             // deserialize
             V data = null;
             if (bytes != null && bytes != EMPTY_BYTE_ARRAY) {
-                DataSerializer<V> dataSerializer = dataSerializerMap.get(typeClass.getName());
-                if (dataSerializer == null) {
-                    throw new IllegalStateException("No data serializer/deserializer found for " + typeClass.getName());
-                }
-                data = dataSerializer.deserialize(bytes);
+                data = transcodingScheme.fromBytes(bytes, typeClass);
             }
 
             // logger.debug("readData():  absoluteBasePath={}; index={}; value={}", new Object[] { absoluteBasePath,

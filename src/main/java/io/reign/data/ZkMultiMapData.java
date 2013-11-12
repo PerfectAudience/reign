@@ -64,7 +64,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
      *            for inter-process safety; can be null
      */
     public ZkMultiMapData(String absoluteBasePath, DistributedReadWriteLock readWriteLock, List<ACL> aclList,
-            Map<String, DataSerializer> dataSerializerMap, ReignContext context) {
+            TranscodingScheme transcodingScheme, ReignContext context) {
 
         this.absoluteBasePath = absoluteBasePath;
 
@@ -78,7 +78,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         this.readWriteLock = readWriteLock;
 
         this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(),
-                context.getPathCache(), dataSerializerMap);
+                context.getPathCache(), transcodingScheme);
 
     }
 

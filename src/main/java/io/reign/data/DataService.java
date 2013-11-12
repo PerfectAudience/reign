@@ -49,9 +49,6 @@ public class DataService extends AbstractService {
 
     private static final Logger logger = LoggerFactory.getLogger(DataService.class);
 
-    /** queue of cache and persistent store operations to perform */
-    private final LinkedBlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<Runnable>(512);
-
     /** process task queue every 2 seconds by default */
     public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
 
@@ -59,23 +56,16 @@ public class DataService extends AbstractService {
     private static final String MAP_PATH_SUFFIX = "{}";
     private static final String LIST_PATH_SUFFIX = "[]";
 
-    private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(33,
-            0.9f, 1);
+    private final TranscodingScheme transcodingScheme;
 
     private ScheduledThreadPoolExecutor executorService;
 
     public DataService() {
-        // register default serializers
-        dataSerializerMap.put(Long.class.getName(), new LongSerializer());
-        dataSerializerMap.put(Integer.class.getName(), new IntegerSerializer());
-        dataSerializerMap.put(Float.class.getName(), new FloatSerializer());
-        dataSerializerMap.put(Double.class.getName(), new DoubleSerializer());
-        dataSerializerMap.put(Boolean.class.getName(), new BooleanSerializer());
-        dataSerializerMap.put(Short.class.getName(), new ShortSerializer());
-        dataSerializerMap.put(Byte.class.getName(), new ByteSerializer());
-        dataSerializerMap.put(byte[].class.getName(), new BytesSerializer());
-        dataSerializerMap.put(String.class.getName(), new Utf8StringSerializer());
+        this(new KryoTranscodingScheme());
+    }
 
+    public DataService(TranscodingScheme transcodingScheme) {
+        this.transcodingScheme = transcodingScheme;
     }
 
     public <V> MultiData<V> getMulti(String clusterId, String dataPath) {
@@ -93,7 +83,7 @@ public class DataService extends AbstractService {
         PathScheme pathScheme = getPathScheme();
         String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiData<V>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
+        return new ZkMultiData<V>(absoluteBasePath, readWriteLock, aclList, transcodingScheme, getContext());
     }
 
     public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath) {
@@ -111,7 +101,7 @@ public class DataService extends AbstractService {
         PathScheme pathScheme = getPathScheme();
         String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiMapData<K>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
+        return new ZkMultiMapData<K>(absoluteBasePath, readWriteLock, aclList, transcodingScheme, getContext());
     }
 
     public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath) {
@@ -127,7 +117,7 @@ public class DataService extends AbstractService {
         PathScheme pathScheme = getPathScheme();
         String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkLinkedListData<V>(absoluteBasePath, readWriteLock, aclList, dataSerializerMap, getContext());
+        return new ZkLinkedListData<V>(absoluteBasePath, readWriteLock, aclList, transcodingScheme, getContext());
     }
 
     public <V> QueueData<V> getQueue(String clusterId, String dataPath) {
@@ -166,10 +156,6 @@ public class DataService extends AbstractService {
     @Override
     public void destroy() {
         executorService.shutdown();
-    }
-
-    public void registerSerializer(String className, DataSerializer dataSerializer) {
-        this.dataSerializerMap.put(className, dataSerializer);
     }
 
     @Override
