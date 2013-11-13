@@ -9,6 +9,12 @@ import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
+/**
+ * Use Kryo as the serialization scheme.
+ * 
+ * @author ypai
+ * 
+ */
 public class KryoTranscodingScheme implements TranscodingScheme {
 
     /**
