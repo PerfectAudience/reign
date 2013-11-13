@@ -97,18 +97,65 @@
       
           <h2>Presence Service</h2>
           <p>Route API calls to the Presence Service by prefixing with <code>presence:</code></p>
-          <p>&nbsp;</p>         
+          <h4>List clusters:</h4>
+          <code>presence:/</code>    
+          <h4>List services in cluster:</h4>
+          <code>presence:/[CLUSTER_ID]</code>    
+          <h4>List nodes in service:</h4>
+          <code>presence:/[CLUSTER_ID]/[SERVICE_ID]</code>   
+          <h4>Get info about a service node:</h4>
+          <code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]</code>             
           <hr/>                   
                             
           <h2>Configuration Service</h2>
           <p>Route API calls to the Configuration Service by prefixing with <code>conf:</code></p>
-          <p>&nbsp;</p>         
+          <p>Serializer to use is based on "file extension" part of path -- required for all configuration paths:<br/>
+			".properties" or ".props" = properties serializer</br>
+			".js" or ".json" = JSON serializer<br/>
+			</p>
+			<h4>List available clusters</h4>   
+			<code>conf:/</code>
+			
+			<h4>List configurations in this cluster namespace</h4>
+			<code>conf:/[CLUSTER_ID]</code>
+			
+			<h4>List available configurations or examine configuration contents</h4>
+			<code>conf:/[CLUSTER_ID]/[PATH]</code>
+			
+			<p>If path does not end in an extension, just do a listing.
+			If path has extension, return contents using correct serializer.</p>
+			
+			<h4>Set or replace with new config</h4>
+			<code>conf:/[CLUSTER_ID]/[PATH]#put[NEW_LINE]  
+			key1=value1[NEW_LINE]
+			key2=value2[NEW_LINE]</code>  
+			
+			<h4>Update existing or add new configuration</h4>
+			<code>conf:/[CLUSTER_ID]/[PATH]#update[NEW_LINE]  
+			key=value[NEW_LINE]
+			-key[NEW_LINE]
+			+key=value[NEW_LINE]</code>
+			
+			<p>A "-" means remove this property.<br/>
+			A "+" in front of the key means only set this property if it does not already exist.<br/>
+			No prefix in front of a key means set this property to the given value.<br/></p>
+
+			
+			<h4>Delete config at path</h4>
+			<code>conf:/[CLUSTER_ID]/[PATH]#delete</code>  
+
+
           <hr/> 
    
           <h2>Coordination Service</h2>
           <p>Route API calls to the Coordination Service by prefixing with <code>coord:</code></p>
           <p>&nbsp;</p>         
           <hr/>  
+          
+          <h2>Data Service</h2>
+          <p>Route API calls to the Coordination Service by prefixing with <code>data:</code></p>
+          <p>&nbsp;</p>         
+          <hr/> 
       
       </div>
 	  
