@@ -60,6 +60,7 @@
 	  
 	  <div class="tab-pane" id="terminal">
 	       <h1 class="text-info">Terminal</h1>
+	       Use the terminal to query a Reign node directly.
 	       <p>&nbsp;</p>
 	       
 	       <form onsubmit="return false;">
@@ -117,24 +118,24 @@
 			<code>conf:/</code>
 			
 			<h4>List configurations in this cluster namespace</h4>
-			<code>conf:/[CLUSTER_ID]</code>
+			<code>conf:/[CLUSTER_ID]<br/></code>
 			
 			<h4>List available configurations or examine configuration contents</h4>
-			<code>conf:/[CLUSTER_ID]/[PATH]</code>
+			<code>conf:/[CLUSTER_ID]/[PATH]<br/></code>
 			
 			<p>If path does not end in an extension, just do a listing.
 			If path has extension, return contents using correct serializer.</p>
 			
 			<h4>Set or replace with new config</h4>
-			<code>conf:/[CLUSTER_ID]/[PATH]#put[NEW_LINE]  
-			key1=value1[NEW_LINE]
-			key2=value2[NEW_LINE]</code>  
+			<code>conf:/[CLUSTER_ID]/[PATH]#put[NEW_LINE]<br/>
+			key1=value1[NEW_LINE]<br/>
+			key2=value2[NEW_LINE]<br/></code>  
 			
 			<h4>Update existing or add new configuration</h4>
-			<code>conf:/[CLUSTER_ID]/[PATH]#update[NEW_LINE]  
-			key=value[NEW_LINE]
-			-key[NEW_LINE]
-			+key=value[NEW_LINE]</code>
+			<code>conf:/[CLUSTER_ID]/[PATH]#update[NEW_LINE]<br/>  
+			key=value[NEW_LINE]<br/>			
+			+key=value[NEW_LINE]<br/>
+			-key[NEW_LINE]<br/></code>
 			
 			<p>A "-" means remove this property.<br/>
 			A "+" in front of the key means only set this property if it does not already exist.<br/>
