@@ -180,8 +180,9 @@ public class ConfService extends AbstractService implements ObservableService {
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf) {
         DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
-        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF,
-                getPathScheme().joinPaths(clusterId, relativeConfPath)), conf, confSerializer, getDefaultZkAclList());
+        putConfAbsolutePath(
+                getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath)),
+                conf, confSerializer, getDefaultZkAclList());
     }
 
     /**
@@ -191,8 +192,9 @@ public class ConfService extends AbstractService implements ObservableService {
      * @param confSerializer
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer) {
-        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF,
-                getPathScheme().joinPaths(clusterId, relativeConfPath)), conf, confSerializer, getDefaultZkAclList());
+        putConfAbsolutePath(
+                getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath)),
+                conf, confSerializer, getDefaultZkAclList());
     }
 
     /**
@@ -204,8 +206,9 @@ public class ConfService extends AbstractService implements ObservableService {
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer,
             List<ACL> aclList) {
-        putConfAbsolutePath(getPathScheme().getAbsolutePath(PathType.CONF,
-                getPathScheme().joinPaths(clusterId, relativeConfPath)), conf, confSerializer, aclList);
+        putConfAbsolutePath(
+                getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath)),
+                conf, confSerializer, aclList);
     }
 
     /**
@@ -310,8 +313,8 @@ public class ConfService extends AbstractService implements ObservableService {
                     logger.error("getConfValue():  error trying to watch node:  " + e1 + ":  path=" + absolutePath, e1);
                 }
 
-                logger.debug("getConfValue():  error trying to fetch node info:  {}:  node does not exist:  path={}", e
-                        .getMessage(), absolutePath);
+                logger.debug("getConfValue():  error trying to fetch node info:  {}:  node does not exist:  path={}",
+                        e.getMessage(), absolutePath);
             } else {
                 logger.error("getConfValue():  error trying to fetch node info:  " + e, e);
             }
@@ -541,25 +544,26 @@ public class ConfService extends AbstractService implements ObservableService {
                 // read in api body as properties for easier processing
                 Properties updateProperties = new Properties();
                 updateProperties.load(new ByteArrayInputStream(confBody.getBytes("ISO-8859-1")));
+                boolean isUpdate = "update".equals(meta);
                 for (Object keyObject : updateProperties.keySet()) {
                     String key = (String) keyObject;
-                    if (key.startsWith("+")) {
-                        key = key.substring(1);
+                    if (isUpdate && key.startsWith("+")) {
+                        String newKey = key.substring(1);
 
                         // only add if doesn't already exist
-                        if (conf.get(key) == null) {
-                            conf.put(key, castValueIfNecessary(updateProperties.getProperty(key)));
+                        if (conf.get(newKey) == null) {
+                            conf.put(newKey, castValueIfNecessary(updateProperties.getProperty(key)));
                         }
 
-                    } else if (key.startsWith("-")) {
+                    } else if (isUpdate && key.startsWith("-")) {
                         key = key.substring(1);
 
                         // remove key
                         conf.remove(key);
                     } else {
                         // add or overwrite existing property
-                        conf.put(key, castToMatchExistingTypeIfNecessary(updateProperties.getProperty(key), conf
-                                .get(key)));
+                        conf.put(key,
+                                castToMatchExistingTypeIfNecessary(updateProperties.getProperty(key), conf.get(key)));
                     }
                 }// for
 
