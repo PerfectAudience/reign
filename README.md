@@ -24,7 +24,7 @@ Common use cases:
 * Coordination and division of labor between nodes using locks, queues, or some combination thereof.
 * Application logic based on service states - services can share data via ZooKeeper:  for example, nodes in one service may go into "safety mode" based on information provided by another service (error rates, etc.).
   
-Application using Reign quickly gain a high level of cluster-awareness and coordination capabilities.
+Applications using Reign quickly gain a high level of cluster-awareness and coordination capabilities.
 
 
 
@@ -227,9 +227,10 @@ The default data layout in ZooKeeper is outlined below.  Custom layouts may be c
 
 ###`_TREE_` is defined as follows:
 
-* `/presence` - service nodes check-in under this path
-* `/conf` - configuration data for services, etc. are found under this path
-* `/coord` - data describing distributed locks, semaphores, etc. lives here
+* `/presence` - service discovery information
+* `/conf` - configuration data
+* `/coord` - data describing distributed locks, semaphores, etc.
+* `/data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues 
 
 
 Web Sockets Protocol
