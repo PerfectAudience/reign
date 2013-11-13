@@ -45,8 +45,8 @@ public class MasterTestSuite {
         }
 
         /** init and start reign using builder **/
-        reign = Reign.maker().zkClient("localhost:" + MasterTestSuite.ZK_TEST_SERVER_PORT, 30000).pathCache(1024, 8)
-                .core().get();
+        reign = Reign.maker().messagingPort(33133).zkClient("localhost:" + MasterTestSuite.ZK_TEST_SERVER_PORT, 30000)
+                .pathCache(1024, 8).core().get();
         reign.start();
     }
 
