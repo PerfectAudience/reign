@@ -88,7 +88,7 @@ public class PresenceService extends AbstractService implements ObservableServic
 
     @Override
     public void init() {
-        executorService = new ScheduledThreadPoolExecutor(1);
+        executorService = new ScheduledThreadPoolExecutor(2);
 
         if (this.getHeartbeatIntervalMillis() < 1000) {
             this.setHeartbeatIntervalMillis(DEFAULT_HEARTBEAT_INTERVAL_MILLIS);
@@ -96,7 +96,8 @@ public class PresenceService extends AbstractService implements ObservableServic
 
         // schedule admin activity
         Runnable adminRunnable = new AdminRunnable();// Runnable
-        executorService.scheduleAtFixedRate(adminRunnable, 5000, this.heartbeatIntervalMillis, TimeUnit.MILLISECONDS);
+        executorService.scheduleAtFixedRate(adminRunnable, this.heartbeatIntervalMillis / 2,
+                this.heartbeatIntervalMillis, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -560,8 +561,12 @@ public class PresenceService extends AbstractService implements ObservableServic
             announcement.setLastUpdated(-1);
         }
 
-        // mark as visible
+        // mark as visible based on flag
         announcement.setHidden(!visible);
+
+        // submit for async update immediately
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+        doUpdateAnnouncementAsync(path, announcement);
     }
 
     public void hide(String clusterId, String serviceId) {
@@ -579,6 +584,10 @@ public class PresenceService extends AbstractService implements ObservableServic
             announcement.setHidden(true);
             announcement.setLastUpdated(-1);
         }
+
+        // submit for async update immediately
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+        doUpdateAnnouncementAsync(path, announcement);
     }
 
     void show(String clusterId, String serviceId, String nodeId) {
@@ -588,6 +597,10 @@ public class PresenceService extends AbstractService implements ObservableServic
             announcement.setHidden(false);
             announcement.setLastUpdated(-1);
         }
+
+        // submit for async update immediately
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+        doUpdateAnnouncementAsync(path, announcement);
     }
 
     /**
@@ -611,11 +624,6 @@ public class PresenceService extends AbstractService implements ObservableServic
         }
         return announcement;
     }
-
-    // @Override
-    // public void perform() {
-    //
-    // }
 
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
@@ -802,6 +810,71 @@ public class PresenceService extends AbstractService implements ObservableServic
         this.zombieCheckIntervalMillis = zombieCheckIntervalMillis;
     }
 
+    void doUpdateAnnouncementAsync(final String path, final Announcement announcement) {
+        this.executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                doUpdateAnnouncement(path, announcement);
+            }
+        });
+    }
+
+    void doUpdateAnnouncement(String path, Announcement announcement) {
+        if (announcement.isHidden()) {
+            doHide(path, announcement);
+        } else {
+            doShow(path, announcement);
+        }
+    }
+
+    void doHide(String path, Announcement announcement) {
+        long currentTimestamp = System.currentTimeMillis();
+        try {
+
+            // delete presence path
+            getZkClient().delete(path, -1);
+
+            // set up watch for when path comes back if there are
+            // observers
+            if (observerManager.isBeingObserved(path)) {
+                getZkClient().exists(path, true);
+            }
+
+            // set last updated with some randomizer to spread out
+            // requests
+            announcement.setLastUpdated(currentTimestamp + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
+        } catch (KeeperException e) {
+            if (e.code() == Code.NONODE) {
+                logger.debug("Node does not exist:  path={}", path);
+            } else {
+                logger.warn("Error trying to remove node:  " + e + ":  path=" + path, e);
+            }
+        } catch (InterruptedException e) {
+            logger.warn("hide():  error trying to remove node:  " + e, e);
+        }
+    }
+
+    void doShow(String path, Announcement announcement) {
+        long currentTimestamp = System.currentTimeMillis();
+        try {
+            Map<String, String> attributeMap = announcement.getNodeInfo().getAttributeMap();
+            byte[] leafData = null;
+            if (attributeMap.size() > 0) {
+                leafData = announcement.getNodeAttributeSerializer().serialize(attributeMap);
+            }
+            String pathUpdated = zkClientUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
+                    announcement.getAclList(), CreateMode.EPHEMERAL, -1);
+
+            // set last updated with some randomizer to spread out
+            // requests
+            announcement.setLastUpdated(currentTimestamp + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
+
+            logger.debug("Announced:  path={}", pathUpdated);
+        } catch (Exception e) {
+            logger.error("Error while announcing:  " + e + ":  path=" + path, e);
+        }
+    }
+
     private static class PresenceObserverWrapper<T> extends ServiceObserverWrapper<SimplePresenceObserver<T>> {
 
         private final String clusterId;
@@ -881,52 +954,7 @@ public class PresenceService extends AbstractService implements ObservableServic
 
                 // announce or hide node
                 String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
-                if (announcement.isHidden()) {
-                    // delete
-                    try {
-                        // delete presence path
-                        getZkClient().delete(path, -1);
-
-                        // set up watch for when path comes back if there are
-                        // observers
-                        if (observerManager.isBeingObserved(path)) {
-                            getZkClient().exists(path, true);
-                        }
-
-                        // set last updated with some randomizer to spread out
-                        // requests
-                        announcement.setLastUpdated(currentTimestamp
-                                + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
-                    } catch (KeeperException e) {
-                        if (e.code() == Code.NONODE) {
-                            logger.debug("Node does not exist:  path={}", path);
-                        } else {
-                            logger.warn("Error trying to remove node:  " + e + ":  path=" + path, e);
-                        }
-                    } catch (InterruptedException e) {
-                        logger.warn("hide():  error trying to remove node:  " + e, e);
-                    }
-                } else {
-                    // do announcement
-                    try {
-                        Map<String, String> attributeMap = announcement.getNodeInfo().getAttributeMap();
-                        byte[] leafData = null;
-                        if (attributeMap.size() > 0) {
-                            leafData = announcement.getNodeAttributeSerializer().serialize(attributeMap);
-                        }
-                        String pathUpdated = zkClientUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
-                                announcement.getAclList(), CreateMode.EPHEMERAL, -1);
-
-                        // set last updated with some randomizer to spread out
-                        // requests
-                        announcement.setLastUpdated(currentTimestamp
-                                + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
-
-                        logger.debug("Announced:  path={}", pathUpdated);
-                    } catch (Exception e) {
-                        logger.error("Error while announcing:  " + e + ":  path=" + path, e);
-                    }
-                }// if
+                doUpdateAnnouncement(path, announcement);
             }// for
 
             /** do zombie node check every 5 minutes **/

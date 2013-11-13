@@ -10,6 +10,7 @@ import io.reign.DefaultPathScheme;
 import io.reign.MasterTestSuite;
 import io.reign.MockZkClient;
 import io.reign.PathScheme;
+import io.reign.PathType;
 import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
@@ -24,58 +25,10 @@ import org.junit.Test;
 
 public class PresenceServiceTest {
 
-    // private PathScheme pathScheme;
-    // private ZkClient zkClient;
-    // private PathCache pathCache;
     private PresenceService presenceService;
-
-    // private Reign reign;
 
     @Before
     public void setUp() throws Exception {
-        // pathScheme = new DefaultPathScheme("/reign", "reign");
-        // zkClient = new MockZkClient();
-        // pathCache = new NullPathCache();
-        //
-        // presenceService = new PresenceService();
-        // presenceService.setZkClient(zkClient);
-        // presenceService.setPathScheme(pathScheme);
-        // presenceService.setPathCache(pathCache);
-        // presenceService.setContext(new ReignContext() {
-        // @Override
-        // public <T extends Service> T getService(String serviceName) {
-        // return null;
-        // }
-        //
-        // @Override
-        // public CanonicalId getCanonicalId() {
-        // return new DefaultCanonicalId("pid123", "1.1.1.1", "test.reign.io", 80, 33033);
-        // }
-        //
-        // @Override
-        // public ZkClient getZkClient() {
-        // return zkClient;
-        // }
-        //
-        // @Override
-        // public PathScheme getPathScheme() {
-        // return pathScheme;
-        // }
-        //
-        // @Override
-        // public List<ACL> getDefaultZkAclList() {
-        // return Reign.DEFAULT_ACL_LIST;
-        // }
-        //
-        // @Override
-        // public PathCache getPathCache() {
-        // return pathCache;
-        // }
-        // });
-        //
-        // zkClient.register(presenceService);
-        //
-        // presenceService.init();
 
         presenceService = MasterTestSuite.getReign().getService("presence");
 
@@ -172,7 +125,12 @@ public class PresenceServiceTest {
 
     @Test
     public void testLookupNodeInfoStringStringString() {
-        // fail("Not yet implemented");
+        Reign reign = MasterTestSuite.getReign();
+        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterA", "serviceA", reign.getContext()
+                .getCanonicalIdPathToken());
+        assertTrue("clusterA".equals(nodeInfo.getClusterId()));
+        assertTrue("serviceA".equals(nodeInfo.getServiceId()));
+        assertTrue(reign.getPathScheme().toPathToken(reign.getCanonicalId()).equals(nodeInfo.getNodeId()));
     }
 
     @Test
@@ -206,13 +164,35 @@ public class PresenceServiceTest {
     }
 
     @Test
-    public void testHideStringString() {
-        // fail("Not yet implemented");
+    public void testHideStringString() throws Exception {
+        presenceService.hide("clusterA", "serviceA");
+
+        Thread.sleep(1000);
+
+        Reign reign = MasterTestSuite.getReign();
+        PathScheme pathScheme = reign.getPathScheme();
+        String nodePath = pathScheme.joinTokens("clusterA", "serviceA", pathScheme.toPathToken(reign.getCanonicalId()));
+        String path = pathScheme.getAbsolutePath(PathType.PRESENCE, nodePath);
+        assertTrue(reign.getZkClient().exists(path, false) == null);
     }
 
     @Test
-    public void testShowStringString() {
-        // fail("Not yet implemented");
+    public void testShowStringString() throws Exception {
+        presenceService.hide("clusterA", "serviceA");
+
+        Thread.sleep(1000);
+
+        Reign reign = MasterTestSuite.getReign();
+        PathScheme pathScheme = reign.getPathScheme();
+        String nodePath = pathScheme.joinTokens("clusterA", "serviceA", pathScheme.toPathToken(reign.getCanonicalId()));
+        String path = pathScheme.getAbsolutePath(PathType.PRESENCE, nodePath);
+        assertTrue(reign.getZkClient().exists(path, false) == null);
+
+        presenceService.show("clusterA", "serviceA");
+
+        Thread.sleep(1000);
+
+        assertTrue(reign.getZkClient().exists(path, false) != null);
     }
 
 }

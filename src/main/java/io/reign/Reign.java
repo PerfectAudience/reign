@@ -74,8 +74,6 @@ public class Reign implements Watcher {
 
     private PathCache pathCache;
 
-    // private ScheduledExecutorService executorService;
-
     private volatile boolean started = false;
     private volatile boolean shutdown = false;
 
@@ -112,6 +110,20 @@ public class Reign implements Watcher {
             throw new IllegalStateException("Cannot get canonicalId before framework is started!");
         }
         return this.canonicalIdMaker.get();
+    }
+
+    public synchronized String getCanonicalIdPathToken() {
+        if (!started) {
+            throw new IllegalStateException("Cannot get canonicalId before framework is started!");
+        }
+        return this.context.getCanonicalIdPathToken();
+    }
+
+    public synchronized ReignContext getContext() {
+        if (!started) {
+            throw new IllegalStateException("Cannot get ReignContext before framework is started!");
+        }
+        return this.context;
     }
 
     public List<ACL> getDefaultZkAclList() {
@@ -288,6 +300,11 @@ public class Reign implements Watcher {
             @Override
             public PathCache getPathCache() {
                 return pathCache;
+            }
+
+            @Override
+            public String getCanonicalIdPathToken() {
+                return pathScheme.toPathToken(canonicalIdMaker.get());
             }
 
         };

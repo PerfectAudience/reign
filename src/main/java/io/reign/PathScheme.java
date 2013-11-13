@@ -58,6 +58,7 @@ public interface PathScheme {
     public CanonicalId parseCanonicalId(String canonicalId);
 
     /**
+     * Returns a deterministic representation of the canonical ID (same String everytime).
      * 
      * @param canonicalId
      * @return valid path representation of CanonicalId
