@@ -24,6 +24,7 @@ import io.reign.coord.DistributedReadWriteLock;
 import io.reign.util.PathCache;
 import io.reign.util.PathCacheEntry;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -172,8 +173,6 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
             zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, ttlMillis, readWriteLock == null);
-            deleteKey(key);
-
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
@@ -190,7 +189,6 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
             zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), ttlMillis, readWriteLock == null);
-            deleteKey(key);
 
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
@@ -266,18 +264,10 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         } finally {
             zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
-        return keys;
+        return keys != null ? keys : Collections.EMPTY_LIST;
     }
 
     /***** private/protected/package *****/
-
-    void deleteKey(K key) {
-        try {
-            zkClient.delete(absoluteKeyPath(key), -1);
-        } catch (Exception e1) {
-            logger.error("Trouble deleting key:  key=" + key, e1);
-        }
-    }
 
     void throwExceptionIfKeyIsInvalid(K key) {
         if (!pathScheme.isValidToken(key.toString())) {

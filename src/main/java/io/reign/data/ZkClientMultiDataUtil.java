@@ -135,11 +135,12 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             // age, delete data node
             String deletedPath = null;
             if (bytes == null) {
-                zkClient.delete(absoluteDataPath, -1);
-                deletedPath = absoluteDataPath;
-
                 // remove node entry in path cache
                 pathCache.remove(absoluteDataPath);
+
+                // delete from zk
+                zkClient.delete(absoluteDataPath, -1);
+                deletedPath = absoluteDataPath;
 
                 // update parent children in path cache if parent node exists in cache
                 String absoluteParentPath = pathScheme.getParentPath(absoluteDataPath);
@@ -153,8 +154,37 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
                         }
                     }
 
-                    pathCache
-                            .put(absoluteParentPath, pathCacheEntry.getStat(), pathCacheEntry.getBytes(), newChildList);
+                    // if parent child list is null, that means there are no longer any entries under this key, so
+                    // remove
+                    if (newChildList == null || newChildList.size() == 0) {
+                        // remove from cache
+                        pathCache.remove(absoluteParentPath);
+
+                        // remove from ZK
+                        deleteKey(absoluteParentPath);
+
+                    } else {
+                        // still entries, so update cache entry
+                        pathCache.put(absoluteParentPath, pathCacheEntry.getStat(), pathCacheEntry.getBytes(),
+                                newChildList);
+                    }
+                } else {
+                    Stat stat = new Stat();
+                    List<String> childList = Collections.EMPTY_LIST;
+                    try {
+                        childList = zkClient.getChildren(absoluteParentPath, true, stat);
+
+                        // update in path cache
+                        pathCache.put(absoluteParentPath, stat, null, childList);
+
+                        // if no children, remove
+                        if (childList == null || childList.size() == 0) {
+                            deleteKey(absoluteParentPath);
+                        }
+
+                    } catch (KeeperException e) {
+                        logger.info("" + e, e);
+                    }
                 }
             }
 
@@ -171,6 +201,15 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
         }
     }
 
+    void deleteKey(String absoluteKeyPath) {
+        try {
+            pathCache.remove(absoluteKeyPath);
+            zkClient.delete(absoluteKeyPath, -1);
+        } catch (Exception e1) {
+            logger.error("Trouble deleting key:  key=" + absoluteKeyPath, e1);
+        }
+    }
+
     List<String> deleteAllData(String absoluteBasePath, int ttlMillis, boolean usePathCache) {
         try {
             // get children
@@ -179,15 +218,20 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
                 childList = getChildListFromPathCache(absoluteBasePath, ttlMillis);
             }
             if (childList == null) {
-                Stat stat = new Stat();
-                childList = zkClient.getChildren(absoluteBasePath, true, stat);
+                try {
+                    Stat stat = new Stat();
+                    childList = zkClient.getChildren(absoluteBasePath, true, stat);
 
-                // update in path cache
-                pathCache.put(absoluteBasePath, stat, null, childList);
+                    // update in path cache
+                    pathCache.put(absoluteBasePath, stat, null, childList);
+                } catch (KeeperException e) {
+                    // may hit this exception if node does not exist
+                    logger.info("" + e, e);
+                }
             }
 
             // iterate through children and build up list
-            if (childList.size() > 0) {
+            if (childList != null && childList.size() > 0) {
                 List<String> resultList = new ArrayList<String>(childList.size());
                 for (String child : childList) {
                     String deletedPath = deleteData(absoluteBasePath, child, ttlMillis, usePathCache);
@@ -198,15 +242,15 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
                     }
                 }// for
 
+                // delete key
+                deleteKey(absoluteBasePath);
+
                 return resultList;
             } // if
 
             // return list
             return Collections.EMPTY_LIST;
 
-        } catch (KeeperException e) {
-            logger.error("" + e, e);
-            return Collections.EMPTY_LIST;
         } catch (Exception e) {
             logger.error("" + e, e);
             return Collections.EMPTY_LIST;

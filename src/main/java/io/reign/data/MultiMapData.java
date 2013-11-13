@@ -169,7 +169,7 @@ public interface MultiMapData<K> extends BaseData {
 
     /**
      * 
-     * @return List of available keys
+     * @return List of available keys or empty List
      */
     public List<String> keys();
 

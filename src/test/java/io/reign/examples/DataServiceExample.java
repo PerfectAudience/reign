@@ -55,10 +55,10 @@ public class DataServiceExample {
         // Reign reign = springReignMaker.get();
 
         /** data examples **/
-        // multiDataExample(reign);
-        // multiMapDataExample(reign);
+        multiDataExample(reign);
+        multiMapDataExample(reign);
         queueExample(reign);
-        // stackExample(reign);
+        stackExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         Thread.sleep(600000);
@@ -149,8 +149,12 @@ public class DataServiceExample {
         logger.debug("After remove():  multiMapData.keys()={}", multiMapData.keys());
 
         // remove all values
-        multiMapData.removeAll("intKey1");
-        multiMapData.remove("stringKey1");
+        multiMapData.remove("intKey1");
+        multiMapData.removeAll("stringKey1");
+
+        // check sizes after remove operations
+        logger.debug("After remove():  multiMapData.size()={}", multiMapData.size());
+        logger.debug("After remove():  multiMapData.keys()={}", multiMapData.keys());
 
         // check values after removeAll operations
         intKey1Values = multiMapData.getAll("intKey1", Integer.class);
