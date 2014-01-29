@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -46,8 +46,7 @@ public abstract class ServiceObserverWrapper<T extends ServiceObserver> {
     public abstract void signalObserver(Object o);
 
     /**
-     * Overridden to ensure that we do not notify the same observer multiple
-     * times.
+     * Overridden to ensure that we do not notify the same observer object multiple times.
      */
     @Override
     public boolean equals(Object o) {
@@ -58,8 +57,7 @@ public abstract class ServiceObserverWrapper<T extends ServiceObserver> {
     }
 
     /**
-     * Overridden to ensure that we do not notify the same observer multiple
-     * times.
+     * Overridden to ensure that we do not notify the same observer multiple times.
      */
     @Override
     public int hashCode() {
