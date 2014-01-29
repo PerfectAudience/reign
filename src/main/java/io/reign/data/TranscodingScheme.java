@@ -1,11 +1,5 @@
 package io.reign.data;
 
-import java.io.ByteArrayOutputStream;
-
-import com.esotericsoftware.kryo.io.Output;
-
-import io.reign.DataSerializer;
-
 /**
  * Abstraction for serialization scheme used.
  * 

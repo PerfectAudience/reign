@@ -9,6 +9,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 
 	<properties>
+	    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>        
 		<logback.version>1.0.13</logback.version>
 		<zookeeper.version>3.4.5</zookeeper.version>
 	</properties>
@@ -42,11 +43,13 @@
 		</dependency>
 
         <!-- Kryo object serialization framework with dependencies: http://code.google.com/p/kryo/ -->
+<!--
         <dependency>
             <groupId>com.esotericsoftware.kryo</groupId>
             <artifactId>kryo</artifactId>
             <version>2.22</version>          
         </dependency>
+-->
 
 		<!-- Testing -->
 		<dependency>
@@ -153,10 +156,13 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
 				<configuration>
-					<version>3.1</version>
 					<source>1.6</source>
 					<target>1.6</target>
+					<excludes>
+                        <exclude>**/io/reign/contrib/**/*</exclude>
+                    </excludes>
 				</configuration>
 			</plugin>
 			<plugin>

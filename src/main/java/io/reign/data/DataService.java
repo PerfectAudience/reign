@@ -17,22 +17,15 @@
 package io.reign.data;
 
 import io.reign.AbstractService;
-import io.reign.DataSerializer;
 import io.reign.PathScheme;
 import io.reign.PathType;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedReadWriteLock;
-import io.reign.coord.CoordinationService.AdminRunnable;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 import io.reign.mesg.SimpleResponseMessage;
-import io.reign.presence.NodeInfo;
-import io.reign.presence.ServiceInfo;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -61,7 +54,7 @@ public class DataService extends AbstractService {
     private ScheduledThreadPoolExecutor executorService;
 
     public DataService() {
-        this(new KryoTranscodingScheme());
+        this(new SimpleTranscodingScheme());
     }
 
     public DataService(TranscodingScheme transcodingScheme) {
@@ -163,8 +156,8 @@ public class DataService extends AbstractService {
 
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
-                        requestMessage.getBody());
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(), requestMessage
+                        .getBody());
             }
 
             /** preprocess request **/
