@@ -27,20 +27,24 @@ public class WebSocketServer {
 
     private final ReignContext serviceDirectory;
     private final MessageProtocol messageProtocol;
+    private final WebSocketConnectionManager connectionManager;
 
-    public WebSocketServer(int port, ReignContext serviceDirectory, MessageProtocol messageProtocol) {
+    public WebSocketServer(int port, ReignContext serviceDirectory, WebSocketConnectionManager connectionManager,
+            MessageProtocol messageProtocol) {
         this.port = port;
         this.serviceDirectory = serviceDirectory;
         this.messageProtocol = messageProtocol;
+        this.connectionManager = connectionManager;
     }
 
     public void start() {
         // Configure the server.
-        bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors
-                .newCachedThreadPool()));
+        bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
+                Executors.newCachedThreadPool()));
 
         // Set up the event pipeline factory.
-        bootstrap.setPipelineFactory(new WebSocketServerPipelineFactory(serviceDirectory, messageProtocol));
+        bootstrap.setPipelineFactory(new WebSocketServerPipelineFactory(serviceDirectory, connectionManager,
+                messageProtocol));
 
         // Bind and start to accept incoming connections.
         bootstrap.bind(new InetSocketAddress(port));

@@ -5,6 +5,7 @@ import io.reign.UnexpectedReignException;
 import io.reign.mesg.DefaultMessageProtocol;
 import io.reign.mesg.MessageProtocol;
 import io.reign.mesg.MessagingProvider;
+import io.reign.presence.PresenceService;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -21,6 +22,8 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(WebSocketMessagingProvider.class);
 
+    public static final String WEBSOCKET_PATH = "/ws";
+
     private int port;
 
     private WebSocketServer server;
@@ -31,21 +34,34 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     private MessageProtocol messageProtocol;
 
-    private final ConcurrentMap<String, WebSocketClient> clientMap = new ConcurrentHashMap<String, WebSocketClient>(32,
-            0.9f, 2);
+    private WebSocketConnectionManager connectionManager;
 
     @Override
     public String sendMessage(String hostOrIpAddress, int port, String message) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/websocket";
-        WebSocketClient client = getClient(endpointUri);
-        return client.write(message);
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
+        WebSocketClient client = connectionManager.getConnection(endpointUri);
+        return client.write(message, true);
     }
 
     @Override
     public byte[] sendMessage(String hostOrIpAddress, int port, byte[] message) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + "/websocket";
-        WebSocketClient client = getClient(endpointUri);
-        return client.write(message);
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
+        WebSocketClient client = connectionManager.getConnection(endpointUri);
+        return client.write(message, true);
+    }
+
+    @Override
+    public String sendMessageForget(String hostOrIpAddress, int port, String message) {
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
+        WebSocketClient client = connectionManager.getConnection(endpointUri);
+        return client.write(message, false);
+    }
+
+    @Override
+    public byte[] sendMessageForget(String hostOrIpAddress, int port, byte[] message) {
+        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
+        WebSocketClient client = connectionManager.getConnection(endpointUri);
+        return client.write(message, false);
     }
 
     @Override
@@ -78,31 +94,18 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     }
 
-    WebSocketClient getClient(String endpointUri) {
-        WebSocketClient client = clientMap.get(endpointUri);
-        if (client == null) {
-            synchronized (clientMap) {
-                try {
-                    WebSocketClient newClient = new WebSocketClient(endpointUri);
-                    client = clientMap.putIfAbsent(endpointUri, newClient);
-                    if (client == null) {
-                        logger.info("Establishing connection:  remote={}", endpointUri);
-                        client = newClient;
-                        newClient.connect();
-                    }
-                } catch (Exception e) {
-                    throw new UnexpectedReignException(e);
-                }
-            }
-        }// if
-        return client;
-    }
-
     @Override
     public synchronized void init() {
         if (!shutdown) {
             return;
         }
+
+        // PresenceService presenceService = serviceDirectory.getService("presence");
+
+        connectionManager = new WebSocketConnectionManager();
+        connectionManager.setReignContext(serviceDirectory);
+        // connectionManager.setConnectionTimeout(presenceService.getHeartbeatIntervalMillis());
+        connectionManager.init();
 
         if (messageProtocol == null) {
             logger.info("START:  using default message protocol");
@@ -110,35 +113,8 @@ public class WebSocketMessagingProvider implements MessagingProvider {
         }
 
         logger.info("START:  starting websockets server");
-        this.server = new WebSocketServer(port, serviceDirectory, messageProtocol);
+        this.server = new WebSocketServer(port, serviceDirectory, connectionManager, messageProtocol);
         server.start();
-
-        // start connection maintenance thread
-        Thread adminThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (!shutdown) {
-                    for (String key : clientMap.keySet()) {
-                        WebSocketClient client = clientMap.get(key);
-
-                        logger.info("Sending PING:  remote={}", key);
-                        if (!client.isClosed()) {
-                            client.ping();
-                        }
-                    }
-
-                    try {
-                        Thread.sleep(20000);
-                    } catch (InterruptedException e) {
-                        logger.warn("Interrupted:  " + e, e);
-                    }
-                }
-            }
-        });
-        adminThread.setPriority(Thread.MIN_PRIORITY);
-        adminThread.setDaemon(true);
-        adminThread.setName("Reign:WebSocketMessagingProvider.adminThread");
-        adminThread.start();
 
         shutdown = false;
 
@@ -152,14 +128,6 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
         logger.info("STOP:  shutting down websockets server");
         server.stop();
-
-        logger.info("STOP:  closing client connections");
-        for (String key : clientMap.keySet()) {
-            WebSocketClient client = clientMap.get(key);
-
-            logger.info("STOP:  closing client connection:  remote={}", key);
-            client.close();
-        }
 
         this.shutdown = true;
     }

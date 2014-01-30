@@ -52,6 +52,7 @@ public class Reign implements Watcher {
     private static final Logger logger = LoggerFactory.getLogger(Reign.class);
 
     public static final String DEFAULT_FRAMEWORK_CLUSTER_ID = "reign";
+    public static final String DEFAULT_FRAMEWORK_CLIENT_ID = "client";
 
     public static final String DEFAULT_FRAMEWORK_BASE_PATH = "/reign";
 
@@ -269,6 +270,10 @@ public class Reign implements Watcher {
                 }
                 waitForInitializationIfNecessary();
 
+                if (serviceName == null) {
+                    return serviceMap.get("null").getService();
+                }
+
                 ServiceWrapper serviceWrapper = serviceMap.get(serviceName);
                 if (serviceWrapper != null) {
                     return serviceWrapper.getService();
@@ -366,15 +371,14 @@ public class Reign implements Watcher {
 
         logger.info("START:  done");
 
-        /** announce messaging availability: must be done after all other start-up tasks are complete **/
+        /** announce as a client of framework: must be done after all other start-up tasks are complete **/
         PresenceService presenceService = context.getService("presence");
-        MessagingService messagingService = context.getService("messaging");
-        if (presenceService != null && messagingService != null) {
-            logger.info("START:  announcing framework availability via PresenceService");
-            presenceService.announce(pathScheme.getFrameworkClusterId(), "messaging", true);
+        if (presenceService != null) {
+            logger.info("START:  announcing node availability to framework via PresenceService");
+            presenceService.announce(pathScheme.getFrameworkClusterId(), "client", true);
         } else {
-            logger.warn("START:  did not announce framework messaging availability:  (presenceService==null)="
-                    + (presenceService == null) + "; (messagingService==null)=" + (messagingService == null));
+            logger.warn("START:  did not announce node availability:  (presenceService==null)={}",
+                    presenceService == null);
         }
     }
 
@@ -439,22 +443,6 @@ public class Reign implements Watcher {
             logger.info("Received notification of start() completion");
         }// if
     }
-
-    // /**
-    // * Creates and appropriately sizes executor service for services configured.
-    // *
-    // * @return
-    // */
-    // private ScheduledExecutorService createExecutorService() {
-    // // get number of continuously running services
-    // int continuouslyRunningCount = 0;
-    // for (ServiceWrapper serviceWrapper : serviceMap.values()) {
-    // if (serviceWrapper.isActiveService()) {
-    // continuouslyRunningCount++;
-    // }
-    // }
-    // return new ScheduledThreadPoolExecutor(continuouslyRunningCount + this.getThreadPoolSize());
-    // }
 
     /**
      * Convenience wrapper providing methods for interpreting service metadata.

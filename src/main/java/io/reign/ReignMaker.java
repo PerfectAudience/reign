@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -77,6 +77,8 @@ public class ReignMaker {
 
         mesg();
 
+        nullService();
+
         return this;
     }
 
@@ -86,6 +88,13 @@ public class ReignMaker {
 
         // alternate route for more concise messaging
         serviceMap.put("P", presenceService);
+
+        return this;
+    }
+
+    public ReignMaker nullService() {
+        NullService nullService = new NullService();
+        serviceMap.put("null", nullService);
 
         return this;
     }
@@ -122,7 +131,7 @@ public class ReignMaker {
 
     public ReignMaker mesg() {
         MessagingService messagingService = new DefaultMessagingService();
-        serviceMap.put("messaging", messagingService);
+        serviceMap.put("mesg", messagingService);
         if (messagingPort == null) {
             messagingService.setPort(Reign.DEFAULT_MESSAGING_PORT);
         } else {

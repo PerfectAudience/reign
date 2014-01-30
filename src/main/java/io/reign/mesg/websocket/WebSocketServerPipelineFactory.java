@@ -16,9 +16,12 @@ public class WebSocketServerPipelineFactory implements ChannelPipelineFactory {
 
     private final ReignContext serviceDirectory;
     private final MessageProtocol messageProtocol;
+    private final WebSocketConnectionManager connectionManager;
 
-    public WebSocketServerPipelineFactory(ReignContext serviceDirectory, MessageProtocol messageProtocol) {
+    public WebSocketServerPipelineFactory(ReignContext serviceDirectory, WebSocketConnectionManager connectionManager,
+            MessageProtocol messageProtocol) {
         this.serviceDirectory = serviceDirectory;
+        this.connectionManager = connectionManager;
         this.messageProtocol = messageProtocol;
     }
 
@@ -29,7 +32,7 @@ public class WebSocketServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("decoder", new HttpRequestDecoder());
         pipeline.addLast("aggregator", new HttpChunkAggregator(65536));
         pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("handler", new WebSocketServerHandler(serviceDirectory, messageProtocol));
+        pipeline.addLast("handler", new WebSocketServerHandler(serviceDirectory, connectionManager, messageProtocol));
         return pipeline;
     }
 }

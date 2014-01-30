@@ -12,12 +12,14 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.util;
 
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 
 import org.slf4j.Logger;
@@ -33,9 +35,42 @@ public class IdUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(IdUtil.class);
 
+    public static String getClientIpAddress(SocketAddress socketAddress) {
+        if (!(socketAddress instanceof InetSocketAddress)) {
+            return null;
+        }
+
+        InetSocketAddress remoteAddress = (InetSocketAddress) socketAddress;
+
+        return remoteAddress.getAddress().getHostAddress();
+
+    }
+
+    public static String getClientHostname(SocketAddress socketAddress) {
+        if (!(socketAddress instanceof InetSocketAddress)) {
+            return null;
+        }
+
+        InetSocketAddress remoteAddress = (InetSocketAddress) socketAddress;
+
+        return remoteAddress.getHostName();
+
+    }
+
+    public static Integer getClientPort(SocketAddress socketAddress) {
+        if (!(socketAddress instanceof InetSocketAddress)) {
+            return null;
+        }
+
+        InetSocketAddress remoteAddress = (InetSocketAddress) socketAddress;
+
+        return remoteAddress.getPort();
+
+    }
+
     public static String getIpAddress() {
         try {
-            return InetAddress.getLocalHost().getHostAddress().toString();
+            return InetAddress.getLocalHost().getHostAddress();
         } catch (UnknownHostException e) {
             logger.warn("Could not get IP address:  " + e, e);
             return null;

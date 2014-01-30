@@ -542,8 +542,9 @@ public class PresenceService extends AbstractService implements ObservableServic
      * @param attributeMap
      * @param nodeAttributeSerializer
      */
-    void announce(String clusterId, String serviceId, String nodeId, boolean visible, Map<String, String> attributeMap,
-            DataSerializer<Map<String, String>> nodeAttributeSerializer, List<ACL> aclList) {
+    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
+            Map<String, String> attributeMap, DataSerializer<Map<String, String>> nodeAttributeSerializer,
+            List<ACL> aclList) {
         // defaults
         if (nodeAttributeSerializer == null) {
             nodeAttributeSerializer = this.getNodeAttributeSerializer();
@@ -588,6 +589,33 @@ public class PresenceService extends AbstractService implements ObservableServic
         // submit for async update immediately
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
         doUpdateAnnouncementAsync(path, announcement);
+    }
+
+    /**
+     * Used to flag that a service node is dead, the presence node should be removed, and should not be checked again.
+     * 
+     * Used internally to remove connected clients once ping(s) fail.
+     * 
+     * @param clusterId
+     * @param serviceId
+     * @param nodeId
+     */
+    public void dead(String clusterId, String serviceId, String nodeId) {
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+        try {
+            getZkClient().delete(path, -1);
+            announcementMap.remove(nodePath);
+        } catch (KeeperException e) {
+            if (e.code() == Code.NONODE) {
+                logger.debug("Node does not exist:  path={}", path);
+            } else {
+                logger.warn("Error trying to remove node:  " + e + ":  path=" + path, e);
+            }
+        } catch (InterruptedException e) {
+            logger.warn("hide():  error trying to remove node:  " + e, e);
+        }
+
     }
 
     void show(String clusterId, String serviceId, String nodeId) {
@@ -957,7 +985,7 @@ public class PresenceService extends AbstractService implements ObservableServic
                 doUpdateAnnouncement(path, announcement);
             }// for
 
-            /** do zombie node check every 5 minutes **/
+            /** do zombie node check per interval **/
             if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
                 // get exclusive leader lock to perform maintenance duties
                 CoordinationService coordinationService = getContext().getService("coord");

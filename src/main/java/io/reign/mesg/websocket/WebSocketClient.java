@@ -1,5 +1,6 @@
 package io.reign.mesg.websocket;
 
+import io.reign.CanonicalId;
 import io.reign.mesg.DefaultMessageProtocol;
 
 import java.net.InetSocketAddress;
@@ -49,12 +50,48 @@ public class WebSocketClient {
 
     private final AtomicInteger messageIdSequence = new AtomicInteger(0);
 
+    private String clusterId;
+    private String serviceId;
+    private String nodeId;
+
     public WebSocketClient(String uriString) throws URISyntaxException {
         this.uri = new URI(uriString);
     }
 
     public WebSocketClient(URI uri) {
         this.uri = uri;
+    }
+
+    public WebSocketClient(String clusterId, String serviceId, String nodeId, Channel channel) {
+        this.channel = channel;
+        handler = new WebSocketClientHandler(null);
+        this.clusterId = clusterId;
+        this.serviceId = serviceId;
+        this.nodeId = nodeId;
+    }
+
+    public String getClusterId() {
+        return clusterId;
+    }
+
+    public void setClusterId(String clusterId) {
+        this.clusterId = clusterId;
+    }
+
+    public String getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(String serviceId) {
+        this.serviceId = serviceId;
+    }
+
+    public String getNodeId() {
+        return nodeId;
+    }
+
+    public void setCanonicalId(String nodeId) {
+        this.nodeId = nodeId;
     }
 
     public synchronized void connect() throws Exception {
@@ -75,8 +112,8 @@ public class WebSocketClient {
 
         handler = new WebSocketClientHandler(handshaker);
 
-        bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors
-                .newCachedThreadPool()));
+        bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
+                Executors.newCachedThreadPool()));
 
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
             @Override
@@ -98,12 +135,25 @@ public class WebSocketClient {
         handshaker.handshake(channel).syncUninterruptibly();
     }
 
-    public String write(String text) {
+    /**
+     * Make a synchronous call
+     * 
+     * @param text
+     * @param waitForResponse
+     *            true to wait for a response; false for "fire and forget"
+     * @return
+     */
+    public String write(String text, boolean waitForResponse) {
 
         final int requestId = messageIdSequence.incrementAndGet();
 
         final ChannelFuture channelFuture = channel.write(new TextWebSocketFrame(text
                 + DefaultMessageProtocol.MESSAGE_ID_DELIMITER + requestId));
+
+        if (!waitForResponse) {
+            return null;
+        }
+
         channelFuture.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture channelFuture) {
@@ -142,7 +192,7 @@ public class WebSocketClient {
         return (String) response;
     }
 
-    public byte[] write(byte[] bytes) {
+    public byte[] write(byte[] bytes, boolean waitForResponse) {
         throw new UnsupportedOperationException("Not yet supported.");
     }
 

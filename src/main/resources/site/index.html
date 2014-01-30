@@ -157,6 +157,14 @@
           <p>Route API calls to the Coordination Service by prefixing with <code>data:</code></p>
           <p>&nbsp;</p>         
           <hr/> 
+          
+          <h2>Messaging Service</h2>
+          <p>Route API calls to the Messaging Service by prefixing with <code>mesg:</code></p>
+		  <h4>Send message to all connected clients and don't wait for response (goes to null service)</h4>
+	      <code>mesg:/reign/client#forget<br/>
+	      {"body":"Hello World"}<br/>
+	      </code>       
+          <hr/>         
       
       </div>
 	  
@@ -168,11 +176,11 @@
 
     </div> <!-- /container -->
 
-    <!-- Le javascript
-    ================================================== -->
+    <!-- javascript ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="js/jquery-1.10.1.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="jquery.gracefulWebSocket.js"></script>
 
 	<script>
 	   // show first tab
@@ -180,27 +188,12 @@
 	</script>
 	
 <script type="text/javascript">
-var socket; var socketOpened = false;
+var socket; 
+var socketOpened = false;
+
 if (!window.WebSocket) {
   window.WebSocket = window.MozWebSocket;
 }
-function connectWebSocket() {
-if( socket && socket.readyState!=socket.CLOSED ) return;
-if (window.WebSocket) {
-  socket = new WebSocket($('#connectHost').val());
-  socket.onmessage = function(event) {    appendDiv('responseText', event.data);
-  };
-  socket.onopen = function(event) {    socketOpened = true; appendDiv('responseText', 'Web Socket opened:  '+$('#connectHost').val());
-  };
-  socket.onclose = function(event) {
-    if( socketOpened ) { appendDiv('responseText', 'Web Socket closed:&nbsp; '+$('#connectHost').val()); }     socket = null; socketOpened = false;
-  };  socket.onerror = function(event) {
-    if( socket ) { appendDiv('responseText', 'Web Socket connection error:&nbsp; '+$('#connectHost').val()); }     socket = null; socketOpened = false;
-  };
-} else {
-  alert("Your browser does not support Web Socket.");
-}
-} // function
 
 function send(message) {
     if (!window.WebSocket) { return; }
@@ -213,7 +206,39 @@ function send(message) {
     }
 } // function
 
+function connectWebSocket() {
+	if( socket && socket.readyState!=socket.CLOSED ) return;
+	if (window.WebSocket) {
+		socket = new WebSocket($('#connectHost').val());
+		socket.onmessage = function(event) {    
+			appendDiv('responseText', event.data);
+		};
+		socket.onopen = function(event) { 
+			socketOpened = true; 
+			appendDiv('responseText', 'Web Socket opened:  '+$('#connectHost').val());
+			send("presence:/reign/client");
+		};
+		socket.onclose = function(event) {
+		    if( socketOpened ) { 
+		    	appendDiv('responseText', 'Web Socket closed:&nbsp; '+$('#connectHost').val()); 
+		    }     
+		    socket = null; 
+		    socketOpened = false;
+		};  
+		socket.onerror = function(event) {
+	    	if( socket ) { 
+	    		appendDiv('responseText', 'Web Socket connection error:&nbsp; '+$('#connectHost').val()); 
+	    	}     
+	    	socket = null; 
+	    	socketOpened = false;
+		};
+	} else {
+	  alert("Your browser does not support Web Socket.");
+	}
+} // function
+
 var resultCounter=0;
+
 function appendDiv(divElementId, html) { 
     //var theDiv = document.getElementById(divElementId);
     //var contentDiv = document.createElement('div');
@@ -226,9 +251,14 @@ function appendDiv(divElementId, html) {
     //theDiv.scrollTop = theDiv.scrollHeight; 
 } // function
 
-function checkKey(e) { if( e && e.keyCode==13 && $('#sendInput').val().match("^presence:")) { send($('#sendInput').val()); return false; } }
+function checkKey(e) { 
+	if( e && e.keyCode==13 && $('#sendInput').val().match("^presence:")) { 
+		send($('#sendInput').val()); 
+		return false; 
+	} 
+}
 
-
+connectWebSocket();
 </script>
 
 

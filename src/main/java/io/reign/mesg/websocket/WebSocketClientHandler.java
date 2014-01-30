@@ -29,10 +29,15 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(WebSocketClientHandler.class);
 
+    /** Can be null if no handshaking is necessary */
     private final WebSocketClientHandshaker handshaker;
 
     private final ConcurrentMap<Integer, Object> responseHolder = new ConcurrentHashMap<Integer, Object>(64, 0.9f, 8);
 
+    /**
+     * @param handshaker
+     *            can be null if no handshaking is required (already an established connection)
+     */
     public WebSocketClientHandler(WebSocketClientHandshaker handshaker) {
         this.handshaker = handshaker;
     }

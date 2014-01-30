@@ -20,6 +20,10 @@ public interface MessagingProvider {
 
     public byte[] sendMessage(String hostOrIpAddress, int port, byte[] message);
 
+    public String sendMessageForget(String hostOrIpAddress, int port, String message);
+
+    public byte[] sendMessageForget(String hostOrIpAddress, int port, byte[] message);
+
     public void setMessageProtocol(MessageProtocol messageProtocol);
 
     public MessageProtocol getMessageProtocol();

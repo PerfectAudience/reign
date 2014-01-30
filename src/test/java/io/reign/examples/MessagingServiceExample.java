@@ -72,7 +72,7 @@ public class MessagingServiceExample {
 
         Thread.sleep(5000);
 
-        DefaultMessagingService messagingService = reign.getService("messaging");
+        DefaultMessagingService messagingService = reign.getService("mesg");
 
         Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
                 new SimpleRequestMessage("presence", "/"));

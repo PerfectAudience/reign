@@ -5,20 +5,33 @@ import static org.jboss.netty.handler.codec.http.HttpHeaders.setContentLength;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static org.jboss.netty.handler.codec.http.HttpMethod.GET;
+import static org.jboss.netty.handler.codec.http.HttpMethod.POST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+import io.reign.CanonicalId;
+import io.reign.DataSerializer;
+import io.reign.DefaultCanonicalId;
+import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
 import io.reign.mesg.MessageProtocol;
+import io.reign.mesg.MessagingService;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
+import io.reign.presence.PresenceService;
+import io.reign.util.IdUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.zookeeper.data.ACL;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.ChannelEvent;
@@ -58,17 +71,19 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 public class WebSocketServerHandler extends ExecutionHandler {
     private static final Logger logger = LoggerFactory.getLogger(WebSocketServerHandler.class);
 
-    private static final String WEBSOCKET_PATH = "/websocket";
-
     private WebSocketServerHandshaker handshaker;
 
     private ReignContext serviceDirectory;
 
     private MessageProtocol messageProtocol;
 
-    public WebSocketServerHandler(ReignContext serviceDirectory, MessageProtocol messageProtocol) {
+    private WebSocketConnectionManager connectionManager;
+
+    public WebSocketServerHandler(ReignContext serviceDirectory, WebSocketConnectionManager connectionManager,
+            MessageProtocol messageProtocol) {
         super(new OrderedMemoryAwareThreadPoolExecutor(8, 1048576, 8 * 1048576));
         this.serviceDirectory = serviceDirectory;
+        this.connectionManager = connectionManager;
         this.messageProtocol = messageProtocol;
     }
 
@@ -270,49 +285,69 @@ public class WebSocketServerHandler extends ExecutionHandler {
         }
     }
 
+    public WebSocketConnectionManager getConnectionManager() {
+        return connectionManager;
+    }
+
+    public void setConnectionManager(WebSocketConnectionManager connectionManager) {
+        this.connectionManager = connectionManager;
+    }
+
     private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest req) throws Exception {
         // only GET methods.
-        if (req.getMethod() != GET) {
+        if (req.getMethod() != GET && req.getMethod() != POST) {
             sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1, FORBIDDEN));
             return;
         }
 
-        // anything but a request for the websocket will be treated like a regular HTTP request
+        // anything but a request for the websocket will be treated like a regular HTTP Web request
         String uri = req.getUri();
-        if (uri != null && !WEBSOCKET_PATH.equals(uri)) {
-            HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
+        if (uri != null && !WebSocketMessagingProvider.WEBSOCKET_PATH.equals(uri)) {
+            // web request
+            handleWebResourceRequest(ctx, req, uri);
 
-            // ChannelBuffer content = WebSocketServerIndexPage.getContent(getWebSocketLocation(req));
+        } else {
 
-            String contentType = null;
-            if (uri.endsWith(".png")) {
-                contentType = "image/png";
-            } else if (uri.endsWith(".ico")) {
-                contentType = "image/x-icon";
-            } else if (uri.endsWith(".css")) {
-                contentType = "text/css";
-            } else if (uri.endsWith(".js")) {
-                contentType = "application/javascript";
-            } else {
-                contentType = "text/html; charset=UTF-8";
-            }
-
-            ChannelBuffer content = loadWebResource(uri, contentType, host(req));
-
-            if (content != null) {
-                res.setHeader(CONTENT_TYPE, contentType);
-                setContentLength(res, content.readableBytes());
-
-                res.setContent(content);
-                sendHttpResponse(ctx, req, res);
-            } else {
-                sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1,
-                        org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND));
-            }
-            return;
+            // websocket handshake
+            handleWebSocketHandshake(ctx, req);
         }
 
-        // websocket handshake
+    }
+
+    private void handleWebResourceRequest(ChannelHandlerContext ctx, HttpRequest req, String uri) {
+        HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
+
+        // ChannelBuffer content = WebSocketServerIndexPage.getContent(getWebSocketLocation(req));
+
+        String contentType = null;
+        if (uri.endsWith(".png")) {
+            contentType = "image/png";
+        } else if (uri.endsWith(".ico")) {
+            contentType = "image/x-icon";
+        } else if (uri.endsWith(".css")) {
+            contentType = "text/css";
+        } else if (uri.endsWith(".js")) {
+            contentType = "application/javascript";
+        } else {
+            contentType = "text/html; charset=UTF-8";
+        }
+
+        ChannelBuffer content = loadWebResource(uri, contentType, host(req));
+
+        if (content != null) {
+            res.setHeader(CONTENT_TYPE, contentType);
+            setContentLength(res, content.readableBytes());
+
+            res.setContent(content);
+            sendHttpResponse(ctx, req, res);
+        } else {
+            sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1,
+                    org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND));
+        }
+    }
+
+    private void handleWebSocketHandshake(ChannelHandlerContext ctx, HttpRequest req) throws Exception {
+        // do web socket handshake
         WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(host(req), null, false);
         handshaker = wsFactory.newHandshaker(req);
         if (handshaker == null) {
@@ -320,6 +355,28 @@ public class WebSocketServerHandler extends ExecutionHandler {
         } else {
             handshaker.handshake(ctx.getChannel(), req).addListener(WebSocketServerHandshaker.HANDSHAKE_LISTENER);
         }
+
+        // TODO: register client with framework
+        PresenceService presenceService = serviceDirectory.getService("presence");
+
+        SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
+
+        CanonicalId canonicalId = new DefaultCanonicalId(null, IdUtil.getClientIpAddress(socketAddress),
+                IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress),
+                IdUtil.getClientPort(socketAddress));
+        String canonicalIdString = serviceDirectory.getPathScheme().toPathToken(canonicalId);
+
+        // (String clusterId, String serviceId, String nodeId, boolean visible,
+        // Map<String, String> attributeMap, DataSerializer<Map<String, String>> nodeAttributeSerializer,
+        // List<ACL> aclList)
+
+        presenceService.announce(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID, Reign.DEFAULT_FRAMEWORK_CLIENT_ID,
+                canonicalIdString, true, null, null, serviceDirectory.getDefaultZkAclList());
+
+        // TODO: register connection
+        connectionManager.addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil
+                .getClientPort(socketAddress), new WebSocketClient(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID,
+                Reign.DEFAULT_FRAMEWORK_CLIENT_ID, canonicalIdString, ctx.getChannel()));
     }
 
     private void handleWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
@@ -475,6 +532,6 @@ public class WebSocketServerHandler extends ExecutionHandler {
     }
 
     private static String host(HttpRequest req) {
-        return "ws://" + req.getHeader(HOST) + WEBSOCKET_PATH;
+        return "ws://" + req.getHeader(HOST) + WebSocketMessagingProvider.WEBSOCKET_PATH;
     }
 }
