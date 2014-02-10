@@ -16,20 +16,14 @@
 
 package io.reign;
 
-import io.reign.mesg.MessagingService;
 import io.reign.presence.PresenceService;
 import io.reign.zk.PathCache;
 import io.reign.zk.SimplePathCache;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -86,6 +80,8 @@ public class Reign implements Watcher {
     private List<ACL> defaultZkAclList = DEFAULT_ACL_LIST;
 
     private CanonicalIdMaker canonicalIdMaker;
+
+    private final NodeObserverManager observerManager = new NodeObserverManager();
 
     public static ReignMaker maker() {
         return new ReignMaker();
@@ -254,9 +250,13 @@ public class Reign implements Watcher {
             }
         });
 
-        /** init path cache **/
-        logger.info("START:  initializing pathCache...");
-        pathCache.init();
+        /** init observer manager **/
+        observerManager.setZkClient(zkClient);
+        zkClient.register(observerManager);
+
+        // /** init path cache **/
+        // logger.info("START:  initializing pathCache...");
+        // pathCache.init();
 
         /** create context object **/
         logger.info("START:  creating ReignContext...");
@@ -302,11 +302,6 @@ public class Reign implements Watcher {
                 return finalDefaultZkAclList;
             }
 
-            // @Override
-            // public PathCache getPathCache() {
-            // return pathCache;
-            // }
-
             @Override
             public String getCanonicalIdPathToken() {
                 return pathScheme.toPathToken(canonicalIdMaker.get());
@@ -321,7 +316,7 @@ public class Reign implements Watcher {
             Service service = serviceMap.get(serviceName).getService();
             service.setPathScheme(pathScheme);
             service.setZkClient(zkClient);
-            // service.setPathCache(pathCache);
+            service.setObserverManager(observerManager);
             service.setContext(context);
             service.setDefaultZkAclList(defaultZkAclList);
             service.init();

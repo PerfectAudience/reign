@@ -19,7 +19,6 @@ package io.reign.conf;
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.NodeObserverManager;
 import io.reign.PathType;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
@@ -54,7 +53,7 @@ public class ConfService extends AbstractService {
 
     private final ZkClientUtil zkUtil = new ZkClientUtil();
 
-    private NodeObserverManager<ConfObserver> observerManager = null;
+    // private NodeObserverManager<ConfObserver> observerManager = null;
 
     private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(17,
             0.9f, 1);
@@ -67,15 +66,7 @@ public class ConfService extends AbstractService {
 
     @Override
     public synchronized void init() {
-        if (observerManager != null) {
-            return;
-        }
-
         logger.info("init() called");
-
-        observerManager = new NodeObserverManager<ConfObserver>();
-        observerManager.setZkClient(getZkClient());
-        observerManager.init();
     }
 
     @Override
@@ -136,7 +127,7 @@ public class ConfService extends AbstractService {
         observer.setClusterId(clusterId);
         observer.setDataSerializerMap(dataSerializerMap);
 
-        this.observerManager.put(absolutePath, observer);
+        getObserverManager().put(absolutePath, observer);
     }
 
     /**
@@ -246,7 +237,7 @@ public class ConfService extends AbstractService {
 
         /** add observer if given **/
         if (observer != null) {
-            this.observerManager.put(absolutePath, observer);
+            getObserverManager().put(absolutePath, observer);
 
         }
 

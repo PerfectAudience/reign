@@ -17,7 +17,6 @@
 package io.reign.coord;
 
 import io.reign.AbstractService;
-import io.reign.NodeObserverManager;
 import io.reign.PathType;
 import io.reign.conf.ConfService;
 
@@ -46,31 +45,25 @@ public class CoordinationService extends AbstractService {
      */
     private volatile long maxReservationHoldTimeMillis = -1;
 
-    private NodeObserverManager<CoordObserver> observerManager = null;
-
-    private final CoordinationServiceCache coordinationServiceCache;
+    private final CoordinationServiceCache coordinationServiceCache = new CoordinationServiceCache();
 
     private ScheduledThreadPoolExecutor executorService;
 
     public CoordinationService() {
         super();
 
-        coordinationServiceCache = new CoordinationServiceCache();
-
-        // by default, check/clean-up locks every minute
-        // this.setExecutionIntervalMillis(60000);
     }
 
     public void observe(String clusterId, String lockName, LockObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        observerManager.put(entityPath, observer);
+        getObserverManager().put(entityPath, observer);
     }
 
     public void observe(String clusterId, String semaphoreName, SemaphoreObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.SEMAPHORE, semaphoreName);
-        observerManager.put(entityPath, observer);
+        getObserverManager().put(entityPath, observer);
     }
 
     /**
@@ -282,7 +275,7 @@ public class CoordinationService extends AbstractService {
 
     @Override
     public synchronized void init() {
-        if (observerManager != null) {
+        if (executorService != null) {
             return;
         }
 
@@ -292,10 +285,6 @@ public class CoordinationService extends AbstractService {
 
         Runnable adminRunnable = new AdminRunnable();
         executorService.scheduleAtFixedRate(adminRunnable, 60000, 60000, TimeUnit.MILLISECONDS);
-
-        observerManager = new NodeObserverManager<CoordObserver>();
-        observerManager.setZkClient(getZkClient());
-        observerManager.init();
 
     }
 
