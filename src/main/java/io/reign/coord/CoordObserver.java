@@ -16,8 +16,8 @@
 
 package io.reign.coord;
 
-import io.reign.AbstractNodeObserver;
-import io.reign.NodeObserver;
+import io.reign.AbstractObserver;
+import io.reign.Observer;
 
 /**
  * 
@@ -25,6 +25,6 @@ import io.reign.NodeObserver;
  * 
  * @param <T>
  */
-public abstract class CoordObserver<T> extends AbstractNodeObserver {
+public abstract class CoordObserver<T> extends AbstractObserver {
 
 }

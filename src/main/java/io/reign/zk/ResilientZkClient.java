@@ -566,9 +566,9 @@ public class ResilientZkClient implements ZkClient, Watcher {
 
     @Override
     public void register(Watcher watcher) {
-        logger.info("Registering watcher:  {}:  hashCode={}; watchers={}", new Object[] { watcher.getClass().getName(),
-                watcher.hashCode(), watcherSet.size() });
         this.watcherSet.add(watcher);
+        logger.info("Registered watcher:  {}:  hashCode={}; watchers={}", new Object[] { watcher.getClass().getName(),
+                watcher.hashCode(), watcherSet.size() });
     }
 
     public void setACL(final String path, final List<ACL> acl, final int version, final StatCallback cb,

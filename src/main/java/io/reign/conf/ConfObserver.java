@@ -16,7 +16,7 @@
 
 package io.reign.conf;
 
-import io.reign.AbstractNodeObserver;
+import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
 
 import java.util.Map;
@@ -26,7 +26,7 @@ import java.util.Map;
  * @author ypai
  * 
  */
-public abstract class ConfObserver<T> extends AbstractNodeObserver {
+public abstract class ConfObserver<T> extends AbstractObserver {
 
     private String clusterId = null;
     private String serviceId = null;

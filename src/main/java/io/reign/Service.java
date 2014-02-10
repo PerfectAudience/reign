@@ -47,7 +47,7 @@ public interface Service {
 
     public void setDefaultZkAclList(List<ACL> defaultZkAclList);
 
-    public void setObserverManager(NodeObserverManager observerManager);
+    public void setObserverManager(ObserverManager observerManager);
 
     /**
      * 

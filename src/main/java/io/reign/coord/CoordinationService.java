@@ -54,6 +54,28 @@ public class CoordinationService extends AbstractService {
 
     }
 
+    @Override
+    public synchronized void init() {
+        if (executorService != null) {
+            return;
+        }
+
+        zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), coordinationServiceCache);
+
+        executorService = new ScheduledThreadPoolExecutor(1);
+
+        Runnable adminRunnable = new AdminRunnable();
+        executorService.scheduleAtFixedRate(adminRunnable, 60000, 60000, TimeUnit.MILLISECONDS);
+
+    }
+
+    @Override
+    public void destroy() {
+        zkReservationManager.shutdown();
+        executorService.shutdown();
+
+    }
+
     public void observe(String clusterId, String lockName, LockObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
@@ -266,33 +288,6 @@ public class CoordinationService extends AbstractService {
 
     public void setMaxReservationHoldTimeMillis(long maxReservationHoldTimeMillis) {
         this.maxReservationHoldTimeMillis = maxReservationHoldTimeMillis;
-    }
-
-    // @Override
-    // public void perform() {
-    //
-    // }
-
-    @Override
-    public synchronized void init() {
-        if (executorService != null) {
-            return;
-        }
-
-        zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), coordinationServiceCache);
-
-        executorService = new ScheduledThreadPoolExecutor(1);
-
-        Runnable adminRunnable = new AdminRunnable();
-        executorService.scheduleAtFixedRate(adminRunnable, 60000, 60000, TimeUnit.MILLISECONDS);
-
-    }
-
-    @Override
-    public void destroy() {
-        zkReservationManager.shutdown();
-        executorService.shutdown();
-
     }
 
     // @Override

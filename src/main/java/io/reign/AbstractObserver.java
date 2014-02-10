@@ -18,7 +18,7 @@ import java.util.List;
  limitations under the License.
  */
 
-public abstract class AbstractNodeObserver implements NodeObserver {
+public abstract class AbstractObserver implements Observer {
 
     private String path;
     private byte[] data;

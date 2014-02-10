@@ -65,8 +65,8 @@ public class ConfService extends AbstractService {
     }
 
     @Override
-    public synchronized void init() {
-        logger.info("init() called");
+    public void init() {
+
     }
 
     @Override

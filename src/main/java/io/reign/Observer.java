@@ -23,7 +23,7 @@ import java.util.List;
  * @author ypai
  * 
  */
-public interface NodeObserver {
+public interface Observer {
 
     /**
      * Called when the ZooKeeper connection has been recovered. Generally, it would be wise to "reset" the application

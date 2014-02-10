@@ -22,11 +22,11 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.reign.AbstractNodeObserver;
+import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.NodeObserver;
-import io.reign.NodeObserverManager;
+import io.reign.Observer;
+import io.reign.ObserverManager;
 
 /**
  * 
@@ -34,7 +34,7 @@ import io.reign.NodeObserverManager;
  * 
  * @param <T>
  */
-public abstract class PresenceObserver<T> extends AbstractNodeObserver {
+public abstract class PresenceObserver<T> extends AbstractObserver {
 
     private static final DataSerializer<Map<String, String>> nodeAttributeSerializer = new JsonDataSerializer<Map<String, String>>();
 

@@ -41,14 +41,14 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
 
     private List<ACL> defaultZkAclList;
 
-    private NodeObserverManager observerManager;
+    private ObserverManager observerManager;
 
     @Override
-    public void setObserverManager(NodeObserverManager observerManager) {
+    public void setObserverManager(ObserverManager observerManager) {
         this.observerManager = observerManager;
     }
 
-    public NodeObserverManager getObserverManager() {
+    public ObserverManager getObserverManager() {
         return this.observerManager;
     }
 

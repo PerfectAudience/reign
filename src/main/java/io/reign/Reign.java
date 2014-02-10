@@ -81,7 +81,7 @@ public class Reign implements Watcher {
 
     private CanonicalIdMaker canonicalIdMaker;
 
-    private final NodeObserverManager observerManager = new NodeObserverManager();
+    private final ObserverManager observerManager = new ObserverManager();
 
     public static ReignMaker maker() {
         return new ReignMaker();

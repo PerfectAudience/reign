@@ -39,15 +39,15 @@ import org.slf4j.LoggerFactory;
  * @param <T>
  *            the type of observer
  */
-public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEventHandler {
+public class ObserverManager<T extends Observer> extends AbstractZkEventHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(NodeObserverManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(ObserverManager.class);
 
     private final ConcurrentMap<String, Set<T>> observerMap = new ConcurrentHashMap<String, Set<T>>(16, 0.9f, 2);
 
     private ZkClient zkClient;
 
-    public NodeObserverManager() {
+    public ObserverManager() {
     }
 
     public ZkClient getZkClient() {
