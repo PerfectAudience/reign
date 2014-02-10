@@ -19,7 +19,6 @@ package io.reign.zk;
 import io.reign.ZkClient;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -39,11 +38,9 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -569,6 +566,8 @@ public class ResilientZkClient implements ZkClient, Watcher {
 
     @Override
     public void register(Watcher watcher) {
+        logger.info("Registering watcher:  {}:  hashCode={}; watchers={}", new Object[] { watcher.getClass().getName(),
+                watcher.hashCode(), watcherSet.size() });
         this.watcherSet.add(watcher);
     }
 

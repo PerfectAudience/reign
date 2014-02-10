@@ -28,14 +28,14 @@ import java.nio.ByteBuffer;
 public class LongSerializer implements DataSerializer<Long> {
 
     @Override
-    public byte[] serialize(Long data) throws Exception {
+    public byte[] serialize(Long data) throws RuntimeException {
         byte[] bytes = new byte[8];
         ByteBuffer.wrap(bytes).putLong(data);
         return bytes;
     }
 
     @Override
-    public Long deserialize(byte[] bytes) throws Exception {
+    public Long deserialize(byte[] bytes) throws RuntimeException {
         return ByteBuffer.wrap(bytes).getLong();
 
     }

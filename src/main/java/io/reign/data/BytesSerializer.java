@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
 
@@ -27,12 +27,12 @@ import io.reign.DataSerializer;
 public class BytesSerializer implements DataSerializer<byte[]> {
 
     @Override
-    public byte[] serialize(byte[] data) throws Exception {
+    public byte[] serialize(byte[] data) throws RuntimeException {
         return data;
     }
 
     @Override
-    public byte[] deserialize(byte[] bytes) throws Exception {
+    public byte[] deserialize(byte[] bytes) throws RuntimeException {
         return bytes;
     }
 

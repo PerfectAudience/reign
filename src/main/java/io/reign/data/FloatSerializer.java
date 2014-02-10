@@ -27,14 +27,14 @@ import java.nio.ByteBuffer;
  */
 public class FloatSerializer implements DataSerializer<Float> {
     @Override
-    public byte[] serialize(Float data) throws Exception {
+    public byte[] serialize(Float data) throws RuntimeException {
         byte[] bytes = new byte[4];
         ByteBuffer.wrap(bytes).putFloat(data);
         return bytes;
     }
 
     @Override
-    public Float deserialize(byte[] bytes) throws Exception {
+    public Float deserialize(byte[] bytes) throws RuntimeException {
         return ByteBuffer.wrap(bytes).getFloat();
 
     }

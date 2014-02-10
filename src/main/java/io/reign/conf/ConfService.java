@@ -19,16 +19,13 @@ package io.reign.conf;
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.ObservableService;
-import io.reign.PathType;
 import io.reign.NodeObserverManager;
-import io.reign.NodeObserverWrapper;
+import io.reign.PathType;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 import io.reign.mesg.ResponseStatus;
 import io.reign.mesg.SimpleResponseMessage;
 import io.reign.util.ZkClientUtil;
-import io.reign.zk.SimplePathCacheEntry;
 
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
@@ -40,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
@@ -58,16 +54,32 @@ public class ConfService extends AbstractService {
 
     private final ZkClientUtil zkUtil = new ZkClientUtil();
 
-    private NodeObserverManager<ConfObserver> observerManager;
+    private NodeObserverManager<ConfObserver> observerManager = null;
 
     private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(17,
             0.9f, 1);
 
     public ConfService() {
         dataSerializerMap.put("properties", new ConfPropertiesSerializer<ConfProperties>(false));
-        dataSerializerMap.put("props", dataSerializerMap.get("properties"));
         dataSerializerMap.put("json", new JsonDataSerializer());
         dataSerializerMap.put("js", dataSerializerMap.get("json"));
+    }
+
+    @Override
+    public synchronized void init() {
+        if (observerManager != null) {
+            return;
+        }
+
+        logger.info("init() called");
+
+        observerManager = new NodeObserverManager<ConfObserver>();
+        observerManager.setZkClient(getZkClient());
+        observerManager.init();
+    }
+
+    @Override
+    public void destroy() {
     }
 
     /**
@@ -122,6 +134,7 @@ public class ConfService extends AbstractService {
                 getPathScheme().joinPaths(clusterId, relativeConfPath));
 
         observer.setClusterId(clusterId);
+        observer.setDataSerializerMap(dataSerializerMap);
 
         this.observerManager.put(absolutePath, observer);
     }
@@ -154,30 +167,6 @@ public class ConfService extends AbstractService {
 
     }
 
-    // /**
-    // *
-    // * @param relativePath
-    // * @param confSerializer
-    // * @return
-    // */
-    // public <T> T getConf(String clusterId, String relativeConfPath, DataSerializer<T> confSerializer) {
-    // return getConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, confSerializer, null);
-    //
-    // }
-
-    // /**
-    // *
-    // * @param relativePath
-    // * @param confSerializer
-    // * @param observer
-    // * @return
-    // */
-    // public <T> T getConf(String clusterId, String relativeConfPath, DataSerializer<T> confSerializer,
-    // ConfObserver<T> observer) {
-    // return getConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, confSerializer, observer);
-    //
-    // }
-
     public <T> void putConf(String clusterId, String relativeConfPath, T conf) {
         putConf(clusterId, relativeConfPath, conf, null);
     }
@@ -201,32 +190,6 @@ public class ConfService extends AbstractService {
         }
     }
 
-    // /**
-    // *
-    // * @param relativePath
-    // * @param conf
-    // * @param confSerializer
-    // */
-    // public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer) {
-    // putConfAbsolutePath(
-    // getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath)),
-    // conf, confSerializer, getDefaultZkAclList());
-    // }
-
-    // /**
-    // *
-    // * @param relativePath
-    // * @param conf
-    // * @param confSerializer
-    // * @param aclList
-    // */
-    // public <T> void putConf(String clusterId, String relativeConfPath, T conf, DataSerializer<T> confSerializer,
-    // List<ACL> aclList) {
-    // putConfAbsolutePath(
-    // getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath)),
-    // conf, confSerializer, aclList);
-    // }
-
     /**
      * 
      * @param relativePath
@@ -237,11 +200,6 @@ public class ConfService extends AbstractService {
 
         try {
             getZkClient().delete(path, -1);
-
-            // set up watch for when path comes back if there are observers
-            if (this.observerManager.isBeingObserved(path)) {
-                getZkClient().exists(path, true);
-            }
 
         } catch (KeeperException e) {
             if (e.code() != Code.NONODE) {
@@ -378,71 +336,6 @@ public class ConfService extends AbstractService {
         }
     }
 
-    // @Override
-    // public void signalStateReset(Object o) {
-    // this.observerManager.signalStateReset(o);
-    // }
-    //
-    // @Override
-    // public void signalStateUnknown(Object o) {
-    // this.observerManager.signalStateUnknown(o);
-    // }
-    //
-    // @Override
-    // public boolean filterWatchedEvent(WatchedEvent event) {
-    // return !observerManager.isBeingObserved(event.getPath());
-    //
-    // }
-    //
-    // @Override
-    // public void nodeCreated(WatchedEvent event) {
-    // nodeDataChanged(event);
-    // }
-    //
-    // @Override
-    // public void nodeDataChanged(WatchedEvent event) {
-    // String path = event.getPath();
-    // ConfObserverWrapper<SimpleConfObserver> observerWrapper = observerManager.getObserverWrapperSet(path)
-    // .iterator().next();
-    // Object newValue = getConfAbsolutePath(path, observerWrapper.getDataSerializer(), null, true);
-    // if (newValue != null && !newValue.equals(observerWrapper.getCurrentValue())) {
-    // observerManager.signal(path, newValue);
-    // }
-    // }
-    //
-    // @Override
-    // public void nodeDeleted(WatchedEvent event) {
-    // observerManager.signal(event.getPath(), null);
-    // }
-    //
-    // @Override
-    // public void connected(WatchedEvent event) {
-    // this.signalStateReset(null);
-    // }
-    //
-    // @Override
-    // public void sessionExpired(WatchedEvent event) {
-    // this.signalStateUnknown(null);
-    // }
-    //
-    // @Override
-    // public void disconnected(WatchedEvent event) {
-    // this.signalStateUnknown(null);
-    // }
-
-    @Override
-    public void init() {
-        observerManager = new NodeObserverManager<ConfObserver>();
-        observerManager.setZkClient(getZkClient());
-    }
-
-    @Override
-    public void destroy() {
-    }
-
-    /**
-     * TODO: implement!
-     */
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
         ResponseMessage responseMessage = new SimpleResponseMessage();

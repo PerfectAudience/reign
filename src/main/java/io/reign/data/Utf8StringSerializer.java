@@ -12,9 +12,11 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.data;
+
+import java.io.UnsupportedEncodingException;
 
 import io.reign.DataSerializer;
 
@@ -27,13 +29,21 @@ import io.reign.DataSerializer;
 public class Utf8StringSerializer implements DataSerializer<String> {
 
     @Override
-    public byte[] serialize(String data) throws Exception {
-        return data.getBytes("UTF-8");
+    public byte[] serialize(String data) throws RuntimeException {
+        try {
+            return data.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
-    public String deserialize(byte[] bytes) throws Exception {
-        return new String(bytes, "UTF-8");
+    public String deserialize(byte[] bytes) throws RuntimeException {
+        try {
+            return new String(bytes, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

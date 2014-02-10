@@ -22,13 +22,34 @@ public abstract class AbstractNodeObserver implements NodeObserver {
 
     private String path;
     private byte[] data;
+    private byte[] previousData;
     private List<String> childList;
+    private List<String> previousChildList;
+
+    @Override
+    public byte[] getPreviousData() {
+        return previousData;
+    }
+
+    public void setPreviousData(byte[] previousData) {
+        this.previousData = previousData;
+    }
+
+    @Override
+    public List<String> getPreviousChildList() {
+        return previousChildList;
+    }
+
+    public void setPreviousChildList(List<String> previousChildList) {
+        this.previousChildList = previousChildList;
+    }
 
     @Override
     public String getPath() {
         return path;
     }
 
+    @Override
     public void setPath(String path) {
         this.path = path;
     }
@@ -38,6 +59,7 @@ public abstract class AbstractNodeObserver implements NodeObserver {
         return data;
     }
 
+    @Override
     public void setData(byte[] data) {
         this.data = data;
     }
@@ -47,6 +69,7 @@ public abstract class AbstractNodeObserver implements NodeObserver {
         return childList;
     }
 
+    @Override
     public void setChildList(List<String> childList) {
         this.childList = childList;
     }

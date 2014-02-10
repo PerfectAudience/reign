@@ -28,14 +28,14 @@ import java.nio.ByteBuffer;
 public class IntegerSerializer implements DataSerializer<Integer> {
 
     @Override
-    public byte[] serialize(Integer data) throws Exception {
+    public byte[] serialize(Integer data) throws RuntimeException {
         byte[] bytes = new byte[4];
         ByteBuffer.wrap(bytes).putInt(data);
         return bytes;
     }
 
     @Override
-    public Integer deserialize(byte[] bytes) throws Exception {
+    public Integer deserialize(byte[] bytes) throws RuntimeException {
         return ByteBuffer.wrap(bytes).getInt();
 
     }

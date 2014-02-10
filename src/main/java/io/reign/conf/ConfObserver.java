@@ -17,6 +17,9 @@
 package io.reign.conf;
 
 import io.reign.AbstractNodeObserver;
+import io.reign.DataSerializer;
+
+import java.util.Map;
 
 /**
  * 
@@ -29,7 +32,17 @@ public abstract class ConfObserver<T> extends AbstractNodeObserver {
     private String serviceId = null;
     private String nodeId = null;
 
+    private Map<String, DataSerializer> dataSerializerMap = null;
+
     public abstract void updated(T updated, T existing);
+
+    public Map<String, DataSerializer> getDataSerializerMap() {
+        return dataSerializerMap;
+    }
+
+    public void setDataSerializerMap(Map<String, DataSerializer> dataSerializerMap) {
+        this.dataSerializerMap = dataSerializerMap;
+    }
 
     public void setClusterId(String clusterId) {
         this.clusterId = clusterId;
@@ -53,6 +66,29 @@ public abstract class ConfObserver<T> extends AbstractNodeObserver {
 
     public String getNodeId() {
         return nodeId;
+    }
+
+    @Override
+    public void nodeDataChanged(byte[] updatedData) {
+        updated(toConf(updatedData), toConf(getPreviousData()));
+    }
+
+    @Override
+    public void nodeDeleted() {
+        updated(null, toConf(getPreviousData()));
+    }
+
+    @Override
+    public void nodeCreated(byte[] data) {
+        updated(toConf(data), toConf(getPreviousData()));
+    }
+
+    T toConf(byte[] data) {
+        if (data == null || data.length == 0) {
+            return null;
+        }
+        DataSerializer<T> transcoder = ConfService.getDataSerializer(getPath(), dataSerializerMap);
+        return transcoder.deserialize(data);
     }
 
 }

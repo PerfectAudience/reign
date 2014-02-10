@@ -16,20 +16,11 @@
 
 package io.reign.zk;
 
-import io.reign.AbstractZkEventHandler;
-import io.reign.ZkClient;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,21 +41,10 @@ public class SimplePathCache implements PathCache {
 
     private final ConcurrentMap<String, PathCacheEntry> cache;
 
-    // private final ZkClient zkClient;
-
-    // private final ExecutorService executorService;
-
-    private volatile boolean shutdown = false;
-
-    private volatile boolean autoUpdateAll = false;
-
     public SimplePathCache(int maxSize, int concurrencyLevel) {
         cache = new ConcurrentLinkedHashMap.Builder<String, PathCacheEntry>().maximumWeightedCapacity(maxSize)
                 .initialCapacity(maxSize).concurrencyLevel(concurrencyLevel).build();
 
-        // executorService = Executors.newScheduledThreadPool(updaterThreads);
-
-        // this.zkClient = zkClient;
     }
 
     @Override
@@ -74,16 +54,7 @@ public class SimplePathCache implements PathCache {
 
     @Override
     public void destroy() {
-        shutdown = true;
-        // executorService.shutdown();
-    }
 
-    public boolean isAutoUpdateAll() {
-        return autoUpdateAll;
-    }
-
-    public void setAutoUpdateAll(boolean autoUpdateAll) {
-        this.autoUpdateAll = autoUpdateAll;
     }
 
     /**

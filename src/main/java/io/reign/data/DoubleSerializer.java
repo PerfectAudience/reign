@@ -28,14 +28,14 @@ import java.nio.ByteBuffer;
 public class DoubleSerializer implements DataSerializer<Double> {
 
     @Override
-    public byte[] serialize(Double data) throws Exception {
+    public byte[] serialize(Double data) throws RuntimeException {
         byte[] bytes = new byte[8];
         ByteBuffer.wrap(bytes).putDouble(data);
         return bytes;
     }
 
     @Override
-    public Double deserialize(byte[] bytes) throws Exception {
+    public Double deserialize(byte[] bytes) throws RuntimeException {
         return ByteBuffer.wrap(bytes).getDouble();
 
     }

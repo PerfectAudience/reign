@@ -19,7 +19,6 @@ package io.reign.examples;
 import io.reign.Reign;
 import io.reign.conf.ConfObserver;
 import io.reign.conf.ConfProperties;
-import io.reign.conf.ConfPropertiesSerializer;
 import io.reign.conf.ConfService;
 
 import java.util.Properties;
@@ -40,7 +39,7 @@ public class ConfServiceExample {
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
         final Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).get();
-        // reign.start();
+        reign.start();
 
         /** conf service example **/
         Thread t1 = new Thread() {
@@ -80,7 +79,6 @@ public class ConfServiceExample {
     }
 
     public static void confServiceExample(Reign reign) throws Exception {
-        reign.start();
 
         // this is how you would normally get a service
         ConfService confService = (ConfService) reign.getService("conf");

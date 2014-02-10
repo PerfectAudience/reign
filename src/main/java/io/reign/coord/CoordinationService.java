@@ -17,21 +17,14 @@
 package io.reign.coord;
 
 import io.reign.AbstractService;
-import io.reign.ObservableService;
-import io.reign.PathScheme;
-import io.reign.PathType;
-import io.reign.NodeObserver;
 import io.reign.NodeObserverManager;
-import io.reign.NodeObserverWrapper;
+import io.reign.PathType;
 import io.reign.conf.ConfService;
-import io.reign.presence.PresenceObserver;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.ACL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -288,7 +281,11 @@ public class CoordinationService extends AbstractService {
     // }
 
     @Override
-    public void init() {
+    public synchronized void init() {
+        if (observerManager != null) {
+            return;
+        }
+
         zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), coordinationServiceCache);
 
         executorService = new ScheduledThreadPoolExecutor(1);
@@ -298,6 +295,7 @@ public class CoordinationService extends AbstractService {
 
         observerManager = new NodeObserverManager<CoordObserver>();
         observerManager.setZkClient(getZkClient());
+        observerManager.init();
 
     }
 

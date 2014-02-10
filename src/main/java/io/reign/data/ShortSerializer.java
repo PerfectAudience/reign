@@ -27,14 +27,14 @@ import java.nio.ByteBuffer;
  */
 public class ShortSerializer implements DataSerializer<Short> {
     @Override
-    public byte[] serialize(Short data) throws Exception {
+    public byte[] serialize(Short data) throws RuntimeException {
         byte[] bytes = new byte[2];
         ByteBuffer.wrap(bytes).putShort(data);
         return bytes;
     }
 
     @Override
-    public Short deserialize(byte[] bytes) throws Exception {
+    public Short deserialize(byte[] bytes) throws RuntimeException {
         return ByteBuffer.wrap(bytes).getShort();
 
     }

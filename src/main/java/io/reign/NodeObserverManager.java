@@ -25,8 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.KeeperException.Code;
+import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  * @param <T>
- *            the type of observer wrapper
+ *            the type of observer
  */
 public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEventHandler {
 
@@ -83,10 +83,14 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
                     zkClient.exists(path, true);
 
                     observer.setPath(path);
+                    observer.setData(null);
                     observer.setChildList(Collections.EMPTY_LIST);
+
                     Set<T> observerSet = getObserverSet(path, true);
                     observerSet.add(observer);
 
+                    logger.info("Added observer for nonexistent path:  path={}; pathObserverCount={}", path,
+                            observerSet.size());
                 } catch (Exception e1) {
                     logger.error("Unable to add observer:  path=" + path + "; observerType="
                             + observer.getClass().getSimpleName(), e);
@@ -103,14 +107,9 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
 
     }
 
-    // public Set<T> getObserverWrapperSet(String path) {
-    // Set<T> observerSet = getObserverSet(path, false);
-    // return Collections.unmodifiableSet(observerSet);
-    // }
-
     @Override
     public boolean filterWatchedEvent(WatchedEvent event) {
-        if (this.getObserverSet(event.getPath(), false) == null) {
+        if (this.getObserverSet(event.getPath(), false).size() == 0) {
             // ignore events that are not being tracked by an observer
             return true;
         }
@@ -119,9 +118,8 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
 
     @Override
     public void nodeChildrenChanged(WatchedEvent event) {
-        logger.info("Notifying ALL observers:  nodeChildrenChanged");
-
         String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeChildrenChanged:  path={}", path);
         try {
             Set<T> observerSet = getObserverSet(path, false);
             if (observerSet.size() > 0) {
@@ -131,26 +129,30 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
                 }
 
                 for (T observer : observerSet) {
-                    List<String> childList = observer.getChildList();
-                    if (childList == null) {
-                        childList = Collections.EMPTY_LIST;
-                    }
+                    synchronized (observer) {
+                        List<String> childList = observer.getChildList();
+                        if (childList == null) {
+                            childList = Collections.EMPTY_LIST;
+                        }
 
-                    boolean updatedValueDiffers = childList.size() != updatedChildList.size();
+                        boolean updatedValueDiffers = childList.size() != updatedChildList.size();
 
-                    // if sizes are the same, compare contents independent of order
-                    if (!updatedValueDiffers) {
-                        Set<String> childListSet = new HashSet<String>(childList.size() + 1, 1.0f);
-                        childListSet.addAll(childList);
+                        // if sizes are the same, compare contents independent of order
+                        if (!updatedValueDiffers) {
+                            Set<String> childListSet = new HashSet<String>(childList.size() + 1, 1.0f);
+                            childListSet.addAll(childList);
 
-                        Set<String> updatedChildListSet = new HashSet<String>(updatedChildList.size() + 1, 1.0f);
-                        updatedChildListSet.addAll(updatedChildList);
+                            Set<String> updatedChildListSet = new HashSet<String>(updatedChildList.size() + 1, 1.0f);
+                            updatedChildListSet.addAll(updatedChildList);
 
-                        updatedValueDiffers = childListSet.equals(updatedChildListSet);
-                    }
+                            updatedValueDiffers = childListSet.equals(updatedChildListSet);
+                        }
 
-                    if (updatedValueDiffers) {
-                        observer.nodeChildrenChanged(updatedChildList);
+                        if (updatedValueDiffers) {
+                            observer.setPreviousChildList(observer.getChildList());
+                            observer.setChildList(updatedChildList);
+                            observer.nodeChildrenChanged(updatedChildList);
+                        }
                     }
                 }
             }
@@ -163,16 +165,19 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
 
     @Override
     public void nodeCreated(WatchedEvent event) {
-        logger.info("Notifying ALL observers:  nodeCreated");
-
         String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeCreated:  path={}", path);
         try {
             Set<T> observerSet = getObserverSet(path, false);
             if (observerSet.size() > 0) {
                 byte[] data = zkClient.getData(path, true, new Stat());
                 for (T observer : observerSet) {
-                    if (Arrays.equals(observer.getData(), data)) {
-                        observer.nodeCreated(data);
+                    synchronized (observer) {
+                        if (!Arrays.equals(observer.getData(), data)) {
+                            observer.setPreviousData(observer.getData());
+                            observer.setData(data);
+                            observer.nodeCreated(data);
+                        }
                     }
                 }
             }
@@ -185,16 +190,19 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
 
     @Override
     public void nodeDataChanged(WatchedEvent event) {
-        logger.info("Notifying ALL observers:  nodeDataChanged");
-
         String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeDataChanged:  path={}", path);
         try {
             Set<T> observerSet = getObserverSet(path, false);
             if (observerSet.size() > 0) {
                 byte[] updatedData = zkClient.getData(path, true, new Stat());
                 for (T observer : observerSet) {
-                    if (Arrays.equals(observer.getData(), updatedData)) {
-                        observer.nodeDataChanged(updatedData);
+                    synchronized (observer) {
+                        if (!Arrays.equals(observer.getData(), updatedData)) {
+                            observer.setPreviousData(observer.getData());
+                            observer.setData(updatedData);
+                            observer.nodeDataChanged(updatedData);
+                        }
                     }
                 }
             }
@@ -207,26 +215,39 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
 
     @Override
     public void nodeDeleted(WatchedEvent event) {
-        logger.info("Notifying ALL observers:  nodeDeleted");
-
         String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeDeleted:  path={}", path);
 
         Set<T> observerSet = getObserverSet(path, false);
         if (observerSet.size() > 0) {
+            // set up watch for when path comes back if there are observers
+            try {
+                zkClient.exists(path, true);
+            } catch (Exception e) {
+                logger.warn("Unable to set watch:  path=" + path, e);
+            }
+
             for (T observer : observerSet) {
-                observer.nodeDeleted();
+                synchronized (observer) {
+                    if (observer.getData() != null || observer.getChildList().size() > 0) {
+                        observer.setPreviousData(observer.getData());
+                        observer.setData(null);
+                        observer.setPreviousChildList(observer.getChildList());
+                        observer.setChildList(Collections.EMPTY_LIST);
+                        observer.nodeDeleted();
+                    }
+                }
             }
         }
     }
 
     public void removeAll(String path) {
-        logger.info("Removing ALL observers:  path={}", path);
-
+        logger.debug("Removing ALL observers:  path={}", path);
         observerMap.remove(path);
     }
 
     public void signalStateReset(Object o) {
-        logger.info("Notifying ALL observers:  signalStateReset");
+        logger.warn("Notifying ALL observers:  signalStateReset");
         for (String path : this.observerMap.keySet()) {
             Set<T> observerSet = getObserverSet(path, false);
             for (T observer : observerSet) {
@@ -236,7 +257,7 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
     }
 
     public void signalStateUnknown(Object o) {
-        logger.info("Notifying ALL observers:  signalStateUnknown");
+        logger.warn("Notifying ALL observers:  signalStateUnknown");
         for (String path : this.observerMap.keySet()) {
             Set<T> observerSet = getObserverSet(path, false);
             for (T observer : observerSet) {
@@ -244,16 +265,6 @@ public class NodeObserverManager<T extends NodeObserver> extends AbstractZkEvent
             }
         }
     }
-
-    // public void signal(String path, Object o) {
-    // Set<T> wrapperSet = getObserverSet(path, false);
-    //
-    // logger.info("Notifying observers:  path={}; pathObserverCount={}", path, wrapperSet.size());
-    //
-    // for (T wrapper : wrapperSet) {
-    // wrapper.signalObserver(o);
-    // }
-    // }
 
     public boolean isBeingObserved(String path) {
         Set<T> wrapperSet = getObserverSet(path, false);

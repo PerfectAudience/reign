@@ -19,17 +19,14 @@ package io.reign.presence;
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.ObservableService;
-import io.reign.PathType;
 import io.reign.NodeObserverManager;
-import io.reign.NodeObserverWrapper;
+import io.reign.PathType;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 import io.reign.mesg.SimpleResponseMessage;
 import io.reign.util.ZkClientUtil;
-import io.reign.zk.SimplePathCacheEntry;
 
 import java.util.Collections;
 import java.util.List;
@@ -44,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
@@ -87,7 +83,13 @@ public class PresenceService extends AbstractService {
     private ScheduledExecutorService executorService;
 
     @Override
-    public void init() {
+    public synchronized void init() {
+        if (observerManager != null) {
+            return;
+        }
+
+        logger.info("init() called");
+
         executorService = new ScheduledThreadPoolExecutor(2);
 
         if (this.getHeartbeatIntervalMillis() < 1000) {
@@ -915,64 +917,64 @@ public class PresenceService extends AbstractService {
         }
     }
 
-    private static class PresenceObserverWrapper<T> extends NodeObserverWrapper<PresenceObserver<T>> {
-
-        private final String clusterId;
-        private final String serviceId;
-        private final String nodeId;
-
-        private final DataSerializer<Map<String, String>> nodeAttributeSerializer;
-
-        private volatile T currentValue;
-
-        public PresenceObserverWrapper(String clusterId, String serviceId, String nodeId, PresenceObserver<T> observer,
-                DataSerializer<Map<String, String>> nodeAttributeSerializer, T currentValue) {
-            // from super class
-            this.observer = observer;
-
-            this.clusterId = clusterId;
-            this.serviceId = serviceId;
-            this.nodeId = nodeId;
-            this.nodeAttributeSerializer = nodeAttributeSerializer;
-            this.currentValue = currentValue;
-        }
-
-        @Override
-        public void signalObserver(Object o) {
-            this.observer.updated((T) o);
-
-            // update current value for comparison against any future events
-            // (sometimes we get a ZK event even if relevant value has not
-            // changed: for example, when updating node data with the exact same
-            // value)
-            this.currentValue = (T) o;
-        }
-
-        public String getClusterId() {
-            return clusterId;
-        }
-
-        public String getServiceId() {
-            return serviceId;
-        }
-
-        public String getNodeId() {
-            return nodeId;
-        }
-
-        public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {
-            return nodeAttributeSerializer;
-        }
-
-        public T getCurrentValue() {
-            return currentValue;
-        }
-
-        public boolean isService() {
-            return nodeId == null;
-        }
-
-    }
+    // private static class PresenceObserverWrapper<T> extends NodeObserverWrapper<PresenceObserver<T>> {
+    //
+    // private final String clusterId;
+    // private final String serviceId;
+    // private final String nodeId;
+    //
+    // private final DataSerializer<Map<String, String>> nodeAttributeSerializer;
+    //
+    // private volatile T currentValue;
+    //
+    // public PresenceObserverWrapper(String clusterId, String serviceId, String nodeId, PresenceObserver<T> observer,
+    // DataSerializer<Map<String, String>> nodeAttributeSerializer, T currentValue) {
+    // // from super class
+    // this.observer = observer;
+    //
+    // this.clusterId = clusterId;
+    // this.serviceId = serviceId;
+    // this.nodeId = nodeId;
+    // this.nodeAttributeSerializer = nodeAttributeSerializer;
+    // this.currentValue = currentValue;
+    // }
+    //
+    // @Override
+    // public void signalObserver(Object o) {
+    // this.observer.updated((T) o);
+    //
+    // // update current value for comparison against any future events
+    // // (sometimes we get a ZK event even if relevant value has not
+    // // changed: for example, when updating node data with the exact same
+    // // value)
+    // this.currentValue = (T) o;
+    // }
+    //
+    // public String getClusterId() {
+    // return clusterId;
+    // }
+    //
+    // public String getServiceId() {
+    // return serviceId;
+    // }
+    //
+    // public String getNodeId() {
+    // return nodeId;
+    // }
+    //
+    // public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {
+    // return nodeAttributeSerializer;
+    // }
+    //
+    // public T getCurrentValue() {
+    // return currentValue;
+    // }
+    //
+    // public boolean isService() {
+    // return nodeId == null;
+    // }
+    //
+    // }
 
     public class AdminRunnable implements Runnable {
         @Override
