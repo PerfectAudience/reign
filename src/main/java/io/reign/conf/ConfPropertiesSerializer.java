@@ -39,25 +39,32 @@ public class ConfPropertiesSerializer<T extends Properties> implements DataSeria
     }
 
     @Override
-    public byte[] serialize(T conf) throws Exception {
+    public byte[] serialize(T conf) throws RuntimeException {
         ByteArrayOutputStream out = new ByteArrayOutputStream(128);
-        if (storeAsXml) {
-            conf.storeToXML(out, null);
-        } else {
-            conf.store(out, null);
+        try {
+            if (storeAsXml) {
+                conf.storeToXML(out, null);
+            } else {
+                conf.store(out, null);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-
         return out.toByteArray();
     }
 
     @Override
-    public T deserialize(byte[] bytes) throws Exception {
+    public T deserialize(byte[] bytes) throws RuntimeException {
         ByteArrayInputStream in = new ByteArrayInputStream(bytes);
         T conf = (T) new ConfProperties();
-        if (storeAsXml) {
-            conf.loadFromXML(in);
-        } else {
-            conf.load(in);
+        try {
+            if (storeAsXml) {
+                conf.loadFromXML(in);
+            } else {
+                conf.load(in);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
         return conf;
     }

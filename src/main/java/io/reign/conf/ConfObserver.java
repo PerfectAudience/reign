@@ -16,18 +16,43 @@
 
 package io.reign.conf;
 
+import io.reign.AbstractNodeObserver;
+
 /**
  * 
  * @author ypai
  * 
  */
-public interface ConfObserver<T> {
+public abstract class ConfObserver<T> extends AbstractNodeObserver {
 
-    /**
-     * Called when T is updated.
-     * 
-     * @param newData
-     * @param oldData
-     */
-    public void updated(T newData, T oldData);
+    private String clusterId = null;
+    private String serviceId = null;
+    private String nodeId = null;
+
+    public abstract void updated(T updated, T existing);
+
+    public void setClusterId(String clusterId) {
+        this.clusterId = clusterId;
+    }
+
+    public void setServiceId(String serviceId) {
+        this.serviceId = serviceId;
+    }
+
+    public void setNodeId(String nodeId) {
+        this.nodeId = nodeId;
+    }
+
+    public String getClusterId() {
+        return clusterId;
+    }
+
+    public String getServiceId() {
+        return serviceId;
+    }
+
+    public String getNodeId() {
+        return nodeId;
+    }
+
 }

@@ -24,8 +24,8 @@ package io.reign;
  */
 public interface DataSerializer<T> {
 
-    public byte[] serialize(T data) throws Exception;
+    public byte[] serialize(T data) throws RuntimeException;
 
-    public T deserialize(byte[] bytes) throws Exception;
+    public T deserialize(byte[] bytes) throws RuntimeException;
 
 }

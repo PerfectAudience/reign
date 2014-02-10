@@ -12,11 +12,12 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
-import io.reign.ServiceObserver;
+import io.reign.AbstractNodeObserver;
+import io.reign.NodeObserver;
 
 /**
  * 
@@ -24,16 +25,6 @@ import io.reign.ServiceObserver;
  * 
  * @param <T>
  */
-public abstract class CoordObserver<T> implements ServiceObserver {
-    @Override
-    public void stateReset(Object o) {
-        // TODO Auto-generated method stub
+public abstract class CoordObserver<T> extends AbstractNodeObserver {
 
-    }
-
-    @Override
-    public void stateUnknown(Object o) {
-        // TODO Auto-generated method stub
-
-    }
 }

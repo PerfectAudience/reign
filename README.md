@@ -48,14 +48,14 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
          * init and start with core services -- connecting to ZooKeeper on localhost at port 2181 with 30 second
          * ZooKeeper session timeout
          **/
-        Reign reign = Reign.maker().core("localhost:2181", 30000).get();
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).get();
         reign.start();
         
         /**
          * init and start with core services -- connecting to a ZooKeeper cluster at port 2181 with 30 second
          * ZooKeeper session timeout
          **/
-        Reign reign = Reign.maker().core("zk-host1:2181,zk-host2:2181,zk-host3:2181", 30000).get();
+        Reign reign = Reign.maker().zkClient("zk-host1:2181,zk-host2:2181,zk-host3:2181", 30000).get();
         reign.start();      
         
         /**
@@ -63,7 +63,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
          * ZooKeeper session timeout using a custom root path, effectively "chroot-ing" the ZooKeeper session:  
          * this is one way to share a ZooKeeper cluster without worrying about path collision  
          **/
-        Reign reign = Reign.maker().core("zk-host1:2181,zk-host2:2181,zk-host3:2181/custom_root_path", 30000).get();
+        Reign reign = Reign.maker().zkClient("zk-host1:2181,zk-host2:2181,zk-host3:2181/custom_root_path", 30000).get();
         reign.start();           
 
 ### Equivalent configuration using Spring
@@ -75,12 +75,11 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         destroy-method="destroy">
         <property name="zkConnectString" value="localhost:2181"/>
         <property name="zkSessionTimeout" value="30000"/>
-        <property name="core" value="true"/>
     </bean>
         
 ##### Usage in Java code...
     // get and start Reign object
-    SpringReignMaker springReignMaker.get = ...injected dependency...;
+    ReignMaker springReignMaker = ...injected dependency...;
     Reign reign = springReignMaker.get();
     
     // may not have to do this if bean init-method is specified as "initStart"

@@ -20,10 +20,11 @@ import io.reign.AbstractService;
 import io.reign.ObservableService;
 import io.reign.PathScheme;
 import io.reign.PathType;
-import io.reign.ServiceObserver;
-import io.reign.ServiceObserverManager;
-import io.reign.ServiceObserverWrapper;
+import io.reign.NodeObserver;
+import io.reign.NodeObserverManager;
+import io.reign.NodeObserverWrapper;
 import io.reign.conf.ConfService;
+import io.reign.presence.PresenceObserver;
 
 import java.util.Collection;
 import java.util.List;
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class CoordinationService extends AbstractService implements ObservableService {
+public class CoordinationService extends AbstractService {
     private static final Logger logger = LoggerFactory.getLogger(CoordinationService.class);
 
     private ZkReservationManager zkReservationManager;
@@ -52,7 +53,7 @@ public class CoordinationService extends AbstractService implements ObservableSe
      */
     private volatile long maxReservationHoldTimeMillis = -1;
 
-    private final ServiceObserverManager<CoordObserverWrapper> observerManager = new ServiceObserverManager<CoordObserverWrapper>();
+    private NodeObserverManager<CoordObserver> observerManager = null;
 
     private final CoordinationServiceCache coordinationServiceCache;
 
@@ -67,17 +68,16 @@ public class CoordinationService extends AbstractService implements ObservableSe
         // this.setExecutionIntervalMillis(60000);
     }
 
-    public void observe(String clusterId, String lockName, SimpleLockObserver observer) {
+    public void observe(String clusterId, String lockName, LockObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        observerManager.put(entityPath, new LockObserverWrapper(entityPath, observer, coordinationServiceCache));
+        observerManager.put(entityPath, observer);
     }
 
-    public void observe(String clusterId, String semaphoreName, SimpleSemaphoreObserver observer) {
+    public void observe(String clusterId, String semaphoreName, SemaphoreObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.SEMAPHORE, semaphoreName);
-        observerManager.put(entityPath, new SemaphoreObserverWrapper(entityPath, observer, coordinationServiceCache,
-                getPathScheme()));
+        observerManager.put(entityPath, observer);
     }
 
     /**
@@ -289,13 +289,15 @@ public class CoordinationService extends AbstractService implements ObservableSe
 
     @Override
     public void init() {
-        zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), getPathCache(),
-                coordinationServiceCache);
+        zkReservationManager = new ZkReservationManager(getZkClient(), getPathScheme(), coordinationServiceCache);
 
         executorService = new ScheduledThreadPoolExecutor(1);
 
         Runnable adminRunnable = new AdminRunnable();
         executorService.scheduleAtFixedRate(adminRunnable, 60000, 60000, TimeUnit.MILLISECONDS);
+
+        observerManager = new NodeObserverManager<CoordObserver>();
+        observerManager.setZkClient(getZkClient());
 
     }
 
@@ -306,142 +308,142 @@ public class CoordinationService extends AbstractService implements ObservableSe
 
     }
 
-    @Override
-    public void signalStateReset(Object o) {
-        observerManager.signalStateReset(o);
+    // @Override
+    // public void signalStateReset(Object o) {
+    // observerManager.signalStateReset(o);
+    //
+    // }
+    //
+    // @Override
+    // public void signalStateUnknown(Object o) {
+    // observerManager.signalStateUnknown(o);
+    // }
 
-    }
+    // @Override
+    // public boolean filterWatchedEvent(WatchedEvent event) {
+    // // original path
+    // String path1 = event.getPath();
+    //
+    // // check with last token stripped out since it may be a reservation
+    // // node, but observers are registered to the parent lock, semaphore,
+    // // barrier, etc. node
+    // String path2 = path1.substring(0, path1.lastIndexOf('/'));
+    //
+    // logger.debug("filterWatchedEvent():  path1={}; path2={}", path1, path2);
+    //
+    // return !observerManager.isBeingObserved(path2) && !observerManager.isBeingObserved(path1);
+    //
+    // }
 
-    @Override
-    public void signalStateUnknown(Object o) {
-        observerManager.signalStateUnknown(o);
-    }
+    // @Override
+    // public void nodeDataChanged(WatchedEvent event) {
+    // String path = event.getPath();
+    // logger.info("nodeDataChanged():  path={}", path);
+    // }
 
-    @Override
-    public boolean filterWatchedEvent(WatchedEvent event) {
-        // original path
-        String path1 = event.getPath();
+    // @Override
+    // public void nodeDeleted(WatchedEvent event) {
+    // String path = event.getPath();
+    // String[] tokens = getPathScheme().tokenizePath(path);
+    //
+    // logger.debug("nodeDeleted():  path={}", path);
+    //
+    // // see if it is the primary lock, semaphore, barrier node that has been
+    // // deleted
+    // if (tokens.length > 1 && ReservationType.fromCategory(tokens[tokens.length - 1]) != null) {
+    // // primary node was deleted so state is unknown
+    // observerManager.signalStateUnknown(null);
+    // return;
+    // }
+    //
+    // // check to see if we need to signal that a lock holder was deleted
+    // observerManager.signal(path.substring(0, path.lastIndexOf('/')), path);
+    // }
 
-        // check with last token stripped out since it may be a reservation
-        // node, but observers are registered to the parent lock, semaphore,
-        // barrier, etc. node
-        String path2 = path1.substring(0, path1.lastIndexOf('/'));
+    // private static abstract class CoordObserverWrapper<T extends NodeObserver> extends NodeObserverWrapper<T> {
+    // private final String entityPath;
+    // private final CoordinationServiceCache coordinationServiceCache;
+    //
+    // protected CoordObserverWrapper(String entityPath, CoordinationServiceCache coordinationServiceCache) {
+    // this.entityPath = entityPath;
+    // this.coordinationServiceCache = coordinationServiceCache;
+    // }
+    //
+    // public String getEntityPath() {
+    // return entityPath;
+    // }
+    //
+    // public CoordinationServiceCache getCoordinationServiceCache() {
+    // return coordinationServiceCache;
+    // }
+    //
+    // }
 
-        logger.debug("filterWatchedEvent():  path1={}; path2={}", path1, path2);
+    // private static class LockObserverWrapper extends CoordObserverWrapper<LockObserver> {
+    //
+    // public LockObserverWrapper(String entityPath, LockObserver observer,
+    // CoordinationServiceCache coordinationServiceCache) {
+    // super(entityPath, coordinationServiceCache);
+    // this.setObserver(observer);
+    // }
+    //
+    // @Override
+    // public void signalObserver(Object o) {
+    // String revokedReservationId = (String) o;
+    //
+    // Collection<DistributedLock> exclusiveLocks = getCoordinationServiceCache().getLocks(getEntityPath(),
+    // ReservationType.LOCK_EXCLUSIVE);
+    // checkForRevoked(exclusiveLocks, revokedReservationId);
+    //
+    // Collection<DistributedLock> sharedLocks = getCoordinationServiceCache().getLocks(getEntityPath(),
+    // ReservationType.LOCK_SHARED);
+    // checkForRevoked(sharedLocks, revokedReservationId);
+    // }
+    //
+    // void checkForRevoked(Collection<DistributedLock> locks, String revokedReservationId) {
+    // for (DistributedLock lock : locks) {
+    // // logger.debug("Checking:  lockId={}; revokedReservationId={}",
+    // // lock.getLockId(), revokedReservationId);
+    // if (revokedReservationId.equals(lock.getLockId())) {
+    // lock.revoke(revokedReservationId);
+    // this.getObserver().revoked(lock, revokedReservationId);
+    // }
+    // }
+    // }
+    // }// class
 
-        return !observerManager.isBeingObserved(path2) && !observerManager.isBeingObserved(path1);
-
-    }
-
-    @Override
-    public void nodeDataChanged(WatchedEvent event) {
-        String path = event.getPath();
-        logger.info("nodeDataChanged():  path={}", path);
-    }
-
-    @Override
-    public void nodeDeleted(WatchedEvent event) {
-        String path = event.getPath();
-        String[] tokens = getPathScheme().tokenizePath(path);
-
-        logger.debug("nodeDeleted():  path={}", path);
-
-        // see if it is the primary lock, semaphore, barrier node that has been
-        // deleted
-        if (tokens.length > 1 && ReservationType.fromCategory(tokens[tokens.length - 1]) != null) {
-            // primary node was deleted so state is unknown
-            observerManager.signalStateUnknown(null);
-            return;
-        }
-
-        // check to see if we need to signal that a lock holder was deleted
-        observerManager.signal(path.substring(0, path.lastIndexOf('/')), path);
-    }
-
-    private static abstract class CoordObserverWrapper<T extends ServiceObserver> extends ServiceObserverWrapper<T> {
-        private final String entityPath;
-        private final CoordinationServiceCache coordinationServiceCache;
-
-        protected CoordObserverWrapper(String entityPath, CoordinationServiceCache coordinationServiceCache) {
-            this.entityPath = entityPath;
-            this.coordinationServiceCache = coordinationServiceCache;
-        }
-
-        public String getEntityPath() {
-            return entityPath;
-        }
-
-        public CoordinationServiceCache getCoordinationServiceCache() {
-            return coordinationServiceCache;
-        }
-
-    }
-
-    private static class LockObserverWrapper extends CoordObserverWrapper<SimpleLockObserver> {
-
-        public LockObserverWrapper(String entityPath, SimpleLockObserver observer,
-                CoordinationServiceCache coordinationServiceCache) {
-            super(entityPath, coordinationServiceCache);
-            this.setObserver(observer);
-        }
-
-        @Override
-        public void signalObserver(Object o) {
-            String revokedReservationId = (String) o;
-
-            Collection<DistributedLock> exclusiveLocks = getCoordinationServiceCache().getLocks(getEntityPath(),
-                    ReservationType.LOCK_EXCLUSIVE);
-            checkForRevoked(exclusiveLocks, revokedReservationId);
-
-            Collection<DistributedLock> sharedLocks = getCoordinationServiceCache().getLocks(getEntityPath(),
-                    ReservationType.LOCK_SHARED);
-            checkForRevoked(sharedLocks, revokedReservationId);
-        }
-
-        void checkForRevoked(Collection<DistributedLock> locks, String revokedReservationId) {
-            for (DistributedLock lock : locks) {
-                // logger.debug("Checking:  lockId={}; revokedReservationId={}",
-                // lock.getLockId(), revokedReservationId);
-                if (revokedReservationId.equals(lock.getLockId())) {
-                    lock.revoke(revokedReservationId);
-                    this.getObserver().revoked(lock, revokedReservationId);
-                }
-            }
-        }
-    }// class
-
-    /**
-     * 
-     * @author ypai
-     * 
-     */
-    private static class SemaphoreObserverWrapper extends CoordObserverWrapper<SimpleSemaphoreObserver> {
-
-        private final PathScheme pathScheme;
-
-        public SemaphoreObserverWrapper(String entityPath, SimpleSemaphoreObserver observer,
-                CoordinationServiceCache coordinationServiceCache, PathScheme pathScheme) {
-            super(entityPath, coordinationServiceCache);
-            this.setObserver(observer);
-            this.pathScheme = pathScheme;
-        }
-
-        @Override
-        public void signalObserver(Object o) {
-            String revokedReservationId = (String) o;
-            Collection<DistributedSemaphore> semaphores = getCoordinationServiceCache().getSemaphores(getEntityPath());
-
-            // check and signal observers of any revocations
-            for (DistributedSemaphore semaphore : semaphores) {
-                // check and see which ones have been revoked
-                if (semaphore.getAcquiredPermitIds().contains(revokedReservationId)) {
-                    semaphore.revoke(revokedReservationId);
-                    this.getObserver().revoked(semaphore, revokedReservationId);
-                }// for
-            }// for
-
-        }
-    }// class
+    // /**
+    // *
+    // * @author ypai
+    // *
+    // */
+    // private static class SemaphoreObserverWrapper extends CoordObserverWrapper<SemaphoreObserver> {
+    //
+    // private final PathScheme pathScheme;
+    //
+    // public SemaphoreObserverWrapper(String entityPath, SemaphoreObserver observer,
+    // CoordinationServiceCache coordinationServiceCache, PathScheme pathScheme) {
+    // super(entityPath, coordinationServiceCache);
+    // this.setObserver(observer);
+    // this.pathScheme = pathScheme;
+    // }
+    //
+    // @Override
+    // public void signalObserver(Object o) {
+    // String revokedReservationId = (String) o;
+    // Collection<DistributedSemaphore> semaphores = getCoordinationServiceCache().getSemaphores(getEntityPath());
+    //
+    // // check and signal observers of any revocations
+    // for (DistributedSemaphore semaphore : semaphores) {
+    // // check and see which ones have been revoked
+    // if (semaphore.getAcquiredPermitIds().contains(revokedReservationId)) {
+    // semaphore.revoke(revokedReservationId);
+    // this.getObserver().revoked(semaphore, revokedReservationId);
+    // }// for
+    // }// for
+    //
+    // }
+    // }// class
 
     /**
      * 

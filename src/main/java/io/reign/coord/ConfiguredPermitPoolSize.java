@@ -18,8 +18,8 @@ package io.reign.coord;
 
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
+import io.reign.conf.ConfObserver;
 import io.reign.conf.ConfService;
-import io.reign.conf.SimpleConfObserver;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, String>> implements PermitPoolSize {
+public class ConfiguredPermitPoolSize extends ConfObserver<Map<String, String>> implements PermitPoolSize {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfiguredPermitPoolSize.class);
 
@@ -99,7 +99,7 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
     }
 
     @Override
-    public void updated(Map<String, String> newData, Map<String, String> oldData) {
+    public void updated(Map<String, String> newData, Map<String, String> existingData) {
         this.size = Integer.parseInt(newData.get("permitPoolSize"));
         logger.info("Permit pool size updated:  size={}", size);
     }
@@ -124,8 +124,8 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
         // write out to ZK
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         confService.putConf(clusterId,
-                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName),
-                semaphoreConf, confSerializer, aclList);
+                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName) + ".json",
+                semaphoreConf);
     }
 
     /**
@@ -139,12 +139,12 @@ public class ConfiguredPermitPoolSize extends SimpleConfObserver<Map<String, Str
     }
 
     public static Map<String, String> getSemaphoreConf(ConfService confService, String clusterId, String semaphoreName,
-            SimpleConfObserver<Map<String, String>> confObserver) {
+            ConfObserver<Map<String, String>> confObserver) {
         // read configuration
         DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         Map<String, String> semaphoreConf = confService.getConf(clusterId,
-                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName),
-                confSerializer, confObserver);
+                confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName) + ".json",
+                confObserver);
         return semaphoreConf;
     }
 }

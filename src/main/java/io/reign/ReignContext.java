@@ -16,7 +16,7 @@
 
 package io.reign;
 
-import io.reign.util.PathCache;
+import io.reign.zk.PathCache;
 
 import java.util.List;
 
@@ -46,5 +46,5 @@ public interface ReignContext {
 
     public List<ACL> getDefaultZkAclList();
 
-    public PathCache getPathCache();
+    // public PathCache getPathCache();
 }

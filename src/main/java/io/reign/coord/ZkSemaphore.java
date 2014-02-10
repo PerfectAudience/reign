@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
@@ -32,9 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Maintains general semantics of {@link java.util.concurrent.Semaphore} with
- * some exceptions. In this implementation, permit granting is first come, first
- * served.
+ * Maintains general semantics of {@link java.util.concurrent.Semaphore} with some exceptions. In this implementation,
+ * permit granting is first come, first served.
  * 
  * @author ypai
  * 
@@ -213,9 +212,8 @@ public class ZkSemaphore implements DistributedSemaphore {
     }
 
     /**
-     * Tries to acquire as many permits as possible without waiting, or until
-     * interruption. On interruption, keeps permits that it has already
-     * acquired.
+     * Tries to acquire as many permits as possible without waiting, or until interruption. On interruption, keeps
+     * permits that it has already acquired.
      * 
      * @return
      */
@@ -255,11 +253,10 @@ public class ZkSemaphore implements DistributedSemaphore {
 
     /**
      * 
-     * @return the current list of permit holders and those waiting for a
-     *         permit.
+     * @return the current list of permit holders and those waiting for a permit.
      */
     protected List<String> getAllPermitRequests() {
-        return zkReservationManager.getReservationList(entityPath, true);
+        return zkReservationManager.getReservationList(entityPath);
     }
 
     public boolean isFair() {
@@ -311,8 +308,8 @@ public class ZkSemaphore implements DistributedSemaphore {
     }
 
     /**
-     * Unlike java.util.concurrent.Semaphore: this implementation of
-     * tryAcquire() does not "barge in" and is always fair.
+     * Unlike java.util.concurrent.Semaphore: this implementation of tryAcquire() does not "barge in" and is always
+     * fair.
      * 
      * @return
      */

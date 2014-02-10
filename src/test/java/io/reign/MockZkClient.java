@@ -16,7 +16,7 @@
 
 package io.reign;
 
-import io.reign.zk.ResilientZooKeeper;
+import io.reign.zk.ResilientZkClient;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;

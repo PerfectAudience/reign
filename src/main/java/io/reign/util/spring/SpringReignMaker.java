@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.util.spring;
 
@@ -56,42 +56,6 @@ public class SpringReignMaker extends ReignMaker {
 
     public void setMessagingPort(Integer messagingPort) {
         this.messagingPort(messagingPort);
-    }
-
-    public void setCore(boolean core) {
-        if (core) {
-            super.core();
-        }
-    }
-
-    public void setPresence(boolean presence) {
-        if (presence) {
-            super.presence();
-        }
-    }
-
-    public void setConf(boolean conf) {
-        if (conf) {
-            super.conf();
-        }
-    }
-
-    public void setData(boolean data) {
-        if (data) {
-            super.data();
-        }
-    }
-
-    public void setCoord(boolean coord) {
-        if (coord) {
-            super.coord();
-        }
-    }
-
-    public void setMesg(boolean mesg) {
-        if (mesg) {
-            super.mesg();
-        }
     }
 
     @Override

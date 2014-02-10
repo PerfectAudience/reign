@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.examples;
 
@@ -24,8 +24,8 @@ import io.reign.coord.DistributedLock;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.coord.DistributedReentrantLock;
 import io.reign.coord.DistributedSemaphore;
-import io.reign.coord.SimpleLockObserver;
-import io.reign.coord.SimpleSemaphoreObserver;
+import io.reign.coord.LockObserver;
+import io.reign.coord.SemaphoreObserver;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -42,7 +42,7 @@ public class CoordinationServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).core().get();
+        Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).get();
         reign.start();
 
         /** coordination service examples **/
@@ -72,7 +72,7 @@ public class CoordinationServiceExample {
         // should always be 1 or 0
         final AtomicInteger locksHeld = new AtomicInteger(0);
 
-        coordService.observe("examples", "exclusive_lock1", new SimpleLockObserver() {
+        coordService.observe("examples", "exclusive_lock1", new LockObserver() {
             @Override
             public void revoked(DistributedLock lock, String reservationId) {
                 logger.info("***** Observer:  lock REVOKED:  reservationId={}", reservationId);
@@ -170,7 +170,7 @@ public class CoordinationServiceExample {
         // configure semaphore
         ConfiguredPermitPoolSize.setSemaphoreConf(confService, "examples", "semaphore2", 5);
 
-        coordService.observe("examples", "semaphore2", new SimpleSemaphoreObserver() {
+        coordService.observe("examples", "semaphore2", new SemaphoreObserver() {
             @Override
             public void revoked(DistributedSemaphore semaphore, String reservationId) {
                 logger.info("***** Observer:  permit REVOKED:  reservationId={}", reservationId);
@@ -193,8 +193,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 4;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -217,8 +217,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 2;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -294,8 +294,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 4;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);
@@ -318,8 +318,8 @@ public class CoordinationServiceExample {
                 int permitsToAcquire = 2;
                 try {
                     semaphore.acquire(permitsToAcquire);
-                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...", new Object[] {
-                            this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
+                    logger.info("{}:  acquired {} permit(s):  will hold for {} seconds...",
+                            new Object[] { this.getName(), permitsToAcquire, lockHoldTimeMillis / 1000 });
                     Thread.sleep(lockHoldTimeMillis);
                 } catch (InterruptedException e) {
                     logger.info("Interrupted:  " + e, e);

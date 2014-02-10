@@ -18,8 +18,8 @@ package io.reign.data;
 
 import io.reign.PathScheme;
 import io.reign.ZkClient;
-import io.reign.util.PathCache;
-import io.reign.util.PathCacheEntry;
+import io.reign.zk.PathCache;
+import io.reign.zk.SimplePathCacheEntry;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,9 +46,8 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
      */
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
-    ZkClientMultiDataUtil(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
-            TranscodingScheme transcodingScheme) {
-        super(zkClient, pathScheme, pathCache, transcodingScheme);
+    ZkClientMultiDataUtil(ZkClient zkClient, PathScheme pathScheme, TranscodingScheme transcodingScheme) {
+        super(zkClient, pathScheme, transcodingScheme);
 
     }
 
@@ -81,12 +80,12 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             // update stat with recent update time in case we have a stale read
             stat.setMtime(System.currentTimeMillis());
 
-            // update path cache after successful write
-            pathCache.put(absoluteDataValuePath, stat, bytes, null);
-
-            PathCacheEntry pce = pathCache.get(absoluteDataValuePath);
-            logger.debug("writeData():  absoluteDataValuePath={}; pathCacheEntry={}", absoluteDataValuePath,
-                    transcodingScheme.fromBytes(pce.getBytes(), value.getClass()));
+            // // update path cache after successful write
+            // pathCache.put(absoluteDataValuePath, stat, bytes, null);
+            //
+            // SimplePathCacheEntry pce = pathCache.get(absoluteDataValuePath);
+            // logger.debug("writeData():  absoluteDataValuePath={}; pathCacheEntry={}", absoluteDataValuePath,
+            // transcodingScheme.fromBytes(pce.getData(), value.getClass()));
 
             return absoluteDataValuePath;
 
@@ -107,7 +106,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
      *            remove data older than given threshold
      * @return
      */
-    String deleteData(String absoluteBasePath, String index, int ttlMillis, boolean usePathCache) {
+    String deleteData(String absoluteBasePath, String index, int ttlMillis) {
         try {
             String absoluteDataPath = pathScheme.joinPaths(absoluteBasePath, index);
 
@@ -116,9 +115,9 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             byte[] bytes = null;
             if (ttlMillis > 0) {
                 bytes = null;
-                if (usePathCache) {
-                    bytes = getDataFromPathCache(absoluteDataPath, ttlMillis);
-                }
+                // if (usePathCache) {
+                // bytes = getDataFromPathCache(absoluteDataPath, ttlMillis);
+                // }
                 if (bytes == null) {
                     // read data from ZK
                     Stat stat = new Stat();
@@ -136,7 +135,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             String deletedPath = null;
             if (bytes == null) {
                 // remove node entry in path cache
-                pathCache.remove(absoluteDataPath);
+                // pathCache.remove(absoluteDataPath);
 
                 // delete from zk
                 zkClient.delete(absoluteDataPath, -1);
@@ -144,48 +143,48 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
 
                 // update parent children in path cache if parent node exists in cache
                 String absoluteParentPath = pathScheme.getParentPath(absoluteDataPath);
-                PathCacheEntry pathCacheEntry = pathCache.get(absoluteParentPath);
-                if (pathCacheEntry != null) {
-                    List<String> currentChildList = pathCacheEntry.getChildren();
-                    List<String> newChildList = new ArrayList<String>(currentChildList.size());
-                    for (String child : currentChildList) {
-                        if (!child.equals(index)) {
-                            newChildList.add(child);
-                        }
-                    }
+                // SimplePathCacheEntry pathCacheEntry = pathCache.get(absoluteParentPath);
+                // if (pathCacheEntry != null) {
+                // List<String> currentChildList = pathCacheEntry.getChildList();
+                // List<String> newChildList = new ArrayList<String>(currentChildList.size());
+                // for (String child : currentChildList) {
+                // if (!child.equals(index)) {
+                // newChildList.add(child);
+                // }
+                // }
+                //
+                // // if parent child list is null, that means there are no longer any entries under this key, so
+                // // remove
+                // if (newChildList == null || newChildList.size() == 0) {
+                // // remove from cache
+                // pathCache.remove(absoluteParentPath);
+                //
+                // // remove from ZK
+                // deleteKey(absoluteParentPath);
+                //
+                // } else {
+                // // still entries, so update cache entry
+                // pathCache.put(absoluteParentPath, pathCacheEntry.getStat(), pathCacheEntry.getData(),
+                // newChildList);
+                // }
+                // } else {
+                Stat stat = new Stat();
+                List<String> childList = Collections.EMPTY_LIST;
+                try {
+                    childList = zkClient.getChildren(absoluteParentPath, true, stat);
 
-                    // if parent child list is null, that means there are no longer any entries under this key, so
-                    // remove
-                    if (newChildList == null || newChildList.size() == 0) {
-                        // remove from cache
-                        pathCache.remove(absoluteParentPath);
+                    // // update in path cache
+                    // pathCache.put(absoluteParentPath, stat, null, childList);
 
-                        // remove from ZK
+                    // if no children, remove
+                    if (childList == null || childList.size() == 0) {
                         deleteKey(absoluteParentPath);
-
-                    } else {
-                        // still entries, so update cache entry
-                        pathCache.put(absoluteParentPath, pathCacheEntry.getStat(), pathCacheEntry.getBytes(),
-                                newChildList);
                     }
-                } else {
-                    Stat stat = new Stat();
-                    List<String> childList = Collections.EMPTY_LIST;
-                    try {
-                        childList = zkClient.getChildren(absoluteParentPath, true, stat);
 
-                        // update in path cache
-                        pathCache.put(absoluteParentPath, stat, null, childList);
-
-                        // if no children, remove
-                        if (childList == null || childList.size() == 0) {
-                            deleteKey(absoluteParentPath);
-                        }
-
-                    } catch (KeeperException e) {
-                        logger.info("" + e, e);
-                    }
+                } catch (KeeperException e) {
+                    logger.info("" + e, e);
                 }
+                // }
             }
 
             return deletedPath;
@@ -203,27 +202,27 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
 
     void deleteKey(String absoluteKeyPath) {
         try {
-            pathCache.remove(absoluteKeyPath);
+            // pathCache.remove(absoluteKeyPath);
             zkClient.delete(absoluteKeyPath, -1);
         } catch (Exception e1) {
             logger.error("Trouble deleting key:  key=" + absoluteKeyPath, e1);
         }
     }
 
-    List<String> deleteAllData(String absoluteBasePath, int ttlMillis, boolean usePathCache) {
+    List<String> deleteAllData(String absoluteBasePath, int ttlMillis) {
         try {
             // get children
             List<String> childList = null;
-            if (usePathCache) {
-                childList = getChildListFromPathCache(absoluteBasePath, ttlMillis);
-            }
+            // if (usePathCache) {
+            // childList = getChildListFromPathCache(absoluteBasePath, ttlMillis);
+            // }
             if (childList == null) {
                 try {
                     Stat stat = new Stat();
                     childList = zkClient.getChildren(absoluteBasePath, true, stat);
 
                     // update in path cache
-                    pathCache.put(absoluteBasePath, stat, null, childList);
+                    // pathCache.put(absoluteBasePath, stat, null, childList);
                 } catch (KeeperException e) {
                     // may hit this exception if node does not exist
                     logger.info("" + e, e);
@@ -234,7 +233,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
             if (childList != null && childList.size() > 0) {
                 List<String> resultList = new ArrayList<String>(childList.size());
                 for (String child : childList) {
-                    String deletedPath = deleteData(absoluteBasePath, child, ttlMillis, usePathCache);
+                    String deletedPath = deleteData(absoluteBasePath, child, ttlMillis);
 
                     // see if we deleted
                     if (deletedPath != null) {
@@ -257,16 +256,16 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
         }
     }
 
-    <V> V readData(String absoluteBasePath, String index, int ttlMillis, Class<V> typeClass, boolean usePathCache) {
+    <V> V readData(String absoluteBasePath, String index, int ttlMillis, Class<V> typeClass) {
         try {
             String absoluteDataPath = pathScheme.joinPaths(absoluteBasePath, index);
 
             // try to get from path cache, use stat modified timestamp instead of cache entry modified timestamp because
             // we are more interested in when the data last changed
             byte[] bytes = null;
-            if (usePathCache) {
-                bytes = getDataFromPathCache(absoluteDataPath, ttlMillis);
-            }
+            // if (usePathCache) {
+            // bytes = getDataFromPathCache(absoluteDataPath, ttlMillis);
+            // }
             if (bytes == null) {
                 // read data from ZK
                 Stat stat = new Stat();
@@ -278,7 +277,7 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
                 }
 
                 // update in path cache
-                pathCache.put(absoluteDataPath, stat, bytes, Collections.EMPTY_LIST);
+                // pathCache.put(absoluteDataPath, stat, bytes, Collections.EMPTY_LIST);
             }
 
             // deserialize
@@ -303,69 +302,69 @@ public class ZkClientMultiDataUtil extends ZkClientDataUtil {
         }
     }
 
-    /**
-     * 
-     * @param absoluteBasePath
-     * @param ttlMillis
-     * @return List of children; or null if data in cache is expired or missing
-     */
-    List<String> getChildListFromPathCache(String absoluteBasePath, int ttlMillis) {
+    // /**
+    // *
+    // * @param absoluteBasePath
+    // * @param ttlMillis
+    // * @return List of children; or null if data in cache is expired or missing
+    // */
+    // List<String> getChildListFromPathCache(String absoluteBasePath, int ttlMillis) {
+    //
+    // List<String> childList = null;
+    // SimplePathCacheEntry pathCacheEntry = pathCache.get(absoluteBasePath, ttlMillis);
+    // if (pathCacheEntry != null) {
+    // childList = pathCacheEntry.getChildList();
+    // }
+    //
+    // return childList;
+    // }
 
-        List<String> childList = null;
-        PathCacheEntry pathCacheEntry = pathCache.get(absoluteBasePath, ttlMillis);
-        if (pathCacheEntry != null) {
-            childList = pathCacheEntry.getChildren();
-        }
+    // /**
+    // * Different from regular path cache access method in that we are more interested in how old the data is, not the
+    // * last time the cache entry has been updated.
+    // *
+    // * @param absoluteDataPath
+    // * @param ttlMillis
+    // * @return byte[] or null if data in cache is expired or missing
+    // */
+    // byte[] getDataFromPathCache(String absoluteDataPath, int ttlMillis) {
+    //
+    // byte[] bytes = null;
+    // SimplePathCacheEntry pathCacheEntry = pathCache.get(absoluteDataPath);
+    // if (pathCacheEntry != null && !isExpired(pathCacheEntry.getStat().getMtime(), ttlMillis)) {
+    // bytes = pathCacheEntry.getData();
+    //
+    // // valid value, but we need a way in this use case to distinguish btw. expired/missing value in pathCache
+    // // (return null) and
+    // // valid value in pathCache but empty
+    // if (bytes == null) {
+    // bytes = EMPTY_BYTE_ARRAY;
+    // }
+    // }
+    // return bytes;
+    // }
 
-        return childList;
-    }
-
-    /**
-     * Different from regular path cache access method in that we are more interested in how old the data is, not the
-     * last time the cache entry has been updated.
-     * 
-     * @param absoluteDataPath
-     * @param ttlMillis
-     * @return byte[] or null if data in cache is expired or missing
-     */
-    byte[] getDataFromPathCache(String absoluteDataPath, int ttlMillis) {
-
-        byte[] bytes = null;
-        PathCacheEntry pathCacheEntry = pathCache.get(absoluteDataPath);
-        if (pathCacheEntry != null && !isExpired(pathCacheEntry.getStat().getMtime(), ttlMillis)) {
-            bytes = pathCacheEntry.getBytes();
-
-            // valid value, but we need a way in this use case to distinguish btw. expired/missing value in pathCache
-            // (return null) and
-            // valid value in pathCache but empty
-            if (bytes == null) {
-                bytes = EMPTY_BYTE_ARRAY;
-            }
-        }
-        return bytes;
-    }
-
-    <V> List<V> readAllData(String absoluteBasePath, int ttlMillis, Class<V> typeClass, boolean usePathCache) {
+    <V> List<V> readAllData(String absoluteBasePath, int ttlMillis, Class<V> typeClass) {
 
         try {
             // get children
             List<String> childList = null;
-            if (usePathCache) {
-                childList = getChildListFromPathCache(absoluteBasePath, ttlMillis);
-            }
+            // if (usePathCache) {
+            // childList = getChildListFromPathCache(absoluteBasePath, ttlMillis);
+            // }
             if (childList == null) {
                 Stat stat = new Stat();
-                childList = zkClient.getChildren(absoluteBasePath, true, stat);
+                childList = zkClient.getChildren(absoluteBasePath, false, stat);
 
                 // update in path cache
-                pathCache.put(absoluteBasePath, stat, null, childList);
+                // pathCache.put(absoluteBasePath, stat, null, childList);
             }
 
             // iterate through children and build up list
             if (childList.size() > 0) {
                 List<V> resultList = new ArrayList<V>(childList.size());
                 for (String child : childList) {
-                    V value = readData(absoluteBasePath, child, ttlMillis, typeClass, usePathCache);
+                    V value = readData(absoluteBasePath, child, ttlMillis, typeClass);
 
                     // logger.debug("readAllData():  absoluteBasePath={}; index={}; value={}", new Object[] {
                     // absoluteBasePath, child, value });

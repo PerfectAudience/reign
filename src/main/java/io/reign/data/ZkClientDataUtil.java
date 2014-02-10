@@ -20,8 +20,8 @@ import io.reign.DataSerializer;
 import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
-import io.reign.util.PathCache;
 import io.reign.util.ZkClientUtil;
+import io.reign.zk.PathCache;
 
 import java.util.Map;
 
@@ -39,14 +39,14 @@ public class ZkClientDataUtil extends ZkClientUtil {
 
     protected final ZkClient zkClient;
     protected final PathScheme pathScheme;
-    protected final PathCache pathCache;
+    // protected final PathCache pathCache;
     protected final TranscodingScheme transcodingScheme;
 
-    ZkClientDataUtil(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, TranscodingScheme transcodingScheme) {
+    ZkClientDataUtil(ZkClient zkClient, PathScheme pathScheme, TranscodingScheme transcodingScheme) {
 
         this.zkClient = zkClient;
         this.pathScheme = pathScheme;
-        this.pathCache = pathCache;
+        // this.pathCache = pathCache;
         this.transcodingScheme = transcodingScheme;
 
     }

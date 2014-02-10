@@ -19,8 +19,8 @@ package io.reign.data;
 import io.reign.DataSerializer;
 import io.reign.PathScheme;
 import io.reign.ZkClient;
-import io.reign.util.PathCache;
-import io.reign.util.PathCacheEntry;
+import io.reign.zk.PathCache;
+import io.reign.zk.SimplePathCacheEntry;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,9 +43,8 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(ZkClientLinkedListDataUtil.class);
 
-    ZkClientLinkedListDataUtil(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
-            TranscodingScheme transcodingScheme) {
-        super(zkClient, pathScheme, pathCache, transcodingScheme);
+    ZkClientLinkedListDataUtil(ZkClient zkClient, PathScheme pathScheme, TranscodingScheme transcodingScheme) {
+        super(zkClient, pathScheme, transcodingScheme);
 
     }
 
@@ -65,8 +64,8 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
                     return null;
                 }
 
-                // update in path cache
-                pathCache.put(absoluteDataPath, stat, bytes, Collections.EMPTY_LIST);
+                // // update in path cache
+                // pathCache.put(absoluteDataPath, stat, bytes, Collections.EMPTY_LIST);
             }
 
             // deserialize
@@ -117,12 +116,12 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
             // update stat with recent update time in case we have a stale read
             stat.setMtime(System.currentTimeMillis());
 
-            // update path cache after successful write
-            pathCache.put(absoluteDataValuePath, stat, bytes, null);
+            // // update path cache after successful write
+            // pathCache.put(absoluteDataValuePath, stat, bytes, null);
 
-            PathCacheEntry pce = pathCache.get(absoluteDataValuePath);
-            logger.debug("writeData():  absoluteDataValuePath={}; pathCacheEntry={}", absoluteDataValuePath,
-                    transcodingScheme.fromBytes(pce.getBytes(), value.getClass()));
+            // SimplePathCacheEntry pce = pathCache.get(absoluteDataValuePath);
+            // logger.debug("writeData():  absoluteDataValuePath={}; pathCacheEntry={}", absoluteDataValuePath,
+            // transcodingScheme.fromBytes(pce.getData(), value.getClass()));
 
             return absoluteDataValuePath;
 
@@ -158,24 +157,23 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
                 zkClient.delete(absoluteDataPath, -1);
                 deletedPath = absoluteDataPath;
 
-                // remove node entry in path cache
-                pathCache.remove(absoluteDataPath);
-
-                // update parent children in path cache if parent node exists in cache
-                String absoluteParentPath = pathScheme.getParentPath(absoluteDataPath);
-                PathCacheEntry pathCacheEntry = pathCache.get(absoluteParentPath);
-                if (pathCacheEntry != null) {
-                    List<String> currentChildList = pathCacheEntry.getChildren();
-                    List<String> newChildList = new ArrayList<String>(currentChildList.size());
-                    for (String child : currentChildList) {
-                        if (!deletedPath.endsWith(child)) {
-                            newChildList.add(child);
-                        }
-                    }
-
-                    pathCache
-                            .put(absoluteParentPath, pathCacheEntry.getStat(), pathCacheEntry.getBytes(), newChildList);
-                }
+                // // remove node entry in path cache
+                // pathCache.remove(absoluteDataPath);
+                //
+                // // update parent children in path cache if parent node exists in cache
+                // String absoluteParentPath = pathScheme.getParentPath(absoluteDataPath);
+                // SimplePathCacheEntry pathCacheEntry = pathCache.get(absoluteParentPath);
+                // if (pathCacheEntry != null) {
+                // List<String> currentChildList = pathCacheEntry.getChildList();
+                // List<String> newChildList = new ArrayList<String>(currentChildList.size());
+                // for (String child : currentChildList) {
+                // if (!deletedPath.endsWith(child)) {
+                // newChildList.add(child);
+                // }
+                // }
+                //
+                // pathCache.put(absoluteParentPath, pathCacheEntry.getStat(), pathCacheEntry.getData(), newChildList);
+                // }
             }
 
             return deletedPath;
@@ -202,8 +200,8 @@ public class ZkClientLinkedListDataUtil extends ZkClientDataUtil {
 
             Collections.sort(childList);
 
-            // update in path cache
-            pathCache.put(absoluteBasePath, stat, null, childList);
+            // // update in path cache
+            // pathCache.put(absoluteBasePath, stat, null, childList);
 
             return childList;
         } catch (KeeperException e) {

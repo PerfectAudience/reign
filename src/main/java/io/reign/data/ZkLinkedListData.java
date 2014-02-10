@@ -72,7 +72,7 @@ public class ZkLinkedListData<V> implements LinkedListData<V> {
         this.aclList = aclList;
 
         this.zkClientLinkedListDataUtil = new ZkClientLinkedListDataUtil(context.getZkClient(),
-                context.getPathScheme(), context.getPathCache(), transcodingScheme);
+                context.getPathScheme(), transcodingScheme);
     }
 
     @Override

@@ -50,7 +50,7 @@ public class QuickStartExample {
          * init and start with core services -- connecting to ZooKeeper on localhost at port 2181 with 30 second
          * ZooKeeper session timeout
          **/
-        Reign reign = Reign.maker().core("localhost:2181", 30000).get();
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).get();
         reign.start();
 
         /** init and start using Spring convenience builder **/
@@ -96,8 +96,11 @@ public class QuickStartExample {
 
         // store configuration as JSON file
         Map<String, String> json = new HashMap<String, String>();
-        confService.putConf("examples", "config1.js", Structs.<String, String> map().kv("capacity.min", "222").kv(
-                "capacity.max", "888").kv("lastSavedTimestamp", System.currentTimeMillis() + ""));
+        confService.putConf(
+                "examples",
+                "config1.js",
+                Structs.<String, String> map().kv("capacity.min", "222").kv("capacity.max", "888")
+                        .kv("lastSavedTimestamp", System.currentTimeMillis() + ""));
 
         // retrieve configuration as JSON file
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");

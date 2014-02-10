@@ -20,7 +20,7 @@ import io.reign.Reign;
 import io.reign.presence.NodeInfo;
 import io.reign.presence.PresenceService;
 import io.reign.presence.ServiceInfo;
-import io.reign.presence.SimplePresenceObserver;
+import io.reign.presence.PresenceObserver;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +42,7 @@ public class PresenceServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).core().get();
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).get();
         reign.start();
 
         /** presence service example **/
@@ -66,18 +66,18 @@ public class PresenceServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                ServiceInfo serviceInfo = presenceService.waitUntilAvailable("examples", "service1",
-                        new SimplePresenceObserver<ServiceInfo>() {
-                            @Override
-                            public void updated(ServiceInfo info) {
-                                if (info != null) {
-                                    logger.info("***** T1:  Observer:  serviceInfo={}",
-                                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
-                                } else {
-                                    logger.info("***** T1:  Observer:  serviceInfo deleted");
-                                }
-                            }
-                        }, -1);
+                ServiceInfo serviceInfo = presenceService.waitUntilAvailable("examples", "service1", -1);
+                presenceService.observe("examples", "service1", new PresenceObserver<ServiceInfo>() {
+                    @Override
+                    public void updated(ServiceInfo info) {
+                        if (info != null) {
+                            logger.info("***** T1:  Observer:  serviceInfo={}",
+                                    ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                        } else {
+                            logger.info("***** T1:  Observer:  serviceInfo deleted");
+                        }
+                    }
+                });
                 logger.info("T1:  serviceInfo={}",
                         ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
             }
@@ -88,18 +88,18 @@ public class PresenceServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1",
-                        new SimplePresenceObserver<NodeInfo>() {
-                            @Override
-                            public void updated(NodeInfo info) {
-                                if (info != null) {
-                                    logger.info("***** T2:  Observer:  nodeInfo={}",
-                                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
-                                } else {
-                                    logger.info("***** T2:  Observer:  nodeInfo deleted");
-                                }
-                            }
-                        }, -1);
+                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1", -1);
+                presenceService.observe("examples", "service1", "node1", new PresenceObserver<NodeInfo>() {
+                    @Override
+                    public void updated(NodeInfo info) {
+                        if (info != null) {
+                            logger.info("***** T2:  Observer:  nodeInfo={}",
+                                    ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                        } else {
+                            logger.info("***** T2:  Observer:  nodeInfo deleted");
+                        }
+                    }
+                });
                 logger.info("T2:  nodeInfo={}",
                         ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
             }
@@ -109,18 +109,18 @@ public class PresenceServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1",
-                        new SimplePresenceObserver<NodeInfo>() {
-                            @Override
-                            public void updated(NodeInfo info) {
-                                if (info != null) {
-                                    logger.info("***** T3:  Observer:  nodeInfo={}",
-                                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
-                                } else {
-                                    logger.info("***** T3:  Observer:  nodeInfo deleted");
-                                }
-                            }
-                        }, 10000);
+                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1", 1);
+                presenceService.observe("examples", "service1", "node1", new PresenceObserver<NodeInfo>() {
+                    @Override
+                    public void updated(NodeInfo info) {
+                        if (info != null) {
+                            logger.info("***** T3:  Observer:  nodeInfo={}",
+                                    ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                        } else {
+                            logger.info("***** T3:  Observer:  nodeInfo deleted");
+                        }
+                    }
+                });
                 logger.info("T3:  nodeInfo={}",
                         ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
             }
@@ -133,7 +133,7 @@ public class PresenceServiceExample {
         // available); include observer to be notified of changes in service
         // info
         ServiceInfo serviceInfo = presenceService.lookupServiceInfo("examples", "service1",
-                new SimplePresenceObserver<ServiceInfo>() {
+                new PresenceObserver<ServiceInfo>() {
                     @Override
                     public void updated(ServiceInfo info) {
                         if (info != null) {
@@ -150,7 +150,7 @@ public class PresenceServiceExample {
         // available); include observer to be notified of changes in node
         // info
         NodeInfo nodeInfo = presenceService.lookupNodeInfo("examples", "service2", "node1",
-                new SimplePresenceObserver<NodeInfo>() {
+                new PresenceObserver<NodeInfo>() {
                     @Override
                     public void updated(NodeInfo info) {
                         if (info != null) {

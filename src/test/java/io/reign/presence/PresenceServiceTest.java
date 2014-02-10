@@ -15,8 +15,8 @@ import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
 import io.reign.ZkClient;
-import io.reign.util.NullPathCache;
-import io.reign.util.PathCache;
+import io.reign.zk.NullPathCache;
+import io.reign.zk.PathCache;
 
 import org.apache.zookeeper.data.ACL;
 import org.junit.After;

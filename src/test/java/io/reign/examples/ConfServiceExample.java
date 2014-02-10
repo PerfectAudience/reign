@@ -17,10 +17,10 @@
 package io.reign.examples;
 
 import io.reign.Reign;
+import io.reign.conf.ConfObserver;
 import io.reign.conf.ConfProperties;
 import io.reign.conf.ConfPropertiesSerializer;
 import io.reign.conf.ConfService;
-import io.reign.conf.SimpleConfObserver;
 
 import java.util.Properties;
 
@@ -39,7 +39,7 @@ public class ConfServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        final Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).core().get();
+        final Reign reign = Reign.maker().zkClient("localhost:2181", 15000).pathCache(1024, 8).get();
         // reign.start();
 
         /** conf service example **/
@@ -88,7 +88,7 @@ public class ConfServiceExample {
         // load a configuration which will not be immediately available but pass
         // observer to be notified of changes in configuration
         Properties loadedConf = null;
-        confService.observe("examples", "config1.properties", new SimpleConfObserver<ConfProperties>() {
+        confService.observe("examples", "config1.properties", new ConfObserver<ConfProperties>() {
             @Override
             public void updated(ConfProperties conf, ConfProperties oldConf) {
                 if (conf != null) {
@@ -107,7 +107,7 @@ public class ConfServiceExample {
         conf.setProperty("capacity.min", "111");
         conf.setProperty("capacity.max", "999");
         conf.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
-        confService.putConf("examples", "config1.properties", conf, new ConfPropertiesSerializer<Properties>(false));
+        confService.putConf("examples", "config1.properties", conf);
 
         Thread.sleep(10000);
 

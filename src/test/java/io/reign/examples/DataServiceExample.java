@@ -43,7 +43,7 @@ public class DataServiceExample {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).core().get();
+        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).get();
         reign.start();
 
         /** init and start using Spring convenience builder **/

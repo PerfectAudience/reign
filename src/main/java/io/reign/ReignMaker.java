@@ -22,9 +22,10 @@ import io.reign.data.DataService;
 import io.reign.mesg.DefaultMessagingService;
 import io.reign.mesg.MessagingService;
 import io.reign.presence.PresenceService;
-import io.reign.util.PathCache;
-import io.reign.util.SimplePathCache;
-import io.reign.zk.ResilientZooKeeper;
+import io.reign.zk.PathCache;
+import io.reign.zk.ResilientZkClient;
+import io.reign.zk.ResilientZkClientWithCache;
+import io.reign.zk.SimplePathCache;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -64,7 +65,7 @@ public class ReignMaker {
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
-    public ReignMaker core() {
+    private ReignMaker core() {
         // configure Reign with all core services
 
         presence();
@@ -82,7 +83,7 @@ public class ReignMaker {
         return this;
     }
 
-    public ReignMaker presence() {
+    private ReignMaker presence() {
         PresenceService presenceService = new PresenceService();
         serviceMap.put("presence", presenceService);
 
@@ -92,14 +93,14 @@ public class ReignMaker {
         return this;
     }
 
-    public ReignMaker nullService() {
+    private ReignMaker nullService() {
         NullService nullService = new NullService();
         serviceMap.put("null", nullService);
 
         return this;
     }
 
-    public ReignMaker conf() {
+    private ReignMaker conf() {
         ConfService confService = new ConfService();
         serviceMap.put("conf", confService);
 
@@ -109,7 +110,7 @@ public class ReignMaker {
         return this;
     }
 
-    public ReignMaker coord() {
+    private ReignMaker coord() {
         CoordinationService coordService = new CoordinationService();
         serviceMap.put("coord", coordService);
 
@@ -119,7 +120,7 @@ public class ReignMaker {
         return this;
     }
 
-    public ReignMaker data() {
+    private ReignMaker data() {
         DataService dataService = new DataService();
         serviceMap.put("data", dataService);
 
@@ -129,14 +130,19 @@ public class ReignMaker {
         return this;
     }
 
-    public ReignMaker mesg() {
+    private ReignMaker mesg() {
         MessagingService messagingService = new DefaultMessagingService();
+
         serviceMap.put("mesg", messagingService);
         if (messagingPort == null) {
             messagingService.setPort(Reign.DEFAULT_MESSAGING_PORT);
         } else {
             messagingService.setPort(messagingPort);
         }
+
+        // alternate route for more concise messaging
+        serviceMap.put("M", messagingService);
+
         return this;
     }
 
@@ -152,13 +158,6 @@ public class ReignMaker {
             messagingService.setPort(messagingPort);
         }
 
-        return this;
-    }
-
-    public ReignMaker core(String zkConnectString, int zkSessionTimeout) {
-        core();
-        this.zkConnectString = zkConnectString;
-        this.zkSessionTimeout = zkSessionTimeout;
         return this;
     }
 
@@ -219,6 +218,9 @@ public class ReignMaker {
 
         Reign s = null;
 
+        // always add core services
+        core();
+
         // see if we need to set defaults
         if (frameworkClusterId == null) {
             frameworkClusterId = Reign.DEFAULT_FRAMEWORK_CLUSTER_ID;
@@ -226,11 +228,11 @@ public class ReignMaker {
         if (frameworkBasePath == null) {
             frameworkBasePath = Reign.DEFAULT_FRAMEWORK_BASE_PATH;
         }
-        if (zkClient == null) {
-            zkClient = defaultZkClient();
-        }
         if (pathCache == null) {
             pathCache = defaultPathCache();
+        }
+        if (zkClient == null) {
+            zkClient = defaultZkClient(pathCache);
         }
         if (pathScheme == null) {
             pathScheme = defaultPathScheme(frameworkBasePath, frameworkClusterId);
@@ -246,14 +248,14 @@ public class ReignMaker {
         return s;
     }
 
-    ZkClient defaultZkClient() {
+    ZkClient defaultZkClient(PathCache pathCache) {
         if (zkConnectString == null || zkSessionTimeout <= 0) {
             throw new IllegalStateException("zkConnectString and zkSessionTimeout not configured!");
         }
 
         ZkClient zkClient = null;
         try {
-            zkClient = new ResilientZooKeeper(zkConnectString, zkSessionTimeout);
+            zkClient = new ResilientZkClientWithCache(zkConnectString, zkSessionTimeout, pathCache);
         } catch (IOException e) {
             throw new IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
         }
@@ -261,12 +263,12 @@ public class ReignMaker {
     }
 
     PathCache defaultPathCache() {
-        if (pathCacheMaxSize < 1 || pathCacheMaxConcurrencyLevel < 1 || zkClient == null) {
+        if (pathCacheMaxSize < 1 || pathCacheMaxConcurrencyLevel < 1) {
             throw new IllegalStateException(
                     "zkClient, pathCacheMaxSize, and pathCacheMaxConcurrencyLevel must be configured to create default path cache!");
         }
 
-        return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel, zkClient, 1);
+        return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel);
     }
 
     PathScheme defaultPathScheme(String basePath, String frameworkClusterId) {

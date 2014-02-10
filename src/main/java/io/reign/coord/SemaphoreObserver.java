@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
@@ -21,11 +21,12 @@ package io.reign.coord;
  * @author ypai
  * 
  */
-public interface SemaphoreObserver {
+public abstract class SemaphoreObserver extends CoordObserver<DistributedSemaphore> {
     /**
      * @param semaphore
      * @param permitId
      *            the acquired permit that was revoked.
      */
-    public void revoked(DistributedSemaphore semaphore, String reservationId);
+    public abstract void revoked(DistributedSemaphore semaphore, String permitId);
+
 }

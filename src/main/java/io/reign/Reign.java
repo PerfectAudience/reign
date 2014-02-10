@@ -18,8 +18,8 @@ package io.reign;
 
 import io.reign.mesg.MessagingService;
 import io.reign.presence.PresenceService;
-import io.reign.util.PathCache;
-import io.reign.util.SimplePathCache;
+import io.reign.zk.PathCache;
+import io.reign.zk.SimplePathCache;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,7 +69,7 @@ public class Reign implements Watcher {
 
     private ReignContext context;
 
-    private final Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
+    // private final Map<String, Future<?>> futureMap = new HashMap<String, Future<?>>();
 
     private PathScheme pathScheme;
 
@@ -302,10 +302,10 @@ public class Reign implements Watcher {
                 return finalDefaultZkAclList;
             }
 
-            @Override
-            public PathCache getPathCache() {
-                return pathCache;
-            }
+            // @Override
+            // public PathCache getPathCache() {
+            // return pathCache;
+            // }
 
             @Override
             public String getCanonicalIdPathToken() {
@@ -321,7 +321,7 @@ public class Reign implements Watcher {
             Service service = serviceMap.get(serviceName).getService();
             service.setPathScheme(pathScheme);
             service.setZkClient(zkClient);
-            service.setPathCache(pathCache);
+            // service.setPathCache(pathCache);
             service.setContext(context);
             service.setDefaultZkAclList(defaultZkAclList);
             service.init();
@@ -369,7 +369,7 @@ public class Reign implements Watcher {
         logger.info("START:  notifying all waiters");
         this.notifyAll();
 
-        logger.info("START:  done");
+        logger.info("START:  DONE");
 
         /** announce as a client of framework: must be done after all other start-up tasks are complete **/
         PresenceService presenceService = context.getService("presence");
@@ -391,11 +391,11 @@ public class Reign implements Watcher {
 
         logger.info("SHUTDOWN:  begin");
 
-        /** cancel all futures **/
-        logger.info("SHUTDOWN:  cancelling scheduled service tasks");
-        for (Future<?> future : futureMap.values()) {
-            future.cancel(false);
-        }
+        // /** cancel all futures **/
+        // logger.info("SHUTDOWN:  cancelling scheduled service tasks");
+        // for (Future<?> future : futureMap.values()) {
+        // future.cancel(false);
+        // }
 
         // /** stop executor **/
         // logger.info("SHUTDOWN:  shutting down executor");
@@ -415,7 +415,7 @@ public class Reign implements Watcher {
         logger.info("SHUTDOWN:  closing Zookeeper client");
         this.zkClient.close();
 
-        logger.info("SHUTDOWN:  done");
+        logger.info("SHUTDOWN:  DONE");
     }
 
     private void throwExceptionIfNotOkayToRegister() {

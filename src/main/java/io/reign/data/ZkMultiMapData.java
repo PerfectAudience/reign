@@ -21,8 +21,8 @@ import io.reign.PathScheme;
 import io.reign.ReignContext;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
-import io.reign.util.PathCache;
-import io.reign.util.PathCacheEntry;
+import io.reign.zk.PathCache;
+import io.reign.zk.SimplePathCacheEntry;
 
 import java.util.Collections;
 import java.util.List;
@@ -56,8 +56,6 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
 
     private final ZkClient zkClient;
 
-    private final PathCache pathCache;
-
     /**
      * 
      * @param basePath
@@ -73,13 +71,11 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
 
         this.zkClient = context.getZkClient();
 
-        this.pathCache = context.getPathCache();
-
         this.aclList = aclList;
         this.readWriteLock = readWriteLock;
 
         this.zkClientMultiDataUtil = new ZkClientMultiDataUtil(context.getZkClient(), context.getPathScheme(),
-                context.getPathCache(), transcodingScheme);
+                transcodingScheme);
 
     }
 
@@ -128,8 +124,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         zkClientMultiDataUtil.lockForRead(readWriteLock, pathScheme.joinPaths(absoluteBasePath, key.toString(), index),
                 this);
         try {
-            return zkClientMultiDataUtil.readData(absoluteKeyPath(key), index, ttlMillis, typeClass,
-                    readWriteLock == null);
+            return zkClientMultiDataUtil.readData(absoluteKeyPath(key), index, ttlMillis, typeClass);
         } finally {
             zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
@@ -145,8 +140,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForRead(readWriteLock, pathScheme.joinPaths(absoluteBasePath, key.toString()), this);
         try {
-            return (T) zkClientMultiDataUtil.readAllData(absoluteKeyPath(key), ttlMillis, typeClass,
-                    readWriteLock == null);
+            return (T) zkClientMultiDataUtil.readAllData(absoluteKeyPath(key), ttlMillis, typeClass);
         } finally {
             zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
@@ -172,7 +166,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, ttlMillis, readWriteLock == null);
+            zkClientMultiDataUtil.deleteData(absoluteKeyPath(key), index, ttlMillis);
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
         }
@@ -188,7 +182,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         throwExceptionIfKeyIsInvalid(key);
         zkClientMultiDataUtil.lockForWrite(readWriteLock);
         try {
-            zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), ttlMillis, readWriteLock == null);
+            zkClientMultiDataUtil.deleteAllData(absoluteKeyPath(key), ttlMillis);
 
         } finally {
             zkClientMultiDataUtil.unlockForWrite(readWriteLock);
@@ -200,18 +194,18 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         Stat stat = null;
         zkClientMultiDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
         try {
-            if (readWriteLock == null) {
-                PathCacheEntry pce = pathCache.get(absoluteBasePath, -1);
-                if (pce != null) {
-                    stat = pce.getStat();
-                }
-            }
+            // if (readWriteLock == null) {
+            // SimplePathCacheEntry pce = pathCache.get(absoluteBasePath, -1);
+            // if (pce != null) {
+            // stat = pce.getStat();
+            // }
+            // }
 
             if (stat == null) {
                 // invalid or non-existent value in cache, so get direct
                 stat = new Stat();
                 List<String> children = zkClient.getChildren(absoluteBasePath, true, stat);
-                pathCache.put(absoluteBasePath, stat, null, children);
+                // pathCache.put(absoluteBasePath, stat, null, children);
             } else {
                 logger.trace("Got from cache:  path={}; size={}", absoluteBasePath, stat.getNumChildren());
             }
@@ -238,15 +232,15 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         List<String> keys = null;
         zkClientMultiDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
         try {
-            if (readWriteLock == null) {
-                keys = zkClientMultiDataUtil.getChildListFromPathCache(absoluteBasePath, -1);
-            }
+            // if (readWriteLock == null) {
+            // keys = zkClientMultiDataUtil.getChildListFromPathCache(absoluteBasePath, -1);
+            // }
 
             if (keys == null) {
                 // invalid or non-existent value in cache, so get direct
                 Stat stat = new Stat();
                 keys = zkClient.getChildren(absoluteBasePath, true, stat);
-                pathCache.put(absoluteBasePath, stat, null, keys);
+                // pathCache.put(absoluteBasePath, stat, null, keys);
             } else {
                 logger.trace("Got from cache:  path={}; keys={}", absoluteBasePath, keys);
             }

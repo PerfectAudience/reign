@@ -18,7 +18,7 @@ package io.reign;
 
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
-import io.reign.util.PathCache;
+import io.reign.zk.PathCache;
 
 import java.util.List;
 
@@ -37,8 +37,6 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
 
     private PathScheme pathScheme;
     private ZkClient zkClient;
-
-    private PathCache pathCache;
 
     private ReignContext context;
 
@@ -68,14 +66,14 @@ public abstract class AbstractService extends AbstractZkEventHandler implements 
         this.context = serviceDirectory;
     }
 
-    public PathCache getPathCache() {
-        return pathCache;
-    }
+    // public PathCache getPathCache() {
+    // return pathCache;
+    // }
 
-    @Override
-    public void setPathCache(PathCache pathCache) {
-        this.pathCache = pathCache;
-    }
+    // @Override
+    // public void setPathCache(PathCache pathCache) {
+    // this.pathCache = pathCache;
+    // }
 
     public PathScheme getPathScheme() {
         return pathScheme;

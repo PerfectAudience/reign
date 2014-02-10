@@ -80,12 +80,18 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
                         new Object[] { ctx.getChannel().getId(), responseText });
             }
 
-            int indexLeftQuote = responseText.indexOf("\"id\":");
-            int indexRightQuote = responseText.indexOf(",", indexLeftQuote);
-            String requestIdString = responseText.substring(indexLeftQuote + 5, indexRightQuote);
+            // TODO: fix exceptions when browser clients don't send all assumed data
+            String requestIdString = null;
             int requestId = 0;
-            if (requestIdString != null) {
-                requestId = Integer.parseInt(requestIdString);
+            try {
+                int indexLeftQuote = responseText.indexOf("\"id\":");
+                int indexRightQuote = responseText.indexOf(",", indexLeftQuote);
+                requestIdString = responseText.substring(indexLeftQuote + 5, indexRightQuote);
+                if (requestIdString != null) {
+                    requestId = Integer.parseInt(requestIdString);
+                }
+            } catch (Exception e1) {
+                logger.warn("Fix this later:  " + e1, e1);
             }
 
             if (logger.isTraceEnabled()) {

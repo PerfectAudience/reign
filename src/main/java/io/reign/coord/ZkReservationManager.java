@@ -18,9 +18,9 @@ package io.reign.coord;
 
 import io.reign.PathScheme;
 import io.reign.ZkClient;
-import io.reign.util.PathCache;
-import io.reign.util.PathCacheEntry;
 import io.reign.util.ZkClientUtil;
+import io.reign.zk.PathCache;
+import io.reign.zk.SimplePathCacheEntry;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -49,16 +49,15 @@ class ZkReservationManager {
     private final ZkClientUtil zkUtil = new ZkClientUtil();
     private volatile boolean shutdown = false;
 
-    private final PathCache pathCache;
+    // private final PathCache pathCache;
 
     private final CoordinationServiceCache coordinationServiceCache;
 
-    ZkReservationManager(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache,
-            CoordinationServiceCache coordinationServiceCache) {
+    ZkReservationManager(ZkClient zkClient, PathScheme pathScheme, CoordinationServiceCache coordinationServiceCache) {
         super();
         this.zkClient = zkClient;
         this.pathScheme = pathScheme;
-        this.pathCache = pathCache;
+        // this.pathCache = pathCache;
         this.coordinationServiceCache = coordinationServiceCache;
     }
 
@@ -77,23 +76,23 @@ class ZkReservationManager {
         coordinationServiceCache.removeLock(entityPath, reservationType, lock);
     }
 
-    public List<String> getSortedReservationList(String entityPath, boolean useCache) {
-        List<String> list = getReservationList(entityPath, useCache);
+    public List<String> getSortedReservationList(String entityPath) {
+        List<String> list = getReservationList(entityPath);
         Collections.sort(list, lockReservationComparator);
         return list;
     }
 
-    public List<String> getReservationList(String entityPath, boolean useCache) {
+    public List<String> getReservationList(String entityPath) {
         try {
             List<String> lockReservationList = null;
 
-            PathCacheEntry pathCacheEntry = pathCache.get(entityPath);
-            if (useCache && pathCacheEntry != null) {
-                // found in cache
-                lockReservationList = pathCacheEntry.getChildren();
-            } else {
-                lockReservationList = zkClient.getChildren(entityPath, true);
-            }
+            // SimplePathCacheEntry pathCacheEntry = pathCache.get(entityPath);
+            // if (useCache && pathCacheEntry != null) {
+            // // found in cache
+            // lockReservationList = pathCacheEntry.getChildList();
+            // } else {
+            lockReservationList = zkClient.getChildren(entityPath, true);
+            // }
 
             return lockReservationList;
         } catch (KeeperException e) {

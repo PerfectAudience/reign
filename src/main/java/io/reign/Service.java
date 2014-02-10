@@ -18,7 +18,7 @@ package io.reign;
 
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
-import io.reign.util.PathCache;
+import io.reign.zk.PathCache;
 
 import java.util.List;
 
@@ -44,7 +44,7 @@ public interface Service {
 
     public void setContext(ReignContext serviceDirectory);
 
-    public void setPathCache(PathCache pathCache);
+    // public void setPathCache(PathCache pathCache);
 
     public void setDefaultZkAclList(List<ACL> defaultZkAclList);
 
