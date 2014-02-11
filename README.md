@@ -132,6 +132,8 @@ List nodes comprising "service2":
         props.setProperty("capacity.min", "111");
         props.setProperty("capacity.max", "999");
         props.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
+
+        // serialization/deserialization in ZooKeeper is done by fle "extension"
         confService.putConf("examples", "config1.properties", props);
 
         // retrieve configuration as properties file
