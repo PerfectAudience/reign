@@ -149,9 +149,9 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                         }
 
                         if (updatedValueDiffers) {
-                            observer.setPreviousChildList(observer.getChildList());
+                            List<String> previousChildList = observer.getChildList();
                             observer.setChildList(updatedChildList);
-                            observer.nodeChildrenChanged(updatedChildList);
+                            observer.nodeChildrenChanged(updatedChildList, previousChildList);
                         }
                     }
                 }
@@ -174,9 +174,9 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                 for (T observer : observerSet) {
                     synchronized (observer) {
                         if (!Arrays.equals(observer.getData(), data)) {
-                            observer.setPreviousData(observer.getData());
+                            byte[] previousData = observer.getData();
                             observer.setData(data);
-                            observer.nodeCreated(data);
+                            observer.nodeCreated(data, previousData);
                         }
                     }
                 }
@@ -199,9 +199,9 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                 for (T observer : observerSet) {
                     synchronized (observer) {
                         if (!Arrays.equals(observer.getData(), updatedData)) {
-                            observer.setPreviousData(observer.getData());
+                            byte[] previousData = observer.getData();
                             observer.setData(updatedData);
-                            observer.nodeDataChanged(updatedData);
+                            observer.nodeDataChanged(updatedData, previousData);
                         }
                     }
                 }
@@ -230,11 +230,11 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             for (T observer : observerSet) {
                 synchronized (observer) {
                     if (observer.getData() != null || observer.getChildList().size() > 0) {
-                        observer.setPreviousData(observer.getData());
+                        byte[] previousData = observer.getData();
+                        List<String> previousChildList = observer.getChildList();
                         observer.setData(null);
-                        observer.setPreviousChildList(observer.getChildList());
                         observer.setChildList(Collections.EMPTY_LIST);
-                        observer.nodeDeleted();
+                        observer.nodeDeleted(previousData, previousChildList);
                     }
                 }
             }

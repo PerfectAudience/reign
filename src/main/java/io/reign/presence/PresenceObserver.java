@@ -16,17 +16,12 @@
 
 package io.reign.presence;
 
-import java.util.List;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.Observer;
-import io.reign.ObserverManager;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * 
@@ -69,7 +64,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     }
 
     @Override
-    public void nodeChildrenChanged(List<String> updatedChildList) {
+    public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList) {
         if (serviceId != null) {
             ServiceInfo updated = new ServiceInfo(clusterId, serviceId, updatedChildList);
             updated((T) updated);
@@ -77,7 +72,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     }
 
     @Override
-    public void nodeDataChanged(byte[] updatedData) {
+    public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
         if (nodeId != null) {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(updatedData);
             NodeInfo updated = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);
@@ -86,14 +81,14 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     }
 
     @Override
-    public void nodeDeleted() {
+    public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
         if (nodeId != null) {
             updated(null);
         }
     }
 
     @Override
-    public void nodeCreated(byte[] data) {
+    public void nodeCreated(byte[] data, byte[] previousData) {
         if (nodeId != null) {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(data);
             NodeInfo updated = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);

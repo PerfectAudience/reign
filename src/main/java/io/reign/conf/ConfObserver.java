@@ -19,6 +19,7 @@ package io.reign.conf;
 import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -69,18 +70,18 @@ public abstract class ConfObserver<T> extends AbstractObserver {
     }
 
     @Override
-    public void nodeDataChanged(byte[] updatedData) {
-        updated(toConf(updatedData), toConf(getPreviousData()));
+    public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
+        updated(toConf(updatedData), toConf(previousData));
     }
 
     @Override
-    public void nodeDeleted() {
-        updated(null, toConf(getPreviousData()));
+    public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
+        updated(null, toConf(previousData));
     }
 
     @Override
-    public void nodeCreated(byte[] data) {
-        updated(toConf(data), toConf(getPreviousData()));
+    public void nodeCreated(byte[] data, byte[] previousData) {
+        updated(toConf(data), toConf(previousData));
     }
 
     T toConf(byte[] data) {

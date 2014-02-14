@@ -182,41 +182,12 @@ public class PresenceService extends AbstractService {
     }
 
     public ServiceInfo waitUntilAvailable(String clusterId, String serviceId, long timeoutMillis) {
-        return waitUntilAvailable(clusterId, serviceId, null, nodeAttributeSerializer, timeoutMillis);
-    }
 
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param observer
-     * @param nodeAttributeSerializer
-     * @param useCache
-     * @param timeoutMillis
-     *            set to <0 to wait indefinitely
-     * @return
-     */
-    ServiceInfo waitUntilAvailable(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer,
-            DataSerializer<Map<String, String>> nodeAttributeSerializer, long timeoutMillis) {
-
-        ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer);
+        ServiceInfo result = lookupServiceInfo(clusterId, serviceId);
 
         if (result == null || result.getNodeIdList().size() < 1) {
             String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
             String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
-
-            // set exists watch
-            List<String> childList = Collections.EMPTY_LIST;
-            try {
-                Stat stat = getZkClient().exists(path, true);
-                if (stat != null) {
-                    childList = getZkClient().getChildren(path, true);
-                }
-            } catch (KeeperException e1) {
-                logger.error("" + e1, e1);
-            } catch (InterruptedException e1) {
-                logger.warn("Interrupted:  " + e1, e1);
-            }
 
             PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(clusterId, serviceId);
             getObserverManager().put(path, notifyObserver);
@@ -225,20 +196,19 @@ public class PresenceService extends AbstractService {
                 long waitStartTimestamp = System.currentTimeMillis();
                 while ((result == null || result.getNodeIdList().size() < 1)
                         && (System.currentTimeMillis() - waitStartTimestamp < timeoutMillis || timeoutMillis < 0)) {
-                    if (childList == null || childList.size() < 1) {
-                        logger.info("Waiting until service is available:  path={}", path);
-                        try {
-                            if (timeoutMillis < 0) {
-                                notifyObserver.wait();
-                            } else {
-                                notifyObserver.wait(timeoutMillis);
-                            }
-                        } catch (InterruptedException e) {
-                            logger.warn("Interrupted while waiting for ServiceInfo:  " + e, e);
-                        } // try
-                    }// if
 
-                    result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer);
+                    logger.info("Waiting until service is available:  path={}", path);
+                    try {
+                        if (timeoutMillis < 0) {
+                            notifyObserver.wait();
+                        } else {
+                            notifyObserver.wait(timeoutMillis);
+                        }
+                    } catch (InterruptedException e) {
+                        logger.warn("Interrupted while waiting for ServiceInfo:  " + e, e);
+                    } // try
+
+                    result = lookupServiceInfo(clusterId, serviceId);
                 }// while
             }// synchronized
 
@@ -309,12 +279,9 @@ public class PresenceService extends AbstractService {
         List<String> children = null;
         try {
 
-            // not in cache, so populate from ZK
+            // get from ZK
             Stat stat = new Stat();
-            children = getZkClient().getChildren(path, true, stat);
-
-            // update cache
-            // getPathCache().put(path, stat, null, children);
+            children = getZkClient().getChildren(path, false, stat);
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
@@ -353,36 +320,11 @@ public class PresenceService extends AbstractService {
     }
 
     public NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId, long timeoutMillis) {
-        return waitUntilAvailable(clusterId, serviceId, nodeId, null, nodeAttributeSerializer, timeoutMillis);
-    }
 
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param nodeId
-     * @param observer
-     * @param nodeAttributeSerializer
-     * @param useCache
-     * @param timeoutMillis
-     *            set to <0 to wait indefinitely
-     * @return
-     */
-    NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer,
-            DataSerializer<Map<String, String>> nodeAttributeSerializer, long timeoutMillis) {
-        NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer);
+        NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId);
         if (result == null) {
             String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
             String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
-
-            // set exists watch
-            try {
-                getZkClient().exists(path, true);
-            } catch (KeeperException e1) {
-                logger.error("" + e1, e1);
-            } catch (InterruptedException e1) {
-                logger.warn("Interrupted:  " + e1, e1);
-            }
 
             PresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
             getObserverManager().put(path, notifyObserver);
@@ -402,7 +344,7 @@ public class PresenceService extends AbstractService {
                     } catch (InterruptedException e) {
                         logger.warn("Interrupted while waiting for NodeInfo:  " + e, e);
                     }
-                    result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer);
+                    result = lookupNodeInfo(clusterId, serviceId, nodeId);
                 }
             }
 
@@ -420,23 +362,24 @@ public class PresenceService extends AbstractService {
         return lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer);
     }
 
-    public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId,
-            PresenceObserver<NodeInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer) {
+    NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer,
+            DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         /** get node data from zk **/
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
 
-        boolean error = false;
+        /** add observer if passed in **/
+        if (observer != null) {
+            getObserverManager().put(path, observer);
+        }
 
+        /** fetch data **/
+        boolean error = false;
         byte[] bytes = null;
         try {
-
-            // not in cache, so populate from ZK
+            // populate from ZK
             Stat stat = new Stat();
-            bytes = getZkClient().getData(path, true, stat);
-
-            // update cache
-            // getPathCache().put(path, stat, bytes, null);
+            bytes = getZkClient().getData(path, false, stat);
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
@@ -470,11 +413,6 @@ public class PresenceService extends AbstractService {
             }
         }
 
-        /** add observer if passed in **/
-        if (observer != null) {
-            getObserverManager().put(path, observer);
-        }
-
         return result;
     }
 
@@ -485,7 +423,7 @@ public class PresenceService extends AbstractService {
      * @param visible
      */
     public void announce(String clusterId, String serviceId, boolean visible) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null,
+        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null,
                 getContext().getDefaultZkAclList());
     }
 
@@ -498,34 +436,43 @@ public class PresenceService extends AbstractService {
      */
     public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
         announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
-                attributeMap, null, getContext().getDefaultZkAclList());
+                attributeMap, getContext().getDefaultZkAclList());
     }
 
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param visible
-     * @param aclList
-     */
-    public void announce(String clusterId, String serviceId, boolean visible, List<ACL> aclList) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null,
-                aclList);
+    public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
+        announce(clusterId, serviceId, nodeId, visible, null, getContext().getDefaultZkAclList());
     }
 
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param visible
-     * @param attributeMap
-     * @param aclList
-     */
-    public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap,
-            List<ACL> aclList) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
-                attributeMap, null, aclList);
+    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
+            Map<String, String> attributeMap) {
+        announce(clusterId, serviceId, nodeId, visible, attributeMap, getContext().getDefaultZkAclList());
     }
+
+    // /**
+    // *
+    // * @param clusterId
+    // * @param serviceId
+    // * @param visible
+    // * @param aclList
+    // */
+    // public void announce(String clusterId, String serviceId, boolean visible, List<ACL> aclList) {
+    // announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null,
+    // aclList);
+    // }
+
+    // /**
+    // *
+    // * @param clusterId
+    // * @param serviceId
+    // * @param visible
+    // * @param attributeMap
+    // * @param aclList
+    // */
+    // void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap,
+    // List<ACL> aclList) {
+    // announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
+    // attributeMap, null, aclList);
+    // }
 
     /**
      * This method only has to be called once per service node and/or when node data changes. Announcements happen
@@ -539,8 +486,7 @@ public class PresenceService extends AbstractService {
      * @param attributeMap
      * @param nodeAttributeSerializer
      */
-    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
-            Map<String, String> attributeMap, DataSerializer<Map<String, String>> nodeAttributeSerializer,
+    void announce(String clusterId, String serviceId, String nodeId, boolean visible, Map<String, String> attributeMap,
             List<ACL> aclList) {
         // defaults
         if (nodeAttributeSerializer == null) {

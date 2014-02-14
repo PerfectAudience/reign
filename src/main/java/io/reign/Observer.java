@@ -42,32 +42,32 @@ public interface Observer {
      */
     public void stateUnknown(Object o);
 
-    public void nodeChildrenChanged(List<String> updatedChildList);
+    public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList);
 
-    public void nodeDataChanged(byte[] updatedData);
+    public void nodeDataChanged(byte[] updatedData, byte[] previousData);
 
-    public void nodeDeleted();
+    public void nodeDeleted(byte[] previousData, List<String> previousChildList);
 
-    public void nodeCreated(byte[] data);
+    public void nodeCreated(byte[] data, byte[] previousData);
 
     public String getPath();
 
     public byte[] getData();
 
-    public byte[] getPreviousData();
+    // public byte[] getPreviousData();
 
     public List<String> getChildList();
 
-    public List<String> getPreviousChildList();
+    // public List<String> getPreviousChildList();
 
     public void setPath(String path);
 
     public void setData(byte[] data);
 
-    public void setPreviousData(byte[] data);
+    // public void setPreviousData(byte[] data);
 
     public void setChildList(List<String> childList);
 
-    public void setPreviousChildList(List<String> childList);
+    // public void setPreviousChildList(List<String> childList);
 
 }
