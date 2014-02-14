@@ -1,4 +1,4 @@
-package io.reign.conf;
+package io.reign.coord;
 
 import static org.junit.Assert.assertTrue;
 import io.reign.DefaultPathScheme;
