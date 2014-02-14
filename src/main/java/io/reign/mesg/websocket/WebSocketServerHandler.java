@@ -10,13 +10,11 @@ import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.reign.CanonicalId;
-import io.reign.DataSerializer;
 import io.reign.DefaultCanonicalId;
 import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
 import io.reign.mesg.MessageProtocol;
-import io.reign.mesg.MessagingService;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 import io.reign.presence.PresenceService;
@@ -24,14 +22,10 @@ import io.reign.util.IdUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.zookeeper.data.ACL;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.ChannelEvent;
@@ -361,9 +355,9 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
         SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
 
-        CanonicalId canonicalId = new DefaultCanonicalId(null, IdUtil.getClientIpAddress(socketAddress),
-                IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress),
-                IdUtil.getClientPort(socketAddress));
+        CanonicalId canonicalId = new DefaultCanonicalId(null, IdUtil.getClientIpAddress(socketAddress), IdUtil
+                .getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress), IdUtil
+                .getClientPort(socketAddress));
         String canonicalIdString = serviceDirectory.getPathScheme().toPathToken(canonicalId);
 
         // (String clusterId, String serviceId, String nodeId, boolean visible,
@@ -371,7 +365,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
         // List<ACL> aclList)
 
         presenceService.announce(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID, Reign.DEFAULT_FRAMEWORK_CLIENT_ID,
-                canonicalIdString, true, null, null, serviceDirectory.getDefaultZkAclList());
+                canonicalIdString, true, null);
 
         // TODO: register connection
         connectionManager.addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil

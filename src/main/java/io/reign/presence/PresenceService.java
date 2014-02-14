@@ -420,8 +420,8 @@ public class PresenceService extends AbstractService {
         return lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer);
     }
 
-    public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId,
-            PresenceObserver<NodeInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer) {
+    NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer,
+            DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         /** get node data from zk **/
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
@@ -462,8 +462,8 @@ public class PresenceService extends AbstractService {
         NodeInfo result = null;
         if (!error) {
             try {
-                result = new NodeInfo(clusterId, serviceId, nodeId,
-                        bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
+                result = new NodeInfo(clusterId, serviceId, nodeId, bytes != null ? nodeAttributeSerializer
+                        .deserialize(bytes) : Collections.EMPTY_MAP);
             } catch (Throwable e) {
                 throw new IllegalStateException(
                         "lookup():  error trying to fetch node info:  path=" + path + ":  " + e, e);
@@ -478,70 +478,17 @@ public class PresenceService extends AbstractService {
         return result;
     }
 
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param visible
-     */
     public void announce(String clusterId, String serviceId, boolean visible) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null,
-                getContext().getDefaultZkAclList());
+        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null);
     }
 
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param visible
-     * @param attributeMap
-     */
     public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
         announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
-                attributeMap, null, getContext().getDefaultZkAclList());
+                attributeMap);
     }
 
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param visible
-     * @param aclList
-     */
-    public void announce(String clusterId, String serviceId, boolean visible, List<ACL> aclList) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null, null,
-                aclList);
-    }
-
-    /**
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param visible
-     * @param attributeMap
-     * @param aclList
-     */
-    public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap,
-            List<ACL> aclList) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
-                attributeMap, null, aclList);
-    }
-
-    /**
-     * This method only has to be called once per service node and/or when node data changes. Announcements happen
-     * asynchronously.
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param nodeId
-     * @param visible
-     *            whether or not service node will be initially visible
-     * @param attributeMap
-     * @param nodeAttributeSerializer
-     */
     public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
-            Map<String, String> attributeMap, DataSerializer<Map<String, String>> nodeAttributeSerializer,
-            List<ACL> aclList) {
+            Map<String, String> attributeMap) {
         // defaults
         if (nodeAttributeSerializer == null) {
             nodeAttributeSerializer = this.getNodeAttributeSerializer();
@@ -549,7 +496,7 @@ public class PresenceService extends AbstractService {
 
         // get announcement using path to node
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
-        Announcement announcement = this.getAnnouncement(nodePath, aclList);
+        Announcement announcement = this.getAnnouncement(nodePath, getContext().getDefaultZkAclList());
         announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
 
         // update announcement if node data is different
@@ -578,7 +525,8 @@ public class PresenceService extends AbstractService {
     void hide(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath, null);
-        if (announcement != null && !announcement.isHidden()) {
+        throwExceptionIfNull(nodePath, announcement);
+        if (!announcement.isHidden()) {
             announcement.setHidden(true);
             announcement.setLastUpdated(-1);
         }
@@ -618,7 +566,8 @@ public class PresenceService extends AbstractService {
     void show(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath, null);
-        if (announcement != null && announcement.isHidden()) {
+        throwExceptionIfNull(nodePath, announcement);
+        if (announcement.isHidden()) {
             announcement.setHidden(false);
             announcement.setLastUpdated(-1);
         }
@@ -647,15 +596,23 @@ public class PresenceService extends AbstractService {
                 announcement = newAnnouncement;
             }
         }
+
         return announcement;
+    }
+
+    void throwExceptionIfNull(String path, Announcement announcement) {
+        if (announcement == null) {
+            throw new IllegalStateException("No announcement found:  path=" + path);
+        }
+
     }
 
     @Override
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
-                        requestMessage.getBody());
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(), requestMessage
+                        .getBody());
             }
 
             /** preprocess request **/
@@ -806,8 +763,8 @@ public class PresenceService extends AbstractService {
             if (attributeMap.size() > 0) {
                 leafData = announcement.getNodeAttributeSerializer().serialize(attributeMap);
             }
-            String pathUpdated = zkClientUtil.updatePath(getZkClient(), getPathScheme(), path, leafData,
-                    announcement.getAclList(), CreateMode.EPHEMERAL, -1);
+            String pathUpdated = zkClientUtil.updatePath(getZkClient(), getPathScheme(), path, leafData, announcement
+                    .getAclList(), CreateMode.EPHEMERAL, -1);
 
             // set last updated with some randomizer to spread out
             // requests
@@ -830,8 +787,7 @@ public class PresenceService extends AbstractService {
             for (String nodePath : nodePathSet) {
                 Announcement announcement = announcementMap.get(nodePath);
 
-                // skip if announcement no longer exists or less than heartbeat
-                // interval
+                // skip if announcement no longer exists or less than heartbeat interval
                 if (announcement == null || currentTimestamp - announcement.getLastUpdated() < heartbeatIntervalMillis) {
                     continue;
                 }
