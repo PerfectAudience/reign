@@ -46,11 +46,11 @@ public class CoordinationServiceExample {
         reign.start();
 
         /** coordination service examples **/
-        // coordinationServiceExclusiveLockExample(reign);
+        coordinationServiceExclusiveLockExample(reign);
         coordinationServiceReentrantLockExample(reign);
-        // coordinationServiceReadWriteLockExample(reign);
-        // coordinationServiceFixedSemaphoreExample(reign);
-        // coordinationServiceConfiguredSemaphoreExample(reign);
+        coordinationServiceReadWriteLockExample(reign);
+        coordinationServiceFixedSemaphoreExample(reign);
+        coordinationServiceConfiguredSemaphoreExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down...");
