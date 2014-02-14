@@ -80,10 +80,10 @@ public class ZkReentrantLock implements DistributedReentrantLock {
         return this.acquiredLockPath == null;
     }
 
-    // @Override
-    // public String getLockId() {
-    // return this.acquiredLockPath;
-    // }
+    @Override
+    public String getReservationId() {
+        return this.acquiredLockPath;
+    }
 
     /*
      * (non-Javadoc)

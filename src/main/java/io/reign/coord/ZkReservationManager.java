@@ -19,8 +19,6 @@ package io.reign.coord;
 import io.reign.PathScheme;
 import io.reign.ZkClient;
 import io.reign.util.ZkClientUtil;
-import io.reign.zk.PathCache;
-import io.reign.zk.SimplePathCacheEntry;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -146,7 +144,7 @@ class ZkReservationManager {
                 try {
                     /** attempt to acquire lock **/
                     // get lock reservation list without watch
-                    List<String> lockReservationList = zkClient.getChildren(entityPath, false);
+                    List<String> lockReservationList = zkClient.getChildren(entityPath, true);
 
                     // sort child list
                     Collections.sort(lockReservationList, lockReservationComparator);

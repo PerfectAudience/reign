@@ -37,37 +37,37 @@ public abstract class ConfObserver<T> extends AbstractObserver {
 
     public abstract void updated(T updated, T existing);
 
-    public Map<String, DataSerializer> getDataSerializerMap() {
+    Map<String, DataSerializer> getDataSerializerMap() {
         return dataSerializerMap;
     }
 
-    public void setDataSerializerMap(Map<String, DataSerializer> dataSerializerMap) {
+    void setDataSerializerMap(Map<String, DataSerializer> dataSerializerMap) {
         this.dataSerializerMap = dataSerializerMap;
     }
 
-    public void setClusterId(String clusterId) {
+    void setClusterId(String clusterId) {
         this.clusterId = clusterId;
     }
 
-    public void setServiceId(String serviceId) {
+    void setServiceId(String serviceId) {
         this.serviceId = serviceId;
     }
 
-    public void setNodeId(String nodeId) {
+    void setNodeId(String nodeId) {
         this.nodeId = nodeId;
     }
 
-    public String getClusterId() {
-        return clusterId;
-    }
-
-    public String getServiceId() {
-        return serviceId;
-    }
-
-    public String getNodeId() {
-        return nodeId;
-    }
+    // String getClusterId() {
+    // return clusterId;
+    // }
+    //
+    // String getServiceId() {
+    // return serviceId;
+    // }
+    //
+    // String getNodeId() {
+    // return nodeId;
+    // }
 
     @Override
     public void nodeDataChanged(byte[] updatedData, byte[] previousData) {

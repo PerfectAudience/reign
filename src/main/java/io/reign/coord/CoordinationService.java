@@ -79,12 +79,16 @@ public class CoordinationService extends AbstractService {
     public void observe(String clusterId, String lockName, LockObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
+        observer.setCoordinationServiceCache(coordinationServiceCache);
+        observer.setPathScheme(getPathScheme());
         getObserverManager().put(entityPath, observer);
     }
 
     public void observe(String clusterId, String semaphoreName, SemaphoreObserver observer) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.SEMAPHORE, semaphoreName);
+        observer.setCoordinationServiceCache(coordinationServiceCache);
+        observer.setPathScheme(getPathScheme());
         getObserverManager().put(entityPath, observer);
     }
 

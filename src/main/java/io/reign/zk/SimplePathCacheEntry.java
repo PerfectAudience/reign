@@ -16,6 +16,7 @@
 
 package io.reign.zk;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.zookeeper.data.Stat;
@@ -35,7 +36,7 @@ public class SimplePathCacheEntry implements PathCacheEntry {
     public SimplePathCacheEntry(Stat stat, byte[] data, List<String> childList, long lastUpdatedTimestampMillis) {
         this.stat = stat;
         this.data = data;
-        this.childList = childList;
+        this.childList = childList == null || childList.size() == 0 ? Collections.EMPTY_LIST : childList;
         this.lastUpdatedTimestampMillis = lastUpdatedTimestampMillis;
     }
 

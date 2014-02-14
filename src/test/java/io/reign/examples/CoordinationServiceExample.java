@@ -46,11 +46,11 @@ public class CoordinationServiceExample {
         reign.start();
 
         /** coordination service examples **/
-        coordinationServiceExclusiveLockExample(reign);
+        // coordinationServiceExclusiveLockExample(reign);
         coordinationServiceReentrantLockExample(reign);
-        coordinationServiceReadWriteLockExample(reign);
-        coordinationServiceFixedSemaphoreExample(reign);
-        coordinationServiceConfiguredSemaphoreExample(reign);
+        // coordinationServiceReadWriteLockExample(reign);
+        // coordinationServiceFixedSemaphoreExample(reign);
+        // coordinationServiceConfiguredSemaphoreExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down...");
@@ -67,12 +67,12 @@ public class CoordinationServiceExample {
         // this is how you would normally get a service
         final CoordinationService coordService = (CoordinationService) reign.getService("coord");
 
-        final int lockHoldTimeMillis = 5000;
+        final int lockHoldTimeMillis = 60000;
 
         // should always be 1 or 0
         final AtomicInteger locksHeld = new AtomicInteger(0);
 
-        coordService.observe("examples", "exclusive_lock1", new LockObserver() {
+        coordService.observe("examples", "reentrant_lock1", new LockObserver() {
             @Override
             public void revoked(DistributedLock lock, String reservationId) {
                 logger.info("***** Observer:  lock REVOKED:  reservationId={}", reservationId);
@@ -82,7 +82,7 @@ public class CoordinationServiceExample {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "reentrant_lock1");
 
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
@@ -114,7 +114,7 @@ public class CoordinationServiceExample {
         Thread t2 = new Thread() {
             @Override
             public void run() {
-                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "reentrant_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {
@@ -139,7 +139,7 @@ public class CoordinationServiceExample {
         Thread t3 = new Thread() {
             @Override
             public void run() {
-                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "exclusive_lock1");
+                DistributedReentrantLock lock = coordService.getReentrantLock("examples", "reentrant_lock1");
                 logger.info(this.getName() + ":  attempting to acquire lock...");
                 lock.lock();
                 try {

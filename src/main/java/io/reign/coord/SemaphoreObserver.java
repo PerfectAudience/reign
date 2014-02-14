@@ -16,6 +16,9 @@
 
 package io.reign.coord;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * 
  * @author ypai
@@ -28,5 +31,26 @@ public abstract class SemaphoreObserver extends CoordObserver<DistributedSemapho
      *            the acquired permit that was revoked.
      */
     public abstract void revoked(DistributedSemaphore semaphore, String permitId);
+
+    @Override
+    public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList) {
+        // figure out revoked permit
+        List<String> revoked = findRevoked(updatedChildList, previousChildList, getPath(), pathScheme);
+
+        // check and signal revocations to observers
+        if (revoked.size() > 0) {
+            Collection<DistributedSemaphore> semaphores = this.coordinationServiceCache.getSemaphores(getPath());
+            for (DistributedSemaphore semaphore : semaphores) {
+                // check and see which ones have been revoked
+                for (String revokedId : revoked) {
+                    if (semaphore.getAcquiredPermitIds().contains(revokedId)) {
+                        semaphore.revoke(revokedId);
+                        revoked(semaphore, revokedId);
+                    }// if
+                }// for
+            }// for
+        }// if
+
+    }// if
 
 }

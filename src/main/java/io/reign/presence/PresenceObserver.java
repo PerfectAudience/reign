@@ -39,29 +39,29 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
 
     public abstract void updated(T updated);
 
-    public void setClusterId(String clusterId) {
+    void setClusterId(String clusterId) {
         this.clusterId = clusterId;
     }
 
-    public void setServiceId(String serviceId) {
+    void setServiceId(String serviceId) {
         this.serviceId = serviceId;
     }
 
-    public void setNodeId(String nodeId) {
+    void setNodeId(String nodeId) {
         this.nodeId = nodeId;
     }
 
-    public String getClusterId() {
-        return clusterId;
-    }
-
-    public String getServiceId() {
-        return serviceId;
-    }
-
-    public String getNodeId() {
-        return nodeId;
-    }
+    // String getClusterId() {
+    // return clusterId;
+    // }
+    //
+    // String getServiceId() {
+    // return serviceId;
+    // }
+    //
+    // String getNodeId() {
+    // return nodeId;
+    // }
 
     @Override
     public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList) {

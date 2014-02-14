@@ -17,7 +17,12 @@
 package io.reign.coord;
 
 import io.reign.AbstractObserver;
-import io.reign.Observer;
+import io.reign.PathScheme;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * 
@@ -27,4 +32,29 @@ import io.reign.Observer;
  */
 public abstract class CoordObserver<T> extends AbstractObserver {
 
+    protected CoordinationServiceCache coordinationServiceCache;
+    protected PathScheme pathScheme;
+
+    void setCoordinationServiceCache(CoordinationServiceCache coordinationServiceCache) {
+        this.coordinationServiceCache = coordinationServiceCache;
+    }
+
+    void setPathScheme(PathScheme pathScheme) {
+        this.pathScheme = pathScheme;
+    }
+
+    public static List<String> findRevoked(List<String> updatedChildList, List<String> previousChildList,
+            String entityPath, PathScheme pathScheme) {
+        HashSet<String> updatedChildSet = new HashSet<String>(updatedChildList);
+
+        Collections.sort(previousChildList);
+        List<String> revoked = new ArrayList<String>(previousChildList.size());
+        for (String previousChild : previousChildList) {
+            if (!updatedChildSet.contains(previousChild)) {
+                revoked.add(pathScheme.joinPaths(entityPath, previousChild));
+            }
+        }
+
+        return revoked.size() > 0 ? revoked : Collections.EMPTY_LIST;
+    }
 }

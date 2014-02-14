@@ -44,7 +44,7 @@ public class ZkLock implements DistributedLock {
     private final ReservationType reservationType;
     private final List<ACL> aclList;
 
-    private String acquiredLockPath;
+    private volatile String acquiredLockPath;
 
     public ZkLock(ZkReservationManager zkReservationManager, String ownerId, String entityPath,
             ReservationType reservationType, List<ACL> aclList) {
@@ -77,10 +77,10 @@ public class ZkLock implements DistributedLock {
         }
     }
 
-    // @Override
-    // public String getLockId() {
-    // return this.acquiredLockPath;
-    // }
+    @Override
+    public String getReservationId() {
+        return this.acquiredLockPath;
+    }
 
     /*
      * (non-Javadoc)
