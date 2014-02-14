@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
@@ -77,10 +77,10 @@ public class ZkLock implements DistributedLock {
         }
     }
 
-    @Override
-    public String getLockId() {
-        return this.acquiredLockPath;
-    }
+    // @Override
+    // public String getLockId() {
+    // return this.acquiredLockPath;
+    // }
 
     /*
      * (non-Javadoc)
@@ -151,8 +151,7 @@ public class ZkLock implements DistributedLock {
     /*
      * (non-Javadoc)
      * 
-     * @see java.util.concurrent.locks.Lock#tryLock(long,
-     * java.util.concurrent.TimeUnit)
+     * @see java.util.concurrent.locks.Lock#tryLock(long, java.util.concurrent.TimeUnit)
      */
     @Override
     public boolean tryLock(long wait, TimeUnit timeUnit) throws InterruptedException {

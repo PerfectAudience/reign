@@ -360,14 +360,10 @@ public class WebSocketServerHandler extends ExecutionHandler {
                 IdUtil.getClientPort(socketAddress));
         String canonicalIdString = serviceDirectory.getPathScheme().toPathToken(canonicalId);
 
-        // (String clusterId, String serviceId, String nodeId, boolean visible,
-        // Map<String, String> attributeMap, DataSerializer<Map<String, String>> nodeAttributeSerializer,
-        // List<ACL> aclList)
-
         presenceService.announce(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID, Reign.DEFAULT_FRAMEWORK_CLIENT_ID,
                 canonicalIdString, true);
 
-        // TODO: register connection
+        // register connection
         connectionManager.addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil
                 .getClientPort(socketAddress), new WebSocketClient(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID,
                 Reign.DEFAULT_FRAMEWORK_CLIENT_ID, canonicalIdString, ctx.getChannel()));
