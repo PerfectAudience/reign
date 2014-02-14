@@ -40,18 +40,16 @@ public abstract class LockObserver extends CoordObserver<DistributedLock> {
         // check and signal revocations to observers
         if (revoked.size() > 0) {
             for (String revokedId : revoked) {
-                signalIfRevoked(revokedId, ReservationType.LOCK_EXCLUSIVE, coordinationServiceCache);
-                signalIfRevoked(revokedId, ReservationType.LOCK_SHARED, coordinationServiceCache);
+                signalIfRevoked(revokedId, ReservationType.LOCK_EXCLUSIVE);
+                signalIfRevoked(revokedId, ReservationType.LOCK_SHARED);
             }
         }// if
 
     }// if
 
-    void signalIfRevoked(String revokedId, ReservationType reservationType,
-            CoordinationServiceCache coordinationServiceCache) {
+    void signalIfRevoked(String revokedId, ReservationType reservationType) {
         Collection<DistributedLock> locks = this.coordinationServiceCache.getLocks(getPath(), reservationType);
         for (DistributedLock lock : locks) {
-            System.out.println("***** Checking reservationId:  " + lock.getReservationId());
             if (revokedId.equals(lock.getReservationId())) {
                 lock.revoke(revokedId);
                 revoked(lock, revokedId);
