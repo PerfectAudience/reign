@@ -20,6 +20,7 @@ import io.reign.Reign;
 import io.reign.conf.ConfService;
 import io.reign.coord.ConfiguredPermitPoolSize;
 import io.reign.coord.CoordinationService;
+import io.reign.coord.DistributedBarrier;
 import io.reign.coord.DistributedLock;
 import io.reign.coord.DistributedReadWriteLock;
 import io.reign.coord.DistributedReentrantLock;
@@ -46,11 +47,12 @@ public class CoordinationServiceExample {
         reign.start();
 
         /** coordination service examples **/
-        coordinationServiceExclusiveLockExample(reign);
-        coordinationServiceReentrantLockExample(reign);
-        coordinationServiceReadWriteLockExample(reign);
-        coordinationServiceFixedSemaphoreExample(reign);
-        coordinationServiceConfiguredSemaphoreExample(reign);
+        // coordinationServiceExclusiveLockExample(reign);
+        // coordinationServiceReentrantLockExample(reign);
+        // coordinationServiceReadWriteLockExample(reign);
+        // coordinationServiceFixedSemaphoreExample(reign);
+        // coordinationServiceConfiguredSemaphoreExample(reign);
+        coordinationServiceBarrierExample(reign);
 
         /** sleep to allow examples to run for a bit **/
         logger.info("Sleeping before shutting down...");
@@ -61,6 +63,87 @@ public class CoordinationServiceExample {
 
         /** sleep a bit to observe observer callbacks **/
         Thread.sleep(10000);
+    }
+
+    public static void coordinationServiceBarrierExample(Reign reign) throws Exception {
+        final CoordinationService coordService = (CoordinationService) reign.getService("coord");
+
+        final int sleepTimeMillis = 10000;
+
+        Thread t1 = new Thread() {
+            @Override
+            public void run() {
+                DistributedBarrier barrier = coordService.getBarrier("examples", "barrier1", 3);
+                try {
+                    long actualSleepIntervalMillis = (long) (sleepTimeMillis * Math.random()) + 5000;
+                    logger.info(getName() + ":  sleeping before waiting at barrier:  sleepTimeMillis={}",
+                            actualSleepIntervalMillis);
+                    Thread.sleep(actualSleepIntervalMillis);
+                    logger.info(getName() + ":  waiting at barrier...");
+                    barrier.await();
+                    logger.info("SUCCESS:  " + getName() + ":  out of wait:  broken={}", barrier.isBroken());
+
+                    // this should throw exception
+                    barrier.await();
+                } catch (Exception e) {
+                    logger.info("Interrupted:  " + e, e);
+                } finally {
+                    barrier.destroy();
+                }
+
+            }
+        };
+        t1.setName("T1");
+        t1.setDaemon(true);
+        t1.start();
+
+        Thread t2 = new Thread() {
+            @Override
+            public void run() {
+                DistributedBarrier barrier = coordService.getBarrier("examples", "barrier1", 3);
+                try {
+                    long actualSleepIntervalMillis = (long) (sleepTimeMillis * Math.random()) + 5000;
+                    logger.info(getName() + ":  sleeping before waiting at barrier:  sleepTimeMillis={}",
+                            actualSleepIntervalMillis);
+                    Thread.sleep(actualSleepIntervalMillis);
+                    logger.info(getName() + ":  waiting at barrier...");
+                    barrier.await();
+                    logger.info("SUCCESS:  " + getName() + ":  out of wait:  broken={}", barrier.isBroken());
+                } catch (Exception e) {
+                    logger.info("Interrupted:  " + e, e);
+                } finally {
+                    barrier.destroy();
+                }
+
+            }
+        };
+        t2.setName("T2");
+        t2.setDaemon(true);
+        t2.start();
+
+        Thread t3 = new Thread() {
+            @Override
+            public void run() {
+                DistributedBarrier barrier = coordService.getBarrier("examples", "barrier1", 3);
+                try {
+                    long actualSleepIntervalMillis = (long) (sleepTimeMillis * Math.random()) + 5000;
+                    logger.info(getName() + ":  sleeping before waiting at barrier:  sleepTimeMillis={}",
+                            actualSleepIntervalMillis);
+                    Thread.sleep(actualSleepIntervalMillis);
+                    logger.info(getName() + ":  waiting at barrier...");
+                    barrier.await();
+                    logger.info("SUCCESS:  " + getName() + ":  out of wait:  broken={}", barrier.isBroken());
+                } catch (Exception e) {
+                    logger.info("Interrupted:  " + e, e);
+                } finally {
+                    barrier.destroy();
+                }
+
+            }
+        };
+        t3.setName("T3");
+        t3.setDaemon(true);
+        t3.start();
     }
 
     public static void coordinationServiceReentrantLockExample(Reign reign) throws Exception {

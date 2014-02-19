@@ -84,13 +84,7 @@ class ZkReservationManager {
         try {
             List<String> lockReservationList = null;
 
-            // SimplePathCacheEntry pathCacheEntry = pathCache.get(entityPath);
-            // if (useCache && pathCacheEntry != null) {
-            // // found in cache
-            // lockReservationList = pathCacheEntry.getChildList();
-            // } else {
             lockReservationList = zkClient.getChildren(entityPath, true);
-            // }
 
             return lockReservationList;
         } catch (KeeperException e) {

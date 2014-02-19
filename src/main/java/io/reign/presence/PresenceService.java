@@ -744,8 +744,7 @@ public class PresenceService extends AbstractService {
             if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
                 // get exclusive leader lock to perform maintenance duties
                 CoordinationService coordinationService = getContext().getService("coord");
-                DistributedLock adminLock = coordinationService.getLock("presence", "zombie-checker",
-                        getDefaultZkAclList());
+                DistributedLock adminLock = coordinationService.getLock("presence", "zombie-checker");
                 logger.info("Checking for zombie nodes...");
                 if (adminLock.tryLock()) {
                     try {

@@ -307,6 +307,11 @@ public class Reign implements Watcher {
                 return pathScheme.toPathToken(canonicalIdMaker.get());
             }
 
+            @Override
+            public ObserverManager getObserverManager() {
+                return observerManager;
+            }
+
         };
 
         /** init services **/

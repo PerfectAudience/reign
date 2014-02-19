@@ -245,6 +245,8 @@ public class ResilientZkClientWithCache extends AbstractZkEventHandler implement
     void handleNodeUpdate(WatchedEvent event) {
         String path = event.getPath();
 
+        logger.info("Updating cache entry:  path={}; eventType={}", path, event.getType());
+
         try {
             byte[] bytes = null;
             List<String> children = null;

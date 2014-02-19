@@ -39,7 +39,7 @@ public interface DistributedBarrier {
      */
     public int await();
 
-    public int await(long timeout, TimeUnit unit);
+    public int await(long timeout, TimeUnit timeUnit);
 
     /**
      * 
@@ -53,10 +53,6 @@ public interface DistributedBarrier {
     public void reset();
 
     public int getNumberWaiting();
-
-    public boolean isRevoked();
-
-    public void broken(String partyId);
 
     public void destroy();
 

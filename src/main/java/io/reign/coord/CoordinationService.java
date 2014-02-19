@@ -92,26 +92,18 @@ public class CoordinationService extends AbstractService {
         getObserverManager().put(entityPath, observer);
     }
 
-    /**
-     * Get reentrant exclusive lock.
-     * 
-     * @param ownerId
-     * @param relativeLockPath
-     * @return
-     */
+    public DistributedBarrier getBarrier(String clusterId, String barrierName, int parties) {
+        String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
+                ReservationType.BARRIER, barrierName);
+        return new ZkDistributedBarrier(entityPath, getPathScheme().toPathToken(getContext().getCanonicalId()),
+                parties, getContext());
+    }
+
     public DistributedReentrantLock getReentrantLock(String clusterId, String lockName) {
         return getReentrantLock(clusterId, lockName, getDefaultZkAclList());
     }
 
-    /**
-     * Get reentrant exclusive lock.
-     * 
-     * @param ownerId
-     * @param relativeLockPath
-     * @param aclList
-     * @return
-     */
-    public DistributedReentrantLock getReentrantLock(String clusterId, String lockName, List<ACL> aclList) {
+    DistributedReentrantLock getReentrantLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
         DistributedLock lock = new ZkReentrantLock(zkReservationManager, getPathScheme().toPathToken(
@@ -121,26 +113,11 @@ public class CoordinationService extends AbstractService {
         return (DistributedReentrantLock) lock;
     }
 
-    /**
-     * Get exclusive lock.
-     * 
-     * @param ownerId
-     * @param relativeLockPath
-     * @return
-     */
     public DistributedLock getLock(String clusterId, String lockName) {
         return getLock(clusterId, lockName, getDefaultZkAclList());
     }
 
-    /**
-     * Get exclusive lock.
-     * 
-     * @param ownerId
-     * @param relativeLockPath
-     * @param aclList
-     * @return
-     */
-    public DistributedLock getLock(String clusterId, String lockName, List<ACL> aclList) {
+    DistributedLock getLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
         DistributedLock lock = new ZkLock(zkReservationManager, getPathScheme().toPathToken(
@@ -150,24 +127,11 @@ public class CoordinationService extends AbstractService {
         return lock;
     }
 
-    /**
-     * 
-     * @param ownerId
-     * @param relativeLockPath
-     * @return
-     */
     public DistributedReadWriteLock getReadWriteLock(String clusterId, String lockName) {
         return getReadWriteLock(clusterId, lockName, getDefaultZkAclList());
     }
 
-    /**
-     * 
-     * @param ownerId
-     * @param relativeLockPath
-     * @param aclList
-     * @return
-     */
-    public DistributedReadWriteLock getReadWriteLock(String clusterId, String lockName, List<ACL> aclList) {
+    DistributedReadWriteLock getReadWriteLock(String clusterId, String lockName, List<ACL> aclList) {
 
         // write lock
         String writeEntityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
@@ -186,53 +150,30 @@ public class CoordinationService extends AbstractService {
         return new ZkReadWriteLock(readLock, writeLock);
     }
 
-    /**
-     * 
-     * @param ownerId
-     * @param relativeSemaphorePath
-     * @param permitPoolSize
-     * @return
-     */
     public DistributedSemaphore getFixedSemaphore(String clusterId, String semaphoreName, int permitPoolSize) {
         return getSemaphore(clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize), getDefaultZkAclList());
     }
 
-    public DistributedSemaphore getFixedSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
-            List<ACL> aclList) {
+    DistributedSemaphore getFixedSemaphore(String clusterId, String semaphoreName, int permitPoolSize, List<ACL> aclList) {
         return getSemaphore(clusterId, semaphoreName, new ConstantPermitPoolSize(permitPoolSize), aclList);
     }
 
-    /**
-     * 
-     * @param ownerId
-     * @param clusterId
-     * @param semaphoreName
-     * @return
-     */
     public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName) {
         return getConfiguredSemaphore(clusterId, semaphoreName, -1, false, getDefaultZkAclList());
     }
 
-    public DistributedSemaphore getConfiguredSemaphore(String ownerId, String clusterId, String semaphoreName,
+    DistributedSemaphore getConfiguredSemaphore(String ownerId, String clusterId, String semaphoreName,
             List<ACL> aclList) {
         return getConfiguredSemaphore(clusterId, semaphoreName, -1, false, aclList);
     }
 
-    /**
-     * 
-     * @param ownerId
-     * @param relativeSemaphorePath
-     * @param desiredPermitPoolSize
-     * @param createConfigurationIfNecessary
-     * @return
-     */
     public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
             boolean createConfigurationIfNecessary) {
         return getConfiguredSemaphore(clusterId, semaphoreName, permitPoolSize, createConfigurationIfNecessary,
                 getDefaultZkAclList());
     }
 
-    public DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
+    DistributedSemaphore getConfiguredSemaphore(String clusterId, String semaphoreName, int permitPoolSize,
             boolean createConfigurationIfNecessary, List<ACL> aclList) {
 
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
@@ -253,14 +194,7 @@ public class CoordinationService extends AbstractService {
         return semaphore;
     }
 
-    /**
-     * @param ownerId
-     * @param relativeSemaphorePath
-     * @param permitPoolSizeFunction
-     * @param aclList
-     * @return
-     */
-    public DistributedSemaphore getSemaphore(String clusterId, String semaphoreName, PermitPoolSize permitPoolSize,
+    DistributedSemaphore getSemaphore(String clusterId, String semaphoreName, PermitPoolSize permitPoolSize,
             List<ACL> aclList) {
 
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
@@ -294,148 +228,6 @@ public class CoordinationService extends AbstractService {
         this.maxReservationHoldTimeMillis = maxReservationHoldTimeMillis;
     }
 
-    // @Override
-    // public void signalStateReset(Object o) {
-    // observerManager.signalStateReset(o);
-    //
-    // }
-    //
-    // @Override
-    // public void signalStateUnknown(Object o) {
-    // observerManager.signalStateUnknown(o);
-    // }
-
-    // @Override
-    // public boolean filterWatchedEvent(WatchedEvent event) {
-    // // original path
-    // String path1 = event.getPath();
-    //
-    // // check with last token stripped out since it may be a reservation
-    // // node, but observers are registered to the parent lock, semaphore,
-    // // barrier, etc. node
-    // String path2 = path1.substring(0, path1.lastIndexOf('/'));
-    //
-    // logger.debug("filterWatchedEvent():  path1={}; path2={}", path1, path2);
-    //
-    // return !observerManager.isBeingObserved(path2) && !observerManager.isBeingObserved(path1);
-    //
-    // }
-
-    // @Override
-    // public void nodeDataChanged(WatchedEvent event) {
-    // String path = event.getPath();
-    // logger.info("nodeDataChanged():  path={}", path);
-    // }
-
-    // @Override
-    // public void nodeDeleted(WatchedEvent event) {
-    // String path = event.getPath();
-    // String[] tokens = getPathScheme().tokenizePath(path);
-    //
-    // logger.debug("nodeDeleted():  path={}", path);
-    //
-    // // see if it is the primary lock, semaphore, barrier node that has been
-    // // deleted
-    // if (tokens.length > 1 && ReservationType.fromCategory(tokens[tokens.length - 1]) != null) {
-    // // primary node was deleted so state is unknown
-    // observerManager.signalStateUnknown(null);
-    // return;
-    // }
-    //
-    // // check to see if we need to signal that a lock holder was deleted
-    // observerManager.signal(path.substring(0, path.lastIndexOf('/')), path);
-    // }
-
-    // private static abstract class CoordObserverWrapper<T extends NodeObserver> extends NodeObserverWrapper<T> {
-    // private final String entityPath;
-    // private final CoordinationServiceCache coordinationServiceCache;
-    //
-    // protected CoordObserverWrapper(String entityPath, CoordinationServiceCache coordinationServiceCache) {
-    // this.entityPath = entityPath;
-    // this.coordinationServiceCache = coordinationServiceCache;
-    // }
-    //
-    // public String getEntityPath() {
-    // return entityPath;
-    // }
-    //
-    // public CoordinationServiceCache getCoordinationServiceCache() {
-    // return coordinationServiceCache;
-    // }
-    //
-    // }
-
-    // private static class LockObserverWrapper extends CoordObserverWrapper<LockObserver> {
-    //
-    // public LockObserverWrapper(String entityPath, LockObserver observer,
-    // CoordinationServiceCache coordinationServiceCache) {
-    // super(entityPath, coordinationServiceCache);
-    // this.setObserver(observer);
-    // }
-    //
-    // @Override
-    // public void signalObserver(Object o) {
-    // String revokedReservationId = (String) o;
-    //
-    // Collection<DistributedLock> exclusiveLocks = getCoordinationServiceCache().getLocks(getEntityPath(),
-    // ReservationType.LOCK_EXCLUSIVE);
-    // checkForRevoked(exclusiveLocks, revokedReservationId);
-    //
-    // Collection<DistributedLock> sharedLocks = getCoordinationServiceCache().getLocks(getEntityPath(),
-    // ReservationType.LOCK_SHARED);
-    // checkForRevoked(sharedLocks, revokedReservationId);
-    // }
-    //
-    // void checkForRevoked(Collection<DistributedLock> locks, String revokedReservationId) {
-    // for (DistributedLock lock : locks) {
-    // // logger.debug("Checking:  lockId={}; revokedReservationId={}",
-    // // lock.getLockId(), revokedReservationId);
-    // if (revokedReservationId.equals(lock.getLockId())) {
-    // lock.revoke(revokedReservationId);
-    // this.getObserver().revoked(lock, revokedReservationId);
-    // }
-    // }
-    // }
-    // }// class
-
-    // /**
-    // *
-    // * @author ypai
-    // *
-    // */
-    // private static class SemaphoreObserverWrapper extends CoordObserverWrapper<SemaphoreObserver> {
-    //
-    // private final PathScheme pathScheme;
-    //
-    // public SemaphoreObserverWrapper(String entityPath, SemaphoreObserver observer,
-    // CoordinationServiceCache coordinationServiceCache, PathScheme pathScheme) {
-    // super(entityPath, coordinationServiceCache);
-    // this.setObserver(observer);
-    // this.pathScheme = pathScheme;
-    // }
-    //
-    // @Override
-    // public void signalObserver(Object o) {
-    // String revokedReservationId = (String) o;
-    // Collection<DistributedSemaphore> semaphores = getCoordinationServiceCache().getSemaphores(getEntityPath());
-    //
-    // // check and signal observers of any revocations
-    // for (DistributedSemaphore semaphore : semaphores) {
-    // // check and see which ones have been revoked
-    // if (semaphore.getAcquiredPermitIds().contains(revokedReservationId)) {
-    // semaphore.revoke(revokedReservationId);
-    // this.getObserver().revoked(semaphore, revokedReservationId);
-    // }// for
-    // }// for
-    //
-    // }
-    // }// class
-
-    /**
-     * 
-     * @author ypai
-     * 
-     */
     public class AdminRunnable implements Runnable {
         @Override
         public void run() {

@@ -38,9 +38,6 @@ public class ZkReentrantLock implements DistributedReentrantLock {
 
     private final ZkReservationManager zkReservationManager;
     private final String ownerId;
-    // private final PathContext pathContext;
-    // private final String clusterId;
-    // private final String lockName;
     private final String entityPath;
     private final ReservationType reservationType;
     private final List<ACL> aclList;
@@ -55,10 +52,7 @@ public class ZkReentrantLock implements DistributedReentrantLock {
         this.zkReservationManager = zkReservationManager;
         this.ownerId = ownerId;
         this.entityPath = entityPath;
-        // this.pathContext = pathContext;
         this.reservationType = reservationType;
-        // this.clusterId = clusterId;
-        // this.lockName = lockName;
         this.aclList = aclList;
     }
 

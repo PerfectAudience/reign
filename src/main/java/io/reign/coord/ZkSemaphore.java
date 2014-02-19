@@ -44,9 +44,6 @@ public class ZkSemaphore implements DistributedSemaphore {
 
     private final ZkReservationManager zkReservationManager;
     private final String ownerId;
-    // private final PathContext pathContext;
-    // private final String clusterId;
-    // private final String semaphoreName;
     private final String entityPath;
     private final List<ACL> aclList;
     private final PermitPoolSize permitPoolSizeFunction;
@@ -60,9 +57,6 @@ public class ZkSemaphore implements DistributedSemaphore {
         this.zkReservationManager = zkReservationManager;
         this.entityPath = entityPath;
         this.ownerId = ownerId;
-        // this.pathContext = pathContext;
-        // this.clusterId = clusterId;
-        // this.semaphoreName = semaphoreName;
         this.aclList = aclList;
         this.permitPoolSizeFunction = permitPoolSizeFunction;
     }

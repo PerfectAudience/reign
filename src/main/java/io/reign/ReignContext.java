@@ -16,8 +16,6 @@
 
 package io.reign;
 
-import io.reign.zk.PathCache;
-
 import java.util.List;
 
 import org.apache.zookeeper.data.ACL;
@@ -45,6 +43,8 @@ public interface ReignContext {
     public PathScheme getPathScheme();
 
     public List<ACL> getDefaultZkAclList();
+
+    public ObserverManager getObserverManager();
 
     // public PathCache getPathCache();
 }

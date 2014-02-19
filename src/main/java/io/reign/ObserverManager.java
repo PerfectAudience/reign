@@ -75,7 +75,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             Set<T> observerSet = getObserverSet(path, true);
             observerSet.add(observer);
 
-            logger.info("Added observer:  path={}; pathObserverCount={}", path, observerSet.size());
+            logger.info("Added observer:  observer.hashCode()={}; path={}; pathObserverCount={}", new Object[] {
+                    observer.hashCode(), path, observerSet.size() });
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
                 // set up watch on that node
@@ -129,6 +130,9 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                 }
 
                 for (T observer : observerSet) {
+
+                    logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
+
                     synchronized (observer) {
                         List<String> childList = observer.getChildList();
                         if (childList == null) {
@@ -244,6 +248,14 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     public void removeAll(String path) {
         logger.debug("Removing ALL observers:  path={}", path);
         observerMap.remove(path);
+    }
+
+    public void remove(String path, Observer observer) {
+        Set<T> observerSet = getObserverSet(path, false);
+        boolean success = observerSet.remove(observer);
+
+        logger.debug("Removed specific observer:  path={}; observer.hashCode()={}; success={}", new Object[] { path,
+                observer.hashCode(), success });
     }
 
     public void signalStateReset(Object o) {
