@@ -124,7 +124,14 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         try {
             Set<T> observerSet = getObserverSet(path, false);
             if (observerSet.size() > 0) {
-                List<String> updatedChildList = zkClient.getChildren(path, true);
+                List<String> updatedChildList = null;
+                try {
+                    updatedChildList = zkClient.getChildren(path, true);
+                } catch (KeeperException e) {
+                    if (e.code() != KeeperException.Code.NONODE) {
+                        throw e;
+                    }
+                }
                 if (updatedChildList == null) {
                     updatedChildList = Collections.EMPTY_LIST;
                 }
@@ -174,6 +181,9 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         try {
             Set<T> observerSet = getObserverSet(path, false);
             if (observerSet.size() > 0) {
+                // get children just to get a child watch
+                zkClient.getChildren(path, true);
+
                 byte[] data = zkClient.getData(path, true, new Stat());
                 for (T observer : observerSet) {
                     synchronized (observer) {
@@ -232,14 +242,17 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             }
 
             for (T observer : observerSet) {
+
+                logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
+
                 synchronized (observer) {
-                    if (observer.getData() != null || observer.getChildList().size() > 0) {
-                        byte[] previousData = observer.getData();
-                        List<String> previousChildList = observer.getChildList();
-                        observer.setData(null);
-                        observer.setChildList(Collections.EMPTY_LIST);
-                        observer.nodeDeleted(previousData, previousChildList);
-                    }
+                    byte[] previousData = observer.getData();
+                    observer.setData(null);
+
+                    List<String> previousChildList = observer.getChildList();
+                    observer.setChildList(Collections.EMPTY_LIST);
+
+                    observer.nodeDeleted(previousData, previousChildList);
                 }
             }
         }

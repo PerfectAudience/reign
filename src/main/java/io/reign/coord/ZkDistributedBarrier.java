@@ -90,6 +90,13 @@ public class ZkDistributedBarrier implements DistributedBarrier {
         public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
             broken = false;
             conditionsMet = false;
+
+            synchronized (ZkDistributedBarrier.this) {
+                ZkDistributedBarrier.this.notifyAll();
+            }
+
+            logger.trace("observer.nodeDeleted():  broken={}; conditionsMet={}", broken, conditionsMet);
+
         }
     };
 
@@ -139,19 +146,21 @@ public class ZkDistributedBarrier implements DistributedBarrier {
             int index = parties - childList.size();
 
             if (index > 0) {
-                synchronized (this) {
-                    if (timeout == -1) {
-                        wait();
-                    } else {
-                        wait(TimeUnitUtil.toMillis(timeout, timeUnit));
-                    }
+
+                if (timeout == -1) {
+                    wait();
+                } else {
+                    wait(TimeUnitUtil.toMillis(timeout, timeUnit));
                 }
 
                 // see if we got out of wait without meeting barrier conditions
-                childList = getChildList();
-                if (childList.size() != parties) {
-                    logger.warn("Barrier is broken:  childList.size() != parties: {} != {}", childList.size(), parties);
-                    broken = true;
+                if (timeout != -1) {
+                    childList = getChildList();
+                    if (childList.size() != parties) {
+                        logger.warn("Barrier is broken:  childList.size() != parties: {} != {}", childList.size(),
+                                parties);
+                        broken = true;
+                    }
                 }
             }
 
@@ -165,8 +174,9 @@ public class ZkDistributedBarrier implements DistributedBarrier {
     }
 
     @Override
-    public boolean isBroken() {
-        return broken || !conditionsMet;
+    public synchronized boolean isBroken() {
+        logger.trace("isBroken():  broken={}; conditionsMet={}", broken, conditionsMet);
+        return broken;
     }
 
     @Override
@@ -181,7 +191,7 @@ public class ZkDistributedBarrier implements DistributedBarrier {
                 if (e.code() != KeeperException.Code.NONODE) {
                     throw new IllegalStateException(e);
                 } else {
-                    logger.trace("Already deleted ZK barrier node:  " + e + "; path=" + childPath, e);
+                    logger.trace("Already deleted ZK barrier node:  " + e + "; path=" + childPath);
                 }
             } catch (Exception e) {
                 throw new IllegalStateException(e);
@@ -195,12 +205,21 @@ public class ZkDistributedBarrier implements DistributedBarrier {
             if (e.code() != KeeperException.Code.NONODE) {
                 throw new IllegalStateException(e);
             } else {
-                logger.trace("Already deleted ZK barrier node:  " + e + "; path=" + entityPath, e);
+                logger.trace("Already deleted ZK barrier node:  " + e + "; path=" + entityPath);
             }
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
 
+        // wait for full reset
+        while (conditionsMet || broken) {
+            logger.debug("reset():  conditionsMet={}; broken={}", conditionsMet, broken);
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                logger.warn("Interrupted while waiting:  " + e, e);
+            }
+        }
     }
 
     @Override

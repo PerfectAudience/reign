@@ -83,8 +83,11 @@ public class CoordinationServiceExample {
                     barrier.await();
                     logger.info("SUCCESS:  " + getName() + ":  out of wait:  broken={}", barrier.isBroken());
 
-                    // this should throw exception
+                    barrier.reset();
+                    logger.info(getName() + ":  waiting at barrier after reset...");
                     barrier.await();
+                    logger.info("SUCCESS:  " + getName() + ":  out of wait after reset():  broken={}",
+                            barrier.isBroken());
                 } catch (Exception e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -109,6 +112,12 @@ public class CoordinationServiceExample {
                     logger.info(getName() + ":  waiting at barrier...");
                     barrier.await();
                     logger.info("SUCCESS:  " + getName() + ":  out of wait:  broken={}", barrier.isBroken());
+
+                    barrier.reset();
+                    logger.info(getName() + ":  waiting at barrier after reset...");
+                    barrier.await();
+                    logger.info("SUCCESS:  " + getName() + ":  out of wait after reset():  broken={}",
+                            barrier.isBroken());
                 } catch (Exception e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
@@ -133,6 +142,12 @@ public class CoordinationServiceExample {
                     logger.info(getName() + ":  waiting at barrier...");
                     barrier.await();
                     logger.info("SUCCESS:  " + getName() + ":  out of wait:  broken={}", barrier.isBroken());
+
+                    barrier.reset();
+                    logger.info(getName() + ":  waiting at barrier after reset...");
+                    barrier.await();
+                    logger.info("SUCCESS:  " + getName() + ":  out of wait after reset():  broken={}",
+                            barrier.isBroken());
                 } catch (Exception e) {
                     logger.info("Interrupted:  " + e, e);
                 } finally {
