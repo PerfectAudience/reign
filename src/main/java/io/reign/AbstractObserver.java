@@ -75,7 +75,7 @@ public abstract class AbstractObserver implements Observer {
     }
 
     @Override
-    public void nodeCreated(byte[] data, byte[] previousData) {
+    public void nodeCreated(byte[] data, List<String> childList) {
     }
 
 }

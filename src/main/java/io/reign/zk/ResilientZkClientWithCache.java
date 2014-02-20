@@ -116,7 +116,7 @@ public class ResilientZkClientWithCache extends AbstractZkEventHandler implement
         if (!watch) {
             PathCacheEntry pathCacheEntry = pathCache.get(path);
             if (pathCacheEntry != null) {
-                copyDataIntoStat(pathCacheEntry.getStat(), stat);
+                copyStat(pathCacheEntry.getStat(), stat);
                 return pathCacheEntry.getChildList();
             }
         }
@@ -185,7 +185,7 @@ public class ResilientZkClientWithCache extends AbstractZkEventHandler implement
         if (!watch) {
             PathCacheEntry pathCacheEntry = pathCache.get(path);
             if (pathCacheEntry != null) {
-                copyDataIntoStat(pathCacheEntry.getStat(), stat);
+                copyStat(pathCacheEntry.getStat(), stat);
                 return pathCacheEntry.getData();
             }
         }
@@ -304,7 +304,7 @@ public class ResilientZkClientWithCache extends AbstractZkEventHandler implement
      * @param target
      * @return
      */
-    Stat copyDataIntoStat(Stat src, Stat target) {
+    Stat copyStat(Stat src, Stat target) {
         target.setAversion(src.getAversion());
         target.setCtime(src.getCtime());
         target.setCversion(src.getCversion());

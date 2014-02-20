@@ -7,6 +7,7 @@ import io.reign.presence.PresenceServiceTestSuite;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.UUID;
 
 import org.apache.curator.test.TestingServer;
 import org.junit.AfterClass;
@@ -41,6 +42,11 @@ public class MasterTestSuite {
         logger.debug("Starting Test ZooKeeper server...");
         try {
             String dataDirectory = System.getProperty("java.io.tmpdir");
+            if (!dataDirectory.endsWith("/")) {
+                dataDirectory += File.separator;
+            }
+            dataDirectory += UUID.randomUUID().toString();
+            logger.debug("ZK dataDirectory={}", dataDirectory);
             File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
             zkTestServer = new TestingServer(ZK_TEST_SERVER_PORT, dir);
         } catch (Exception e) {

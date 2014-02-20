@@ -63,6 +63,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     }
 
     public void put(String path, T observer) {
+        Set<T> observerSet = getObserverSet(path, true);
         try {
             // decorate observer with data about the path so we can handle notifications correctly
             byte[] data = zkClient.getData(path, true, new Stat());
@@ -71,8 +72,6 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             observer.setPath(path);
             observer.setData(data);
             observer.setChildList(childList);
-
-            Set<T> observerSet = getObserverSet(path, true);
             observerSet.add(observer);
 
             logger.info("Added observer:  observer.hashCode()={}; path={}; pathObserverCount={}", new Object[] {
@@ -81,17 +80,16 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             if (e.code() == Code.NONODE) {
                 // set up watch on that node
                 try {
-                    zkClient.exists(path, true);
-
                     observer.setPath(path);
                     observer.setData(null);
                     observer.setChildList(Collections.EMPTY_LIST);
-
-                    Set<T> observerSet = getObserverSet(path, true);
                     observerSet.add(observer);
 
-                    logger.info("Added observer for nonexistent path:  path={}; pathObserverCount={}", path,
-                            observerSet.size());
+                    zkClient.exists(path, true);
+
+                    logger.info(
+                            "Added observer for nonexistent path:  observer.hashCode()={}; path={}; pathObserverCount={}",
+                            new Object[] { observer.hashCode(), path, observerSet.size() });
                 } catch (Exception e1) {
                     logger.error("Unable to add observer:  path=" + path + "; observerType="
                             + observer.getClass().getSimpleName(), e);
@@ -182,16 +180,15 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             Set<T> observerSet = getObserverSet(path, false);
             if (observerSet.size() > 0) {
                 // get children just to get a child watch
-                zkClient.getChildren(path, true);
-
+                List<String> childList = zkClient.getChildren(path, true);
                 byte[] data = zkClient.getData(path, true, new Stat());
+
                 for (T observer : observerSet) {
+                    logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
                     synchronized (observer) {
-                        if (!Arrays.equals(observer.getData(), data)) {
-                            byte[] previousData = observer.getData();
-                            observer.setData(data);
-                            observer.nodeCreated(data, previousData);
-                        }
+                        observer.setData(data);
+                        observer.setChildList(childList);
+                        observer.nodeCreated(data, childList);
                     }
                 }
             }
@@ -211,6 +208,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             if (observerSet.size() > 0) {
                 byte[] updatedData = zkClient.getData(path, true, new Stat());
                 for (T observer : observerSet) {
+                    logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
                     synchronized (observer) {
                         if (!Arrays.equals(observer.getData(), updatedData)) {
                             byte[] previousData = observer.getData();

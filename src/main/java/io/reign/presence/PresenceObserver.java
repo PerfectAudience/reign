@@ -88,7 +88,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     }
 
     @Override
-    public void nodeCreated(byte[] data, byte[] previousData) {
+    public void nodeCreated(byte[] data, List<String> childList) {
         if (nodeId != null) {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(data);
             NodeInfo updated = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);

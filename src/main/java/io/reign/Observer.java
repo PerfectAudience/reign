@@ -48,7 +48,7 @@ public interface Observer {
 
     public void nodeDeleted(byte[] previousData, List<String> previousChildList);
 
-    public void nodeCreated(byte[] data, byte[] previousData);
+    public void nodeCreated(byte[] data, List<String> childList);
 
     public String getPath();
 

@@ -36,6 +36,7 @@ import org.apache.zookeeper.AsyncCallback.StringCallback;
 import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.EventType;
@@ -181,8 +182,12 @@ public class ResilientZkClient implements ZkClient, Watcher {
             for (Watcher watcher : dataWatchesMap.get(path)) {
                 try {
                     this.exists(path, watcher);
+                } catch (KeeperException e) {
+                    if (e.code() != Code.NONODE) {
+                        logger.warn("Error while restoring watch:  " + e + ":  path=" + path, e);
+                    }
                 } catch (Exception e) {
-                    logger.warn("Interrupted while restoring watch:  " + e + ":  path=" + path, e);
+                    logger.warn("Error while restoring watch:  " + e + ":  path=" + path, e);
                 } // try
             }// for
         }// for
@@ -192,8 +197,12 @@ public class ResilientZkClient implements ZkClient, Watcher {
             for (Watcher watcher : childWatchesMap.get(path)) {
                 try {
                     this.getChildren(path, watcher);
+                } catch (KeeperException e) {
+                    if (e.code() != Code.NONODE) {
+                        logger.warn("Error while restoring watch:  " + e + ":  path=" + path, e);
+                    }
                 } catch (Exception e) {
-                    logger.warn("Interrupted while restoring watch:  " + e + ":  path=" + path, e);
+                    logger.warn("Error while restoring watch:  " + e + ":  path=" + path, e);
                 } // try
             }// for
         }
@@ -249,7 +258,6 @@ public class ResilientZkClient implements ZkClient, Watcher {
             @Override
             public void doPerform() throws KeeperException, InterruptedException {
                 zooKeeper.delete(path, version, cb, ctx);
-
             }
         };
 
@@ -399,7 +407,14 @@ public class ResilientZkClient implements ZkClient, Watcher {
         ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
-                return zooKeeper.getChildren(path, watch, stat);
+                try {
+                    return zooKeeper.getChildren(path, watch, stat);
+                } catch (KeeperException e) {
+                    if (e.code() != Code.NONODE) {
+                        throw e;
+                    }
+                    return Collections.EMPTY_LIST;
+                }
 
             }
         };
@@ -463,8 +478,14 @@ public class ResilientZkClient implements ZkClient, Watcher {
         ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
-                return zooKeeper.getChildren(path, watcher, stat);
-
+                try {
+                    return zooKeeper.getChildren(path, watcher, stat);
+                } catch (KeeperException e) {
+                    if (e.code() != Code.NONODE) {
+                        throw e;
+                    }
+                    return Collections.EMPTY_LIST;
+                }
             }
         };
 
@@ -482,7 +503,14 @@ public class ResilientZkClient implements ZkClient, Watcher {
         ZooKeeperAction<List<String>> zkAction = new ZooKeeperAction<List<String>>(backoffStrategyFactory.get()) {
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
-                return zooKeeper.getChildren(path, watcher);
+                try {
+                    return zooKeeper.getChildren(path, watcher);
+                } catch (KeeperException e) {
+                    if (e.code() != Code.NONODE) {
+                        throw e;
+                    }
+                    return Collections.EMPTY_LIST;
+                }
 
             }
         };
@@ -781,7 +809,14 @@ public class ResilientZkClient implements ZkClient, Watcher {
 
             @Override
             public List<String> doPerform() throws KeeperException, InterruptedException {
-                return zooKeeper.getChildren(path, watch);
+                try {
+                    return zooKeeper.getChildren(path, watch);
+                } catch (KeeperException e) {
+                    if (e.code() != Code.NONODE) {
+                        throw e;
+                    }
+                    return Collections.EMPTY_LIST;
+                }
             }
 
         };
@@ -803,7 +838,13 @@ public class ResilientZkClient implements ZkClient, Watcher {
 
             @Override
             public void doPerform() throws KeeperException, InterruptedException {
-                zooKeeper.delete(path, version);
+                try {
+                    zooKeeper.delete(path, version);
+                } catch (KeeperException e) {
+                    if (e.code() != Code.NONODE) {
+                        throw e;
+                    }
+                }
             }
 
         };

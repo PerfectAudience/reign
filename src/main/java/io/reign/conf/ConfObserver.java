@@ -80,8 +80,8 @@ public abstract class ConfObserver<T> extends AbstractObserver {
     }
 
     @Override
-    public void nodeCreated(byte[] data, byte[] previousData) {
-        updated(toConf(data), toConf(previousData));
+    public void nodeCreated(byte[] data, List<String> childList) {
+        updated(toConf(data), null);
     }
 
     T toConf(byte[] data) {

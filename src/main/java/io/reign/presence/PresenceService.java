@@ -59,7 +59,7 @@ public class PresenceService extends AbstractService {
 
     public static final int DEFAULT_HEARTBEAT_INTERVAL_MILLIS = 30000;
 
-    public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
+    // public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
 
     private int heartbeatIntervalMillis = DEFAULT_HEARTBEAT_INTERVAL_MILLIS;
 
@@ -71,7 +71,7 @@ public class PresenceService extends AbstractService {
             0.9f, 2);
 
     private final ConcurrentMap<String, PresenceObserver> notifyObserverMap = new ConcurrentHashMap<String, PresenceObserver>(
-            8, 0.9f, 2);
+            16, 0.9f, 1);
 
     private final ZkClientUtil zkClientUtil = new ZkClientUtil();
 
@@ -141,8 +141,6 @@ public class PresenceService extends AbstractService {
             Stat stat = new Stat();
             children = getZkClient().getChildren(path, true, stat);
 
-            // getPathCache().put(path, stat, null, children);
-
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
                 logger.warn("lookupServices():  " + e + ":  node does not exist:  path={}", path);
@@ -183,36 +181,30 @@ public class PresenceService extends AbstractService {
 
     public ServiceInfo waitUntilAvailable(String clusterId, String serviceId, long timeoutMillis) {
 
-        ServiceInfo result = lookupServiceInfo(clusterId, serviceId);
+        String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
 
-        if (result == null || result.getNodeIdList().size() < 1) {
-            String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
-            String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
+        PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(clusterId, serviceId);
+        ServiceInfo result = lookupServiceInfo(clusterId, serviceId, notifyObserver);
 
-            PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(clusterId, serviceId);
-            getObserverManager().put(path, notifyObserver);
-
+        if (result != null && result.getNodeIdList().size() < 1) {
             synchronized (notifyObserver) {
-                long waitStartTimestamp = System.currentTimeMillis();
-                while ((result == null || result.getNodeIdList().size() < 1)
-                        && (System.currentTimeMillis() - waitStartTimestamp < timeoutMillis || timeoutMillis < 0)) {
-
-                    logger.info("Waiting until service is available:  path={}", path);
-                    try {
-                        if (timeoutMillis < 0) {
-                            notifyObserver.wait();
-                        } else {
-                            notifyObserver.wait(timeoutMillis);
-                        }
-                    } catch (InterruptedException e) {
-                        logger.warn("Interrupted while waiting for ServiceInfo:  " + e, e);
-                    } // try
-
-                    result = lookupServiceInfo(clusterId, serviceId);
-                }// while
+                logger.info("Waiting until service is available:  path={}", path);
+                try {
+                    if (timeoutMillis < 0) {
+                        notifyObserver.wait();
+                    } else {
+                        notifyObserver.wait(timeoutMillis);
+                    }
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted in waitUntilAvailable():  " + e, e);
+                } // try
             }// synchronized
+        }
 
-        } // if
+        result = lookupServiceInfo(clusterId, serviceId, notifyObserver);
+
+        getContext().getObserverManager().remove(path, notifyObserver);
 
         return result;
     }
@@ -221,27 +213,45 @@ public class PresenceService extends AbstractService {
         return getNotifyObserver(clusterId, serviceId, null);
     }
 
-    <T> PresenceObserver<T> getNotifyObserver(String clusterId, String serviceId, String nodeId) {
-        String servicePath = null;
+    <T> PresenceObserver<T> getNotifyObserver(final String clusterId, final String serviceId, final String nodeId) {
+        String watchPath = null;
         if (nodeId == null) {
-            servicePath = getPathScheme().joinTokens(clusterId, serviceId);
+            watchPath = getPathScheme().joinTokens(clusterId, serviceId);
         } else {
-            servicePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
+            watchPath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         }
 
-        final String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
+        final String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, watchPath);
 
         // observer for wait/notify
         PresenceObserver<T> observer = notifyObserverMap.get(path);
         if (observer == null) {
             PresenceObserver<T> newObserver = new PresenceObserver<T>() {
+
                 @Override
-                public void updated(T info) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Notifying all waiters [{}]:  path={}", this.hashCode(), path);
+                public void updated(T updated) {
+
+                }
+
+                @Override
+                public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList) {
+                    logger.debug("NOTIFYOBSERVER:  nodeChildrenChanged");
+                    if (nodeId == null) {
+                        if (updatedChildList.size() > 0) {
+                            synchronized (this) {
+                                this.notifyAll();
+                            }
+                        }
                     }
-                    synchronized (this) {
-                        this.notifyAll();
+                }
+
+                @Override
+                public void nodeCreated(byte[] data, List<String> childList) {
+                    logger.debug("NOTIFYOBSERVER:  nodeCreated");
+                    if (nodeId != null || childList.size() > 0) {
+                        synchronized (this) {
+                            this.notifyAll();
+                        }
                     }
                 }
             };
@@ -251,11 +261,6 @@ public class PresenceService extends AbstractService {
                 observer = newObserver;
             }
         }
-
-        // decorate observer with presence metadata
-        observer.setClusterId(clusterId);
-        observer.setServiceId(serviceId);
-        observer.setNodeId(nodeId);
 
         return observer;
     }
@@ -270,6 +275,11 @@ public class PresenceService extends AbstractService {
 
     ServiceInfo lookupServiceInfo(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer,
             DataSerializer<Map<String, String>> nodeAttributeSerializer) {
+        /** add observer if given **/
+        if (observer != null) {
+            this.observe(clusterId, serviceId, observer);
+        }
+
         /** get node data from zk **/
         String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
@@ -281,7 +291,7 @@ public class PresenceService extends AbstractService {
 
             // get from ZK
             Stat stat = new Stat();
-            children = getZkClient().getChildren(path, false, stat);
+            children = getZkClient().getChildren(path, true, stat);
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
@@ -310,45 +320,36 @@ public class PresenceService extends AbstractService {
             result = new ServiceInfo(clusterId, serviceId, children);
         }
 
-        /** add observer if given **/
-        if (observer != null) {
-            this.observe(clusterId, serviceId, observer);
-        }
-
         return result;
 
     }
 
     public NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId, long timeoutMillis) {
 
-        NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId);
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
+
+        PresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
+        NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+
+        logger.info("Waiting until node is available:  path={}", path);
         if (result == null) {
-            String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
-            String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
-
-            PresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
-            getObserverManager().put(path, notifyObserver);
-
-            logger.info("Waiting until node is available:  path={}", path);
-
             synchronized (notifyObserver) {
-                long waitStartTimestamp = System.currentTimeMillis();
-                while (result == null
-                        && (System.currentTimeMillis() - waitStartTimestamp < timeoutMillis || timeoutMillis < 0)) {
-                    try {
-                        if (timeoutMillis < 0) {
-                            notifyObserver.wait();
-                        } else {
-                            notifyObserver.wait(timeoutMillis);
-                        }
-                    } catch (InterruptedException e) {
-                        logger.warn("Interrupted while waiting for NodeInfo:  " + e, e);
+                try {
+                    if (timeoutMillis < 0) {
+                        notifyObserver.wait();
+                    } else {
+                        notifyObserver.wait(timeoutMillis);
                     }
-                    result = lookupNodeInfo(clusterId, serviceId, nodeId);
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted while waiting for NodeInfo:  " + e, e);
                 }
             }
-
         }
+
+        result = lookupNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+
+        getContext().getObserverManager().remove(path, notifyObserver);
 
         return result;
     }
@@ -379,7 +380,7 @@ public class PresenceService extends AbstractService {
         try {
             // populate from ZK
             Stat stat = new Stat();
-            bytes = getZkClient().getData(path, false, stat);
+            bytes = getZkClient().getData(path, true, stat);
 
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
@@ -407,9 +408,9 @@ public class PresenceService extends AbstractService {
             try {
                 result = new NodeInfo(clusterId, serviceId, nodeId,
                         bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
-            } catch (Throwable e) {
-                throw new IllegalStateException(
-                        "lookup():  error trying to fetch node info:  path=" + path + ":  " + e, e);
+            } catch (Exception e) {
+                throw new IllegalStateException("lookupNodeInfo():  error trying to fetch node info:  path=" + path
+                        + ":  " + e, e);
             }
         }
 
@@ -737,7 +738,7 @@ public class PresenceService extends AbstractService {
 
                 // announce or hide node
                 String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
-                doUpdateAnnouncement(path, announcement);
+                doUpdateAnnouncementAsync(path, announcement);
             }// for
 
             /** do zombie node check per interval **/
