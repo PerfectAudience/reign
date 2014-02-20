@@ -186,8 +186,6 @@ public class PresenceServiceTest {
     public void testLookupNodeInfoStringStringString() throws Exception {
         presenceService.announce("clusterA", "serviceA1", true);
 
-        Reign reign = MasterTestSuite.getReign();
-
         ServiceInfo serviceInfo = presenceService.waitUntilAvailable("clusterA", "serviceA1", -1);
         assertTrue("service nodes = " + serviceInfo.getNodeIdList(), serviceInfo.getNodeIdList().size() > 0);
 
