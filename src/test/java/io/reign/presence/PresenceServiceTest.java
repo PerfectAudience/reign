@@ -5,8 +5,10 @@ import io.reign.MasterTestSuite;
 import io.reign.PathScheme;
 import io.reign.PathType;
 import io.reign.Reign;
+import io.reign.util.Structs;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
 import org.junit.Before;
@@ -106,6 +108,63 @@ public class PresenceServiceTest {
         // restore to previous state at beginning of test
         presenceService.hide("clusterA", "serviceA1");
         presenceService.hide("clusterB", "serviceB1");
+    }
+
+    @Test
+    public void testServiceObserver() throws Exception {
+        final AtomicReference<ServiceInfo> serviceInfoRef = new AtomicReference<ServiceInfo>();
+        ServiceInfo serviceInfo = presenceService.lookupServiceInfo("clusterC", "serviceC1",
+                new PresenceObserver<ServiceInfo>() {
+                    @Override
+                    public void updated(ServiceInfo updated) {
+                        serviceInfoRef.set(updated);
+                        synchronized (serviceInfoRef) {
+                            serviceInfoRef.notifyAll();
+                        }
+                    }
+                });
+
+        assertTrue(serviceInfo == null);
+
+        presenceService.announce("clusterC", "serviceC1", true);
+        synchronized (serviceInfoRef) {
+            serviceInfoRef.wait();
+        }
+
+        assertTrue(serviceInfoRef.get().getNodeIdList().size() == 1);
+    }
+
+    @Test
+    public void testNodeObserver() throws Exception {
+        final AtomicReference<NodeInfo> nodeInfoRef = new AtomicReference<NodeInfo>();
+        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterD", "serviceD1", MasterTestSuite.getReign()
+                .getCanonicalIdPathToken(), new PresenceObserver<NodeInfo>() {
+            @Override
+            public void updated(NodeInfo updated) {
+                nodeInfoRef.set(updated);
+                synchronized (nodeInfoRef) {
+                    nodeInfoRef.notifyAll();
+                }
+            }
+        });
+
+        assertTrue(nodeInfo == null);
+
+        presenceService.announce("clusterD", "serviceD1", true, Structs.<String, String> map().kv("foo", "bar"));
+        synchronized (nodeInfoRef) {
+            nodeInfoRef.wait();
+        }
+
+        assertTrue(nodeInfoRef.get().getAttribute("foo").equals("bar"));
+
+        presenceService.announce("clusterD", "serviceD1", true,
+                Structs.<String, String> map().kv("foo", "bar").kv("lady", "liberty"));
+        synchronized (nodeInfoRef) {
+            nodeInfoRef.wait();
+        }
+
+        assertTrue(nodeInfoRef.get().getAttribute("foo").equals("bar")
+                && nodeInfoRef.get().getAttribute("lady").equals("liberty"));
     }
 
     @Test

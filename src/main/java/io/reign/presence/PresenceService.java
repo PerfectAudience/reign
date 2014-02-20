@@ -371,7 +371,7 @@ public class PresenceService extends AbstractService {
 
         /** add observer if passed in **/
         if (observer != null) {
-            getObserverManager().put(path, observer);
+            this.observe(clusterId, serviceId, nodeId, observer);
         }
 
         /** fetch data **/
@@ -445,10 +445,10 @@ public class PresenceService extends AbstractService {
 
         // update announcement if node data is different
         NodeInfo nodeInfo = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);
-        if (!nodeInfo.equals(announcement.getNodeInfo())) {
-            announcement.setNodeInfo(nodeInfo);
-            announcement.setLastUpdated(-1);
-        }
+        // if (!nodeInfo.equals(announcement.getNodeInfo())) {
+        announcement.setNodeInfo(nodeInfo);
+        announcement.setLastUpdated(-1);
+        // }
 
         // mark as visible based on flag
         announcement.setHidden(!visible);
