@@ -61,7 +61,7 @@ public class ReignMaker {
 
     private Integer messagingPort = Reign.DEFAULT_MESSAGING_PORT;
 
-    private CanonicalIdMaker canonicalIdMaker = null;
+    private CanonicalIdProvider canonicalIdMaker = null;
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
@@ -161,7 +161,7 @@ public class ReignMaker {
         return this;
     }
 
-    public ReignMaker canonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
+    public ReignMaker canonicalIdMaker(CanonicalIdProvider canonicalIdMaker) {
         this.canonicalIdMaker = canonicalIdMaker;
         return this;
     }
@@ -275,8 +275,8 @@ public class ReignMaker {
         return new DefaultPathScheme(basePath, frameworkClusterId);
     }
 
-    CanonicalIdMaker defaultCanonicalIdMaker() {
-        DefaultCanonicalIdMaker idMaker = new DefaultCanonicalIdMaker(messagingPort);
+    CanonicalIdProvider defaultCanonicalIdMaker() {
+        DefaultCanonicalIdProvider idMaker = new DefaultCanonicalIdProvider(messagingPort);
         return idMaker;
     }
 

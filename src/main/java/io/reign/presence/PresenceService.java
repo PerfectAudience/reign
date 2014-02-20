@@ -418,12 +418,11 @@ public class PresenceService extends AbstractService {
     }
 
     public void announce(String clusterId, String serviceId, boolean visible) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible, null);
+        announce(clusterId, serviceId, getContext().getCanonicalId().toString(), visible, null);
     }
 
     public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
-        announce(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()), visible,
-                attributeMap);
+        announce(clusterId, serviceId, getContext().getCanonicalId().toString(), visible, attributeMap);
     }
 
     public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
@@ -459,11 +458,11 @@ public class PresenceService extends AbstractService {
     }
 
     public void hide(String clusterId, String serviceId) {
-        hide(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()));
+        hide(clusterId, serviceId, getContext().getCanonicalId().toString());
     }
 
     public void show(String clusterId, String serviceId) {
-        show(clusterId, serviceId, getPathScheme().toPathToken(getContext().getCanonicalId()));
+        show(clusterId, serviceId, getContext().getCanonicalId().toString());
     }
 
     void hide(String clusterId, String serviceId, String nodeId) {

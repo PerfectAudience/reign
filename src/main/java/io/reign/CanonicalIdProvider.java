@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -21,11 +21,17 @@ package io.reign;
  * @author ypai
  * 
  */
-public interface CanonicalIdMaker {
+public interface CanonicalIdProvider {
 
     /**
      * 
-     * @return NEW instance of CanonicalId
+     * @return NEW instance of id
      */
     public CanonicalId get();
+
+    /**
+     * 
+     * @return NEW instance of id
+     */
+    public CanonicalId from(String pathToken, byte[] data);
 }

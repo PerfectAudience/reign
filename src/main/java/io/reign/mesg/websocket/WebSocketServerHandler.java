@@ -67,7 +67,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
     private WebSocketServerHandshaker handshaker;
 
-    private ReignContext serviceDirectory;
+    private ReignContext context;
 
     private MessageProtocol messageProtocol;
 
@@ -76,17 +76,17 @@ public class WebSocketServerHandler extends ExecutionHandler {
     public WebSocketServerHandler(ReignContext serviceDirectory, WebSocketConnectionManager connectionManager,
             MessageProtocol messageProtocol) {
         super(new OrderedMemoryAwareThreadPoolExecutor(8, 1048576, 8 * 1048576));
-        this.serviceDirectory = serviceDirectory;
+        this.context = serviceDirectory;
         this.connectionManager = connectionManager;
         this.messageProtocol = messageProtocol;
     }
 
     public ReignContext getServiceDirectory() {
-        return serviceDirectory;
+        return context;
     }
 
     public void setServiceDirectory(ReignContext serviceDirectory) {
-        this.serviceDirectory = serviceDirectory;
+        this.context = serviceDirectory;
     }
 
     public MessageProtocol getMessageProtocol() {
@@ -351,14 +351,13 @@ public class WebSocketServerHandler extends ExecutionHandler {
         }
 
         // TODO: register client with framework
-        PresenceService presenceService = serviceDirectory.getService("presence");
+        PresenceService presenceService = context.getService("presence");
 
         SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
 
         CanonicalId canonicalId = new DefaultCanonicalId(null, IdUtil.getClientIpAddress(socketAddress),
-                IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress),
-                IdUtil.getClientPort(socketAddress));
-        String canonicalIdString = serviceDirectory.getPathScheme().toPathToken(canonicalId);
+                IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress));
+        String canonicalIdString = canonicalId.toString();
 
         presenceService.announce(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID, Reign.DEFAULT_FRAMEWORK_CLIENT_ID,
                 canonicalIdString, true);

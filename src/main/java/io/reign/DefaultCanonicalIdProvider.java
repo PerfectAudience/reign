@@ -12,18 +12,21 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
 import io.reign.util.IdUtil;
+import io.reign.util.JacksonUtil;
+
+import org.codehaus.jackson.type.TypeReference;
 
 /**
  * 
  * @author ypai
  * 
  */
-public class DefaultCanonicalIdMaker implements CanonicalIdMaker {
+public class DefaultCanonicalIdProvider implements CanonicalIdProvider {
 
     private String processId;
     private String host;
@@ -31,11 +34,11 @@ public class DefaultCanonicalIdMaker implements CanonicalIdMaker {
 
     private final Integer messagingPort;
 
-    public DefaultCanonicalIdMaker() {
+    public DefaultCanonicalIdProvider() {
         this(null);
     }
 
-    public DefaultCanonicalIdMaker(Integer messagingPort) {
+    public DefaultCanonicalIdProvider(Integer messagingPort) {
         this.messagingPort = messagingPort;
 
         // get pid
@@ -59,15 +62,23 @@ public class DefaultCanonicalIdMaker implements CanonicalIdMaker {
 
     @Override
     public CanonicalId get() {
+        return new DefaultCanonicalId(processId, ipAddress, host, messagingPort);
+    }
 
-        CanonicalId id = new DefaultCanonicalId();
-        id.setProcessId(processId);
-        id.setHost(host);
-        id.setIpAddress(ipAddress);
-        id.setMessagingPort(messagingPort);
+    // @Override
+    // public CanonicalId get(Integer port) {
+    // CanonicalId id = new DefaultCanonicalId(processId, ipAddress, host, port, messagingPort);
+    // return id;
+    // }
 
-        return id;
-
+    @Override
+    public CanonicalId from(String pathToken, byte[] data) {
+        try {
+            return JacksonUtil.getObjectMapperInstance().readValue(pathToken, new TypeReference<DefaultCanonicalId>() {
+            });
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Could not parse '" + pathToken + "':  " + e, e);
+        }
     }
 
 }

@@ -79,7 +79,7 @@ public class Reign implements Watcher {
 
     private List<ACL> defaultZkAclList = DEFAULT_ACL_LIST;
 
-    private CanonicalIdMaker canonicalIdMaker;
+    private CanonicalIdProvider nodeIdProvider;
 
     private final ObserverManager observerManager = new ObserverManager();
 
@@ -90,7 +90,7 @@ public class Reign implements Watcher {
     public Reign() {
     }
 
-    public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, CanonicalIdMaker canonicalIdMaker) {
+    public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, CanonicalIdProvider nodeIdProvider) {
 
         this.zkClient = zkClient;
 
@@ -98,7 +98,7 @@ public class Reign implements Watcher {
 
         this.pathCache = pathCache;
 
-        this.canonicalIdMaker = canonicalIdMaker;
+        this.nodeIdProvider = nodeIdProvider;
 
     }
 
@@ -106,7 +106,7 @@ public class Reign implements Watcher {
         if (!started) {
             throw new IllegalStateException("Cannot get canonicalId before framework is started!");
         }
-        return this.canonicalIdMaker.get();
+        return this.nodeIdProvider.get();
     }
 
     public synchronized String getCanonicalIdPathToken() {
@@ -134,11 +134,11 @@ public class Reign implements Watcher {
         this.defaultZkAclList = defaultZkAclList;
     }
 
-    public synchronized void setCanonicalIdMaker(CanonicalIdMaker canonicalIdMaker) {
+    public synchronized void setCanonicalIdMaker(CanonicalIdProvider canonicalIdMaker) {
         if (started) {
             throw new IllegalStateException("Cannot set canonicalIdMaker once started!");
         }
-        this.canonicalIdMaker = canonicalIdMaker;
+        this.nodeIdProvider = canonicalIdMaker;
     }
 
     @Override
@@ -284,7 +284,7 @@ public class Reign implements Watcher {
 
             @Override
             public CanonicalId getCanonicalId() {
-                return canonicalIdMaker.get();
+                return nodeIdProvider.get();
             }
 
             @Override
@@ -304,12 +304,17 @@ public class Reign implements Watcher {
 
             @Override
             public String getCanonicalIdPathToken() {
-                return pathScheme.toPathToken(canonicalIdMaker.get());
+                return nodeIdProvider.get().toString();
             }
 
             @Override
             public ObserverManager getObserverManager() {
                 return observerManager;
+            }
+
+            @Override
+            public CanonicalIdProvider getCanonicalIdProvider() {
+                return nodeIdProvider;
             }
 
         };

@@ -38,6 +38,8 @@ public interface ReignContext {
 
     public String getCanonicalIdPathToken();
 
+    public CanonicalIdProvider getCanonicalIdProvider();
+
     public ZkClient getZkClient();
 
     public PathScheme getPathScheme();

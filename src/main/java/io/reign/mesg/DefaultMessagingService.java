@@ -4,16 +4,13 @@ import io.reign.AbstractService;
 import io.reign.CanonicalId;
 import io.reign.Reign;
 import io.reign.mesg.websocket.WebSocketMessagingProvider;
-import io.reign.presence.NodeInfo;
 import io.reign.presence.PresenceService;
 import io.reign.presence.ServiceInfo;
 import io.reign.util.JacksonUtil;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Future;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
@@ -50,7 +47,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
     @Override
     public ResponseMessage sendMessage(String clusterId, String serviceId, String canonicalIdString,
             RequestMessage requestMessage) {
-        CanonicalId canonicalId = getPathScheme().parseCanonicalId(canonicalIdString);
+        CanonicalId canonicalId = getContext().getCanonicalIdProvider().from(canonicalIdString, null);
 
         // prefer ip, then use hostname if not available
         String hostOrIpAddress = canonicalId.getIpAddress();
@@ -107,17 +104,9 @@ public class DefaultMessagingService extends AbstractService implements Messagin
         return responseMap;
     }
 
-    /**
-     * TODO: finish this method
-     * 
-     * @param clusterId
-     * @param serviceId
-     * @param canonicalIdString
-     * @param requestMessage
-     */
     public void sendMessageForget(String clusterId, String serviceId, String canonicalIdString,
             RequestMessage requestMessage) {
-        CanonicalId canonicalId = getPathScheme().parseCanonicalId(canonicalIdString);
+        CanonicalId canonicalId = getContext().getCanonicalIdProvider().from(canonicalIdString, null);
 
         // prefer ip, then use hostname if not available
         String hostOrIpAddress = canonicalId.getIpAddress();
@@ -145,9 +134,6 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
     }
 
-    /**
-     * 
-     */
     public void sendMessageForget(String clusterId, String serviceId, RequestMessage requestMessage) {
         PresenceService presenceService = getContext().getService("presence");
         ServiceInfo serviceInfo = presenceService.lookupServiceInfo(clusterId, serviceId);

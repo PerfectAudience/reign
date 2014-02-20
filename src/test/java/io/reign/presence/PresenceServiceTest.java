@@ -196,7 +196,7 @@ public class PresenceServiceTest {
         assertTrue("nodeInfo should not be null", nodeInfo != null);
         assertTrue("clusterA".equals(nodeInfo.getClusterId()));
         assertTrue("serviceA1".equals(nodeInfo.getServiceId()));
-        assertTrue(reign.getPathScheme().toPathToken(reign.getCanonicalId()).equals(nodeInfo.getNodeId()));
+        assertTrue(reign.getCanonicalId().toString().equals(nodeInfo.getNodeId()));
     }
 
     @Test
@@ -208,8 +208,7 @@ public class PresenceServiceTest {
 
         Reign reign = MasterTestSuite.getReign();
         PathScheme pathScheme = reign.getPathScheme();
-        String nodePath = pathScheme
-                .joinTokens("clusterA", "serviceA1", pathScheme.toPathToken(reign.getCanonicalId()));
+        String nodePath = pathScheme.joinTokens("clusterA", "serviceA1", reign.getCanonicalId().toString());
         String path = pathScheme.getAbsolutePath(PathType.PRESENCE, nodePath);
         assertTrue(reign.getZkClient().exists(path, false) == null);
 
@@ -229,8 +228,7 @@ public class PresenceServiceTest {
 
         Reign reign = MasterTestSuite.getReign();
         PathScheme pathScheme = reign.getPathScheme();
-        String nodePath = pathScheme
-                .joinTokens("clusterA", "serviceA1", pathScheme.toPathToken(reign.getCanonicalId()));
+        String nodePath = pathScheme.joinTokens("clusterA", "serviceA1", reign.getCanonicalId().toString());
         String path = pathScheme.getAbsolutePath(PathType.PRESENCE, nodePath);
         assertTrue(reign.getZkClient().exists(path, false) == null);
 

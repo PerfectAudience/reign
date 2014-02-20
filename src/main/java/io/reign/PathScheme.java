@@ -47,21 +47,21 @@ public interface PathScheme {
 
     public String getParentPath(String path);
 
-    /**
-     * Try to parse input String as canonical ID with some embedded information
-     * 
-     * @param canonicalId
-     * @return Map of values; or null
-     * @throws IllegalArgumentException
-     *             if there is a parsing error
-     */
-    public CanonicalId parseCanonicalId(String canonicalId);
-
-    /**
-     * Returns a deterministic representation of the canonical ID (same String everytime).
-     * 
-     * @param canonicalId
-     * @return valid path representation of CanonicalId
-     */
-    public String toPathToken(CanonicalId canonicalId);
+    // /**
+    // * Try to parse input String as canonical ID with some embedded information
+    // *
+    // * @param canonicalId
+    // * @return Map of values; or null
+    // * @throws IllegalArgumentException
+    // * if there is a parsing error
+    // */
+    // public CanonicalId parseCanonicalId(String canonicalId);
+    //
+    // /**
+    // * Returns a deterministic representation of the canonical ID (same String everytime).
+    // *
+    // * @param canonicalId
+    // * @return valid path representation of CanonicalId
+    // */
+    // public String toPathToken(CanonicalId canonicalId);
 }

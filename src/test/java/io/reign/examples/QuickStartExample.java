@@ -115,7 +115,7 @@ public class QuickStartExample {
         // send message to a single node in the "service1" service in the "examples" cluster;
         // in this example, we are just messaging ourselves
         CanonicalId canonicalId = reign.getCanonicalId();
-        String canonicalIdString = reign.getPathScheme().toPathToken(canonicalId);
+        String canonicalIdString = canonicalId.toString();
         ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", canonicalIdString,
                 new SimpleRequestMessage("presence", "/"));
 

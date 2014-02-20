@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign;
 
@@ -23,26 +23,22 @@ package io.reign;
  */
 public interface CanonicalId {
 
-    public CanonicalId port(Integer port);
+    // public CanonicalId port(Integer port);
 
     public String getProcessId();
 
-    public void setProcessId(String processId);
+    // public void setProcessId(String processId);
 
     public String getIpAddress();
 
-    public void setIpAddress(String ipAddress);
+    // public void setIpAddress(String ipAddress);
 
     public String getHost();
 
-    public void setHost(String host);
-
-    public Integer getPort();
-
-    public void setPort(Integer port);
+    // public void setHost(String host);
 
     public Integer getMessagingPort();
 
-    public void setMessagingPort(Integer messagingPort);
+    // public void setMessagingPort(Integer messagingPort);
 
 }

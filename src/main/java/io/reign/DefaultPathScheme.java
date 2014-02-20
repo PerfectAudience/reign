@@ -16,12 +16,9 @@
 
 package io.reign;
 
-import io.reign.util.JacksonUtil;
-
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
-import org.codehaus.jackson.type.TypeReference;
 
 /**
  * Default path scheme.
@@ -144,24 +141,24 @@ public class DefaultPathScheme implements PathScheme {
         return (!StringUtils.isBlank(path) && !path.endsWith("/")) || "/".equals(path);
     }
 
-    @Override
-    public CanonicalId parseCanonicalId(String canonicalId) {
-        try {
-            return JacksonUtil.getObjectMapperInstance().readValue(canonicalId,
-                    new TypeReference<DefaultCanonicalId>() {
-                    });
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Could not parse '" + canonicalId + "':  " + e, e);
-        }
-    }
-
-    @Override
-    public String toPathToken(CanonicalId canonicalId) {
-        try {
-            return JacksonUtil.getObjectMapperInstance().writeValueAsString(canonicalId);
-        } catch (Exception e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
+    // @Override
+    // public CanonicalId parseCanonicalId(String canonicalId) {
+    // try {
+    // return JacksonUtil.getObjectMapperInstance().readValue(canonicalId,
+    // new TypeReference<DefaultCanonicalId>() {
+    // });
+    // } catch (Exception e) {
+    // throw new IllegalArgumentException("Could not parse '" + canonicalId + "':  " + e, e);
+    // }
+    // }
+    //
+    // @Override
+    // public String toPathToken(CanonicalId canonicalId) {
+    // try {
+    // return JacksonUtil.getObjectMapperInstance().writeValueAsString(canonicalId);
+    // } catch (Exception e) {
+    // throw new IllegalArgumentException(e);
+    // }
+    // }
 
 }
