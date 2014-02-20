@@ -22,15 +22,7 @@ public class PresenceServiceTest {
 
     @Before
     public void setUp() throws Exception {
-
         presenceService = MasterTestSuite.getReign().getService("presence");
-
-        // // add some services
-        // presenceService.announce("clusterA", "serviceA", false);
-        // presenceService.announce("clusterA", "serviceB", true);
-        // presenceService.announce("clusterB", "serviceC", true);
-        // presenceService.announce("clusterB", "serviceD", false);
-
     }
 
     @After

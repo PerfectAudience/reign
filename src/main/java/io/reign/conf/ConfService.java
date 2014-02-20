@@ -53,8 +53,6 @@ public class ConfService extends AbstractService {
 
     private final ZkClientUtil zkUtil = new ZkClientUtil();
 
-    // private NodeObserverManager<ConfObserver> observerManager = null;
-
     private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(17,
             0.9f, 1);
 
@@ -256,9 +254,6 @@ public class ConfService extends AbstractService {
             // not in cache, so load from ZK
             Stat stat = new Stat();
             bytes = getZkClient().getData(absolutePath, true, stat);
-
-            // put in cache
-            // getPathCache().put(absolutePath, stat, bytes, null);
 
             result = bytes != null ? confSerializer.deserialize(bytes) : null;
 
@@ -544,48 +539,5 @@ public class ConfService extends AbstractService {
         }
 
     }
-
-    // private static class ConfObserverWrapper<T> extends NodeObserverWrapper<SimpleConfObserver<T>> {
-    //
-    // // private String path;
-    //
-    // private final DataSerializer<T> dataSerializer;
-    //
-    // private volatile T currentValue;
-    //
-    // public ConfObserverWrapper(String path, SimpleConfObserver<T> observer, DataSerializer<T> dataSerializer,
-    // T currentValue) {
-    // // from super class
-    // this.observer = observer;
-    //
-    // // this.path = path;
-    // this.dataSerializer = dataSerializer;
-    // this.currentValue = currentValue;
-    // }
-    //
-    // @Override
-    // public void signalObserver(Object o) {
-    // this.observer.updated((T) o, this.currentValue);
-    //
-    // // update current value for comparison against any future events
-    // // (sometimes we get a ZK event even if relevant value has not
-    // // changed: for example, when updating node data with the exact same
-    // // value)
-    // this.currentValue = (T) o;
-    // }
-    //
-    // // public String getPath() {
-    // // return path;
-    // // }
-    //
-    // public DataSerializer<T> getDataSerializer() {
-    // return dataSerializer;
-    // }
-    //
-    // public T getCurrentValue() {
-    // return currentValue;
-    // }
-    //
-    // }// private
 
 }
