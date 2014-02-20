@@ -187,7 +187,7 @@ public class PresenceService extends AbstractService {
         PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(clusterId, serviceId);
         ServiceInfo result = lookupServiceInfo(clusterId, serviceId, notifyObserver);
 
-        if (result != null && result.getNodeIdList().size() < 1) {
+        if (result == null || result.getNodeIdList().size() < 1) {
             synchronized (notifyObserver) {
                 logger.info("Waiting until service is available:  path={}", path);
                 try {
@@ -247,7 +247,7 @@ public class PresenceService extends AbstractService {
 
                 @Override
                 public void nodeCreated(byte[] data, List<String> childList) {
-                    logger.debug("NOTIFYOBSERVER:  nodeCreated");
+                    logger.debug("NOTIFYOBSERVER:  nodeCreated:  data={}; childList={}", data, childList);
                     if (nodeId != null || childList.size() > 0) {
                         synchronized (this) {
                             this.notifyAll();
