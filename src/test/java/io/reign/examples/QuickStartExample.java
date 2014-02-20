@@ -16,7 +16,7 @@
 
 package io.reign.examples;
 
-import io.reign.CanonicalId;
+import io.reign.NodeId;
 import io.reign.Reign;
 import io.reign.conf.ConfService;
 import io.reign.coord.CoordinationService;
@@ -114,7 +114,7 @@ public class QuickStartExample {
 
         // send message to a single node in the "service1" service in the "examples" cluster;
         // in this example, we are just messaging ourselves
-        CanonicalId canonicalId = reign.getCanonicalId();
+        NodeId canonicalId = reign.getCanonicalIdProvider().get();
         String canonicalIdString = canonicalId.toString();
         ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", canonicalIdString,
                 new SimpleRequestMessage("presence", "/"));

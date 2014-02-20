@@ -16,6 +16,8 @@
 
 package io.reign.presence;
 
+import io.reign.NodeId;
+
 import java.util.Collections;
 import java.util.Map;
 
@@ -26,17 +28,14 @@ import java.util.Map;
  */
 public class NodeInfo {
 
-    private final String clusterId;
-
-    private final String serviceId;
-
-    private final String nodeId;
-
     private Map<String, String> attributeMap;
+    private final String clusterId;
+    private final String serviceId;
+    private final NodeId nodeId;
 
-    public NodeInfo(String clusterId, String serviceId, String nodeId, Map<String, String> attributeMap) {
-        if (clusterId == null || serviceId == null || nodeId == null) {
-            throw new IllegalArgumentException("clusterId, serviceId, and/or nodeId cannot be null!");
+    public NodeInfo(String clusterId, String serviceId, NodeId nodeId, Map<String, String> attributeMap) {
+        if (clusterId == null && serviceId == null && nodeId == null) {
+            throw new IllegalArgumentException("clusterId, serviceId, nodeId cannot be null!");
         }
 
         this.clusterId = clusterId;
@@ -50,18 +49,6 @@ public class NodeInfo {
         }
     }
 
-    public String getClusterId() {
-        return clusterId;
-    }
-
-    public String getServiceId() {
-        return serviceId;
-    }
-
-    public String getNodeId() {
-        return nodeId;
-    }
-
     public Object getAttribute(String key) {
         return attributeMap.get(key);
     }
@@ -70,43 +57,15 @@ public class NodeInfo {
         return Collections.unmodifiableMap(attributeMap);
     }
 
-    // @Override
-    // public boolean equals(Object obj) {
-    // if (this == obj) {
-    // return true;
-    // }
-    //
-    // if (obj == null || !(obj instanceof NodeInfo)) {
-    // return false;
-    // }
-    //
-    // // compare map sizes
-    // NodeInfo ni = (NodeInfo) obj;
-    // if (this.attributeMap.size() != ni.getAttributeMap().size()) {
-    // return false;
-    // }
-    //
-    // // compare cluster/service path values
-    // if (!this.getClusterId().equals(ni.getClusterId()) || !this.getServiceId().equals(ni.getServiceId())
-    // || !this.getNodeId().equals(ni.getNodeId())) {
-    // return false;
-    // }
-    //
-    // // iterate through map keys and make sure all values are the same
-    // for (String key : this.attributeMap.keySet()) {
-    // if (!this.attributeMap.get(key).equals(ni.getAttribute(key))) {
-    // return false;
-    // }
-    // }
-    //
-    // return true;
-    // }
-    //
-    // @Override
-    // public int hashCode() {
-    // // TODO possibly do something more clever later
-    //
-    // return super.hashCode();
-    // }
+    public String getClusterId() {
+        return clusterId;
+    }
 
+    public String getServiceId() {
+        return serviceId;
+    }
+
+    public NodeId getNodeId() {
+        return nodeId;
+    }
 }

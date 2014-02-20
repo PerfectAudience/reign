@@ -1,8 +1,9 @@
 package io.reign.mesg;
 
 import io.reign.AbstractService;
-import io.reign.CanonicalId;
+import io.reign.NodeId;
 import io.reign.Reign;
+import io.reign.ZkNodeId;
 import io.reign.mesg.websocket.WebSocketMessagingProvider;
 import io.reign.presence.PresenceService;
 import io.reign.presence.ServiceInfo;
@@ -47,7 +48,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
     @Override
     public ResponseMessage sendMessage(String clusterId, String serviceId, String canonicalIdString,
             RequestMessage requestMessage) {
-        CanonicalId canonicalId = getContext().getCanonicalIdProvider().from(canonicalIdString, null);
+        NodeId canonicalId = getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(canonicalIdString, null));
 
         // prefer ip, then use hostname if not available
         String hostOrIpAddress = canonicalId.getIpAddress();
@@ -106,7 +107,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
     public void sendMessageForget(String clusterId, String serviceId, String canonicalIdString,
             RequestMessage requestMessage) {
-        CanonicalId canonicalId = getContext().getCanonicalIdProvider().from(canonicalIdString, null);
+        NodeId canonicalId = getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(canonicalIdString, null));
 
         // prefer ip, then use hostname if not available
         String hostOrIpAddress = canonicalId.getIpAddress();

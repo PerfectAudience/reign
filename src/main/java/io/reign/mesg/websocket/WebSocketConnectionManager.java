@@ -1,7 +1,6 @@
 package io.reign.mesg.websocket;
 
 import io.reign.ReignContext;
-import io.reign.UnexpectedReignException;
 import io.reign.presence.PresenceService;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -120,7 +119,7 @@ public class WebSocketConnectionManager {
                     newClient.connect();
                 }
             } catch (Exception e) {
-                throw new UnexpectedReignException(e);
+                throw new IllegalStateException(e);
             }
 
         }// if

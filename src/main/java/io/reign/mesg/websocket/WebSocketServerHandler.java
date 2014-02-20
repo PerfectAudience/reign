@@ -9,8 +9,8 @@ import static org.jboss.netty.handler.codec.http.HttpMethod.POST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import io.reign.CanonicalId;
-import io.reign.DefaultCanonicalId;
+import io.reign.NodeId;
+import io.reign.DefaultNodeId;
 import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
@@ -355,7 +355,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
         SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
 
-        CanonicalId canonicalId = new DefaultCanonicalId(null, IdUtil.getClientIpAddress(socketAddress),
+        NodeId canonicalId = new DefaultNodeId(null, IdUtil.getClientIpAddress(socketAddress),
                 IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress));
         String canonicalIdString = canonicalId.toString();
 

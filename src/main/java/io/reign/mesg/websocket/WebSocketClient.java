@@ -1,6 +1,6 @@
 package io.reign.mesg.websocket;
 
-import io.reign.CanonicalId;
+import io.reign.NodeId;
 import io.reign.mesg.DefaultMessageProtocol;
 
 import java.net.InetSocketAddress;

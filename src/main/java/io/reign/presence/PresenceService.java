@@ -20,6 +20,7 @@ import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
 import io.reign.PathType;
+import io.reign.ZkNodeId;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
 import io.reign.mesg.RequestMessage;
@@ -174,7 +175,7 @@ public class PresenceService extends AbstractService {
 
         observer.setClusterId(clusterId);
         observer.setServiceId(serviceId);
-        observer.setNodeId(nodeId);
+        observer.setNodeId(getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeId, null)));
 
         getObserverManager().put(path, observer);
     }
@@ -406,8 +407,9 @@ public class PresenceService extends AbstractService {
         NodeInfo result = null;
         if (!error) {
             try {
-                result = new NodeInfo(clusterId, serviceId, nodeId,
-                        bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
+                result = new NodeInfo(clusterId, serviceId, getContext().getCanonicalIdProvider().fromZk(
+                        new ZkNodeId(nodeId, null)), bytes != null ? nodeAttributeSerializer.deserialize(bytes)
+                        : Collections.EMPTY_MAP);
             } catch (Exception e) {
                 throw new IllegalStateException("lookupNodeInfo():  error trying to fetch node info:  path=" + path
                         + ":  " + e, e);
@@ -418,11 +420,11 @@ public class PresenceService extends AbstractService {
     }
 
     public void announce(String clusterId, String serviceId, boolean visible) {
-        announce(clusterId, serviceId, getContext().getCanonicalId().toString(), visible, null);
+        announce(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString(), visible, null);
     }
 
     public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
-        announce(clusterId, serviceId, getContext().getCanonicalId().toString(), visible, attributeMap);
+        announce(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString(), visible, attributeMap);
     }
 
     public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
@@ -443,7 +445,8 @@ public class PresenceService extends AbstractService {
         announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
 
         // update announcement if node data is different
-        NodeInfo nodeInfo = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);
+        NodeInfo nodeInfo = new NodeInfo(clusterId, serviceId, getContext().getCanonicalIdProvider().fromZk(
+                new ZkNodeId(nodeId, null)), attributeMap);
         // if (!nodeInfo.equals(announcement.getNodeInfo())) {
         announcement.setNodeInfo(nodeInfo);
         announcement.setLastUpdated(-1);
@@ -458,11 +461,11 @@ public class PresenceService extends AbstractService {
     }
 
     public void hide(String clusterId, String serviceId) {
-        hide(clusterId, serviceId, getContext().getCanonicalId().toString());
+        hide(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString());
     }
 
     public void show(String clusterId, String serviceId) {
-        show(clusterId, serviceId, getContext().getCanonicalId().toString());
+        show(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString());
     }
 
     void hide(String clusterId, String serviceId, String nodeId) {

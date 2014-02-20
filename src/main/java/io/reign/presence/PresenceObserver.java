@@ -19,6 +19,7 @@ package io.reign.presence;
 import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
+import io.reign.NodeId;
 
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
 
     private String clusterId = null;
     private String serviceId = null;
-    private String nodeId = null;
+    private NodeId nodeId = null;
 
     public abstract void updated(T updated);
 
@@ -47,7 +48,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
         this.serviceId = serviceId;
     }
 
-    void setNodeId(String nodeId) {
+    void setNodeId(NodeId nodeId) {
         this.nodeId = nodeId;
     }
 

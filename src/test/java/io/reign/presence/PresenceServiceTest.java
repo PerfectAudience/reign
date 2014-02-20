@@ -21,10 +21,12 @@ public class PresenceServiceTest {
     private static final Logger logger = LoggerFactory.getLogger(PresenceServiceTest.class);
 
     private PresenceService presenceService;
+    private String nodeId;
 
     @Before
     public void setUp() throws Exception {
         presenceService = MasterTestSuite.getReign().getService("presence");
+        nodeId = MasterTestSuite.getReign().getCanonicalIdProvider().forZk().getPathToken();
     }
 
     @After
@@ -77,8 +79,7 @@ public class PresenceServiceTest {
 
         // wait until service is available
         long start = System.currentTimeMillis();
-        NodeInfo nodeInfo = presenceService.waitUntilAvailable("clusterA", "serviceA1", MasterTestSuite.getReign()
-                .getCanonicalIdPathToken(), -1);
+        NodeInfo nodeInfo = presenceService.waitUntilAvailable("clusterA", "serviceA1", nodeId, -1);
         long end = System.currentTimeMillis();
 
         assertTrue("nodeInfo==null = " + (nodeInfo == null), nodeInfo != null);
@@ -137,16 +138,16 @@ public class PresenceServiceTest {
     @Test
     public void testNodeObserver() throws Exception {
         final AtomicReference<NodeInfo> nodeInfoRef = new AtomicReference<NodeInfo>();
-        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterD", "serviceD1", MasterTestSuite.getReign()
-                .getCanonicalIdPathToken(), new PresenceObserver<NodeInfo>() {
-            @Override
-            public void updated(NodeInfo updated) {
-                nodeInfoRef.set(updated);
-                synchronized (nodeInfoRef) {
-                    nodeInfoRef.notifyAll();
-                }
-            }
-        });
+        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterD", "serviceD1", nodeId,
+                new PresenceObserver<NodeInfo>() {
+                    @Override
+                    public void updated(NodeInfo updated) {
+                        nodeInfoRef.set(updated);
+                        synchronized (nodeInfoRef) {
+                            nodeInfoRef.notifyAll();
+                        }
+                    }
+                });
 
         assertTrue(nodeInfo == null);
 
@@ -190,13 +191,12 @@ public class PresenceServiceTest {
         ServiceInfo serviceInfo = presenceService.waitUntilAvailable("clusterA", "serviceA1", -1);
         assertTrue("service nodes = " + serviceInfo.getNodeIdList(), serviceInfo.getNodeIdList().size() > 0);
 
-        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterA", "serviceA1", reign.getContext()
-                .getCanonicalIdPathToken());
+        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterA", "serviceA1", nodeId);
 
         assertTrue("nodeInfo should not be null", nodeInfo != null);
         assertTrue("clusterA".equals(nodeInfo.getClusterId()));
         assertTrue("serviceA1".equals(nodeInfo.getServiceId()));
-        assertTrue(reign.getCanonicalId().toString().equals(nodeInfo.getNodeId()));
+        assertTrue(nodeId.equals(nodeInfo.getNodeId().toString()));
     }
 
     @Test
@@ -208,7 +208,7 @@ public class PresenceServiceTest {
 
         Reign reign = MasterTestSuite.getReign();
         PathScheme pathScheme = reign.getPathScheme();
-        String nodePath = pathScheme.joinTokens("clusterA", "serviceA1", reign.getCanonicalId().toString());
+        String nodePath = pathScheme.joinTokens("clusterA", "serviceA1", nodeId);
         String path = pathScheme.getAbsolutePath(PathType.PRESENCE, nodePath);
         assertTrue(reign.getZkClient().exists(path, false) == null);
 
@@ -228,7 +228,7 @@ public class PresenceServiceTest {
 
         Reign reign = MasterTestSuite.getReign();
         PathScheme pathScheme = reign.getPathScheme();
-        String nodePath = pathScheme.joinTokens("clusterA", "serviceA1", reign.getCanonicalId().toString());
+        String nodePath = pathScheme.joinTokens("clusterA", "serviceA1", nodeId);
         String path = pathScheme.getAbsolutePath(PathType.PRESENCE, nodePath);
         assertTrue(reign.getZkClient().exists(path, false) == null);
 

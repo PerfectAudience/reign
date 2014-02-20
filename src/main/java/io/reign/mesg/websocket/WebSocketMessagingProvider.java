@@ -1,14 +1,9 @@
 package io.reign.mesg.websocket;
 
 import io.reign.ReignContext;
-import io.reign.UnexpectedReignException;
 import io.reign.mesg.DefaultMessageProtocol;
 import io.reign.mesg.MessageProtocol;
 import io.reign.mesg.MessagingProvider;
-import io.reign.presence.PresenceService;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

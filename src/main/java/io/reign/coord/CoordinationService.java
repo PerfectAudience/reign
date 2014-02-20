@@ -95,7 +95,8 @@ public class CoordinationService extends AbstractService {
     public DistributedBarrier getBarrier(String clusterId, String barrierName, int parties) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.BARRIER, barrierName);
-        return new ZkDistributedBarrier(entityPath, getContext().getCanonicalId().toString(), parties, getContext());
+        return new ZkDistributedBarrier(entityPath, getContext().getCanonicalIdProvider().get().toString(), parties,
+                getContext());
     }
 
     public DistributedReentrantLock getReentrantLock(String clusterId, String lockName) {
@@ -105,8 +106,8 @@ public class CoordinationService extends AbstractService {
     DistributedReentrantLock getReentrantLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock lock = new ZkReentrantLock(zkReservationManager, getContext().getCanonicalId().toString(),
-                entityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
+        DistributedLock lock = new ZkReentrantLock(zkReservationManager, getContext().getCanonicalIdProvider().get()
+                .toString(), entityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(entityPath, ReservationType.LOCK_EXCLUSIVE, lock);
 
         return (DistributedReentrantLock) lock;
@@ -119,8 +120,8 @@ public class CoordinationService extends AbstractService {
     DistributedLock getLock(String clusterId, String lockName, List<ACL> aclList) {
         String entityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock lock = new ZkLock(zkReservationManager, getContext().getCanonicalId().toString(), entityPath,
-                ReservationType.LOCK_EXCLUSIVE, aclList);
+        DistributedLock lock = new ZkLock(zkReservationManager, getContext().getCanonicalIdProvider().get().toString(),
+                entityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(entityPath, ReservationType.LOCK_EXCLUSIVE, lock);
 
         return lock;
@@ -135,15 +136,15 @@ public class CoordinationService extends AbstractService {
         // write lock
         String writeEntityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_EXCLUSIVE, lockName);
-        DistributedLock writeLock = new ZkReentrantLock(zkReservationManager, getContext().getCanonicalId().toString(),
-                writeEntityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
+        DistributedLock writeLock = new ZkReentrantLock(zkReservationManager, getContext().getCanonicalIdProvider()
+                .get().toString(), writeEntityPath, ReservationType.LOCK_EXCLUSIVE, aclList);
         this.coordinationServiceCache.putLock(writeEntityPath, ReservationType.LOCK_EXCLUSIVE, writeLock);
 
         // read lock
         String readEntityPath = CoordServicePathUtil.getAbsolutePathEntity(getPathScheme(), PathType.COORD, clusterId,
                 ReservationType.LOCK_SHARED, lockName);
-        DistributedLock readLock = new ZkReentrantLock(zkReservationManager, getContext().getCanonicalId().toString(),
-                readEntityPath, ReservationType.LOCK_SHARED, aclList);
+        DistributedLock readLock = new ZkReentrantLock(zkReservationManager, getContext().getCanonicalIdProvider()
+                .get().toString(), readEntityPath, ReservationType.LOCK_SHARED, aclList);
         this.coordinationServiceCache.putLock(readEntityPath, ReservationType.LOCK_SHARED, readLock);
 
         return new ZkReadWriteLock(readLock, writeLock);
@@ -212,8 +213,8 @@ public class CoordinationService extends AbstractService {
         }
 
         // create and put in cache
-        DistributedSemaphore semaphore = new ZkSemaphore(zkReservationManager,
-                getContext().getCanonicalId().toString(), entityPath, aclList, pps);
+        DistributedSemaphore semaphore = new ZkSemaphore(zkReservationManager, getContext().getCanonicalIdProvider()
+                .get().toString(), entityPath, aclList, pps);
         coordinationServiceCache.putSemaphore(entityPath, semaphore);
 
         return semaphore;

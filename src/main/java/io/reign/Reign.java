@@ -79,7 +79,7 @@ public class Reign implements Watcher {
 
     private List<ACL> defaultZkAclList = DEFAULT_ACL_LIST;
 
-    private CanonicalIdProvider nodeIdProvider;
+    private NodeIdProvider nodeIdProvider;
 
     private final ObserverManager observerManager = new ObserverManager();
 
@@ -90,7 +90,7 @@ public class Reign implements Watcher {
     public Reign() {
     }
 
-    public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, CanonicalIdProvider nodeIdProvider) {
+    public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, NodeIdProvider nodeIdProvider) {
 
         this.zkClient = zkClient;
 
@@ -102,23 +102,30 @@ public class Reign implements Watcher {
 
     }
 
-    public synchronized CanonicalId getCanonicalId() {
-        if (!started) {
-            throw new IllegalStateException("Cannot get canonicalId before framework is started!");
-        }
-        return this.nodeIdProvider.get();
-    }
+    // public synchronized CanonicalId getCanonicalId() {
+    // if (!started) {
+    // throw new IllegalStateException("Cannot get canonicalId before framework is started!");
+    // }
+    // return this.nodeIdProvider.get();
+    // }
+    //
+    // public synchronized String getCanonicalIdPathToken() {
+    // if (!started) {
+    // throw new IllegalStateException("Cannot get canonicalId before framework is started!");
+    // }
+    // return this.nodeIdProvider.get().toString();
+    // }
 
-    public synchronized String getCanonicalIdPathToken() {
+    public synchronized NodeIdProvider getCanonicalIdProvider() {
         if (!started) {
-            throw new IllegalStateException("Cannot get canonicalId before framework is started!");
+            throw new IllegalStateException("Cannot get provider before framework is started!");
         }
-        return this.context.getCanonicalIdPathToken();
+        return this.nodeIdProvider;
     }
 
     public synchronized ReignContext getContext() {
         if (!started) {
-            throw new IllegalStateException("Cannot get ReignContext before framework is started!");
+            throw new IllegalStateException("Cannot get context before framework is started!");
         }
         return this.context;
     }
@@ -134,7 +141,7 @@ public class Reign implements Watcher {
         this.defaultZkAclList = defaultZkAclList;
     }
 
-    public synchronized void setCanonicalIdMaker(CanonicalIdProvider canonicalIdMaker) {
+    public synchronized void setCanonicalIdProvider(NodeIdProvider canonicalIdMaker) {
         if (started) {
             throw new IllegalStateException("Cannot set canonicalIdMaker once started!");
         }
@@ -282,10 +289,10 @@ public class Reign implements Watcher {
                 }
             }
 
-            @Override
-            public CanonicalId getCanonicalId() {
-                return nodeIdProvider.get();
-            }
+            // @Override
+            // public CanonicalId getCanonicalId() {
+            // return nodeIdProvider.get();
+            // }
 
             @Override
             public ZkClient getZkClient() {
@@ -302,10 +309,10 @@ public class Reign implements Watcher {
                 return finalDefaultZkAclList;
             }
 
-            @Override
-            public String getCanonicalIdPathToken() {
-                return nodeIdProvider.get().toString();
-            }
+            // @Override
+            // public String getCanonicalIdPathToken() {
+            // return nodeIdProvider.get().toString();
+            // }
 
             @Override
             public ObserverManager getObserverManager() {
@@ -313,7 +320,7 @@ public class Reign implements Watcher {
             }
 
             @Override
-            public CanonicalIdProvider getCanonicalIdProvider() {
+            public NodeIdProvider getCanonicalIdProvider() {
                 return nodeIdProvider;
             }
 

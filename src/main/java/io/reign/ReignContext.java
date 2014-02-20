@@ -30,15 +30,15 @@ public interface ReignContext {
 
     public <T extends Service> T getService(String serviceName);
 
-    /**
-     * 
-     * @return NEW instance of CanonicalId
-     */
-    public CanonicalId getCanonicalId();
+    // /**
+    // *
+    // * @return NEW instance of CanonicalId
+    // */
+    // public CanonicalId getCanonicalId();
 
-    public String getCanonicalIdPathToken();
+    // public String getCanonicalIdPathToken();
 
-    public CanonicalIdProvider getCanonicalIdProvider();
+    public NodeIdProvider getCanonicalIdProvider();
 
     public ZkClient getZkClient();
 
