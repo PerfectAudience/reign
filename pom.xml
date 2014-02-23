@@ -16,6 +16,13 @@
 
 	<dependencies>
 
+		<!-- codahale metrics -->		
+		<dependency>
+			<groupId>com.codahale.metrics</groupId>
+			<artifactId>metrics-core</artifactId>
+			<version>3.0.1</version>
+		</dependency>
+
 		<!-- for various utils -->
 		<dependency>
 			<groupId>commons-lang</groupId>
