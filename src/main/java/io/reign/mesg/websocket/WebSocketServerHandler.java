@@ -9,8 +9,8 @@ import static org.jboss.netty.handler.codec.http.HttpMethod.POST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import io.reign.NodeId;
 import io.reign.DefaultNodeId;
+import io.reign.NodeId;
 import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
 
 import org.apache.commons.io.IOUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -73,12 +74,15 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
     private WebSocketConnectionManager connectionManager;
 
+    private final ExecutorService requestMonitoringExecutor;
+
     public WebSocketServerHandler(ReignContext serviceDirectory, WebSocketConnectionManager connectionManager,
-            MessageProtocol messageProtocol) {
+            MessageProtocol messageProtocol, ExecutorService requestMonitoringExecutor) {
         super(new OrderedMemoryAwareThreadPoolExecutor(8, 1048576, 8 * 1048576));
         this.context = serviceDirectory;
         this.connectionManager = connectionManager;
         this.messageProtocol = messageProtocol;
+        this.requestMonitoringExecutor = requestMonitoringExecutor;
     }
 
     public ReignContext getServiceDirectory() {
@@ -350,7 +354,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
             handshaker.handshake(ctx.getChannel(), req).addListener(WebSocketServerHandshaker.HANDSHAKE_LISTENER);
         }
 
-        // TODO: register client with framework
+        // register client with framework
         PresenceService presenceService = context.getService("presence");
 
         SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
@@ -363,9 +367,10 @@ public class WebSocketServerHandler extends ExecutionHandler {
                 canonicalIdString, true);
 
         // register connection
-        connectionManager.addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil
-                .getClientPort(socketAddress), new WebSocketClient(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID,
-                Reign.DEFAULT_FRAMEWORK_CLIENT_ID, canonicalIdString, ctx.getChannel()));
+        connectionManager
+                .addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil.getClientPort(socketAddress),
+                        new WebSocketClient(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID, Reign.DEFAULT_FRAMEWORK_CLIENT_ID,
+                                canonicalIdString, ctx.getChannel(), this.requestMonitoringExecutor));
     }
 
     private void handleWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {

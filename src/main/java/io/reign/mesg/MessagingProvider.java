@@ -16,13 +16,13 @@ public interface MessagingProvider {
      */
     public void setServiceDirectory(ReignContext serviceDirectory);
 
-    public String sendMessage(String hostOrIpAddress, int port, String message);
+    public void sendMessage(String hostOrIpAddress, int port, String message, MessagingProviderCallback callback);
 
-    public byte[] sendMessage(String hostOrIpAddress, int port, byte[] message);
+    public void sendMessage(String hostOrIpAddress, int port, byte[] message, MessagingProviderCallback callback);
 
-    public String sendMessageForget(String hostOrIpAddress, int port, String message);
-
-    public byte[] sendMessageForget(String hostOrIpAddress, int port, byte[] message);
+    // public String sendMessageForget(String hostOrIpAddress, int port, String message);
+    //
+    // public byte[] sendMessageForget(String hostOrIpAddress, int port, byte[] message);
 
     public void setMessageProtocol(MessageProtocol messageProtocol);
 

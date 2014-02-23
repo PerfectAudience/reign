@@ -17,7 +17,7 @@
 package io.reign.examples;
 
 import io.reign.Reign;
-import io.reign.mesg.DefaultMessagingService;
+import io.reign.mesg.MessagingService;
 import io.reign.mesg.ResponseMessage;
 import io.reign.mesg.SimpleRequestMessage;
 import io.reign.presence.PresenceService;
@@ -72,7 +72,7 @@ public class MessagingServiceExample {
 
         Thread.sleep(5000);
 
-        DefaultMessagingService messagingService = reign.getService("mesg");
+        MessagingService messagingService = reign.getService("mesg");
 
         Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
                 new SimpleRequestMessage("presence", "/"));

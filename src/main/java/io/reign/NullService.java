@@ -1,12 +1,12 @@
 package io.reign;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.ResponseStatus;
 import io.reign.mesg.SimpleResponseMessage;
-import io.reign.presence.PresenceService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * No-op service.
@@ -34,7 +34,10 @@ public class NullService extends AbstractService {
             logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
                     requestMessage.getBody());
         }
-        return SimpleResponseMessage.DEFAULT_OK_RESPONSE;
+        // return SimpleResponseMessage.DEFAULT_OK_RESPONSE;
+        ResponseMessage responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
+        responseMessage.setId(requestMessage.getId());
+        return responseMessage;
     }
 
 }

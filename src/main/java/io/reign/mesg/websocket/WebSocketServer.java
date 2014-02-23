@@ -5,6 +5,7 @@ import io.reign.mesg.MessageProtocol;
 import io.reign.util.IdUtil;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
@@ -28,13 +29,15 @@ public class WebSocketServer {
     private final ReignContext serviceDirectory;
     private final MessageProtocol messageProtocol;
     private final WebSocketConnectionManager connectionManager;
+    private final ExecutorService requestMonitoringExecutor;
 
     public WebSocketServer(int port, ReignContext serviceDirectory, WebSocketConnectionManager connectionManager,
-            MessageProtocol messageProtocol) {
+            MessageProtocol messageProtocol, ExecutorService requestMonitoringExecutor) {
         this.port = port;
         this.serviceDirectory = serviceDirectory;
         this.messageProtocol = messageProtocol;
         this.connectionManager = connectionManager;
+        this.requestMonitoringExecutor = requestMonitoringExecutor;
     }
 
     public void start() {
@@ -44,7 +47,7 @@ public class WebSocketServer {
 
         // Set up the event pipeline factory.
         bootstrap.setPipelineFactory(new WebSocketServerPipelineFactory(serviceDirectory, connectionManager,
-                messageProtocol));
+                messageProtocol, requestMonitoringExecutor));
 
         // Bind and start to accept incoming connections.
         bootstrap.bind(new InetSocketAddress(port));

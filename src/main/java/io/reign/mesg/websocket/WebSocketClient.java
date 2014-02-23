@@ -1,11 +1,29 @@
+/*
+ Copyright 2013 Yen Pai ypai@reign.io
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
 package io.reign.mesg.websocket;
 
-import io.reign.NodeId;
 import io.reign.mesg.DefaultMessageProtocol;
+import io.reign.mesg.MessagingProviderCallback;
+import io.reign.mesg.NullMessagingProviderCallback;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -53,21 +71,26 @@ public class WebSocketClient {
     private String clusterId;
     private String serviceId;
     private String nodeId;
+    private final ExecutorService requestMonitoringExecutor;
 
-    public WebSocketClient(String uriString) throws URISyntaxException {
+    public WebSocketClient(String uriString, ExecutorService requestMonitoringExecutor) throws URISyntaxException {
         this.uri = new URI(uriString);
+        this.requestMonitoringExecutor = requestMonitoringExecutor;
     }
 
-    public WebSocketClient(URI uri) {
+    public WebSocketClient(URI uri, ExecutorService requestMonitoringExecutor) {
         this.uri = uri;
+        this.requestMonitoringExecutor = requestMonitoringExecutor;
     }
 
-    public WebSocketClient(String clusterId, String serviceId, String nodeId, Channel channel) {
+    public WebSocketClient(String clusterId, String serviceId, String nodeId, Channel channel,
+            ExecutorService requestMonitoringExecutor) {
         this.channel = channel;
         handler = new WebSocketClientHandler(null);
         this.clusterId = clusterId;
         this.serviceId = serviceId;
         this.nodeId = nodeId;
+        this.requestMonitoringExecutor = requestMonitoringExecutor;
     }
 
     public String getClusterId() {
@@ -135,64 +158,140 @@ public class WebSocketClient {
         handshaker.handshake(channel).syncUninterruptibly();
     }
 
-    /**
-     * Make a synchronous call
-     * 
-     * @param text
-     * @param waitForResponse
-     *            true to wait for a response; false for "fire and forget"
-     * @return
-     */
-    public String write(String text, boolean waitForResponse) {
+    public void write(String text, final MessagingProviderCallback callback) {
 
         final int requestId = messageIdSequence.incrementAndGet();
 
+        if (!(callback instanceof NullMessagingProviderCallback)) {
+            handler.registerCallback(channel, requestId, callback);
+        } else {
+            callback.response((String) null);
+        }
+
         final ChannelFuture channelFuture = channel.write(new TextWebSocketFrame(text
                 + DefaultMessageProtocol.MESSAGE_ID_DELIMITER + requestId));
-
-        if (!waitForResponse) {
-            return null;
-        }
 
         channelFuture.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture channelFuture) {
                 synchronized (channelFuture) {
                     if (logger.isTraceEnabled()) {
-                        logger.trace("notify() called:  channelFuture.hashCode()={}", channelFuture.hashCode());
+                        logger.trace("notify() called:  handler.hashCode={}; channelFuture.hashCode()={}",
+                                handler.hashCode(), channelFuture.hashCode());
                     }
                     channelFuture.notify();
                 }
             }
         });
-        channelFuture.awaitUninterruptibly();
 
-        Object response = null;
-        synchronized (channelFuture) {
-            try {
-                int waitMillis = 2;
-                while ((response = handler.pollResponse(requestId)) == null && waitMillis < 4096) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("Calling wait({}):  requestId={}; channelFuture.hashCode()={}", new Object[] {
-                                waitMillis, requestId, channelFuture.hashCode() });
+        requestMonitoringExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+                synchronized (channelFuture) {
+                    try {
+                        channelFuture.await(500);
+                    } catch (InterruptedException e) {
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("Interrupted:  handler.hashCode={}; channelFuture.hashCode()={}",
+                                    handler.hashCode(), channelFuture.hashCode());
+                        }
                     }
-                    channelFuture.wait(waitMillis);
-                    waitMillis = waitMillis * 2;
                 }
-            } catch (InterruptedException e) {
-                logger.warn("Interrupted while waiting for response:  " + e, e);
+                if (!channelFuture.isSuccess()) {
+                    handler.removeCallback(channel, requestId);
+                    callback.error(null);
+                    boolean cancelled = channelFuture.cancel();
+                    logger.warn("Attempted cancel because no response:  channelFuture.hashCode()={}; cancelled={}",
+                            channelFuture.hashCode(), cancelled);
+                } else {
+                    int waitMillis = 1;
+                    synchronized (callback) {
+                        while (waitMillis < 65) {
+                            try {
+                                callback.wait(waitMillis = waitMillis * 2);
+                                if (handler.getCallback(channel, requestId) == null) {
+                                    if (logger.isTraceEnabled()) {
+                                        logger.trace("Completed:  handler.hashCode={}; requestId={}; timeMillis={}",
+                                                handler.hashCode(), requestId, waitMillis);
+                                    }
+                                    return;
+                                }
+                            } catch (InterruptedException e) {
+                                if (logger.isTraceEnabled()) {
+                                    logger.trace("Interrupted:  handler.hashCode={}; requestId={}", handler.hashCode(),
+                                            requestId);
+                                }
+                            }
+                        }
+                    }
+                    handler.removeCallback(channel, requestId);
+                    callback.response((String) null);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace(
+                                "Removed callback for successful request with no response:  handler.hashCode={}; requestId={}",
+                                handler.hashCode(), requestId);
+                    }
+                }
             }
-        }
+        });
 
-        if (logger.isTraceEnabled()) {
-            logger.trace("Got response:  requestId={}; channelFuture.hashCode()={}; response={}", new Object[] {
-                    requestId, text, response });
-        }
+        // if (callback instanceof NullMessagingCallback) {
+        // return null;
+        // }
 
-        return (String) response;
+        // channelFuture.addListener(new ChannelFutureListener() {
+        // @Override
+        // public void operationComplete(ChannelFuture channelFuture) {
+        // synchronized (channelFuture) {
+        // if (logger.isTraceEnabled()) {
+        // logger.trace("notify() called:  channelFuture.hashCode()={}", channelFuture.hashCode());
+        // }
+        // // channelFuture.notify();
+        //
+        // Object response = handler.pollResponse(requestId);
+        // int waitMillis = 2;
+        // while (response == null && waitMillis < 4096) {
+        // try {
+        // channelFuture.wait(waitMillis);
+        // response = handler.pollResponse(requestId);
+        // waitMillis = waitMillis * 2;
+        // } catch (InterruptedException e) {
+        // logger.warn("Interrupted while waiting for response:  " + e, e);
+        // }
+        // }
+        // callback.response((String) response);
+        // }
+        // }
+        // });
+        // channelFuture.awaitUninterruptibly();
+
+        // Object response = null;
+        // synchronized (channelFuture) {
+        // try {
+        // int waitMillis = 2;
+        // while ((response = handler.pollResponse(requestId)) == null && waitMillis < 4096) {
+        // if (logger.isTraceEnabled()) {
+        // logger.trace("Calling wait({}):  requestId={}; channelFuture.hashCode()={}", new Object[] {
+        // waitMillis, requestId, channelFuture.hashCode() });
+        // }
+        // channelFuture.wait(waitMillis);
+        //
+        // }
+        //
+        // } catch (InterruptedException e) {
+        // logger.warn("Interrupted while waiting for response:  " + e, e);
+        // }
+        // }
+        //
+        // if (logger.isTraceEnabled()) {
+        // logger.trace("Got response:  requestId={}; channelFuture.hashCode()={}; response={}", new Object[] {
+        // requestId, text, response });
+        // }
+        //
+        // callback.response((String) response);
     }
 
-    public byte[] write(byte[] bytes, boolean waitForResponse) {
+    public void write(byte[] bytes, final MessagingProviderCallback callback) {
         throw new UnsupportedOperationException("Not yet supported.");
     }
 

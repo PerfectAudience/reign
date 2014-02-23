@@ -5,6 +5,7 @@ import io.reign.presence.PresenceService;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,10 +20,20 @@ public class WebSocketConnectionManager {
 
     private ReignContext reignContext;
 
+    private ExecutorService requestMonitoringExecutor;
+
     /**
      * How often to ping and check that a connection is still open
      */
     private long connectionTimeout = 10000;
+
+    public ExecutorService getRequestMonitoringExecutor() {
+        return requestMonitoringExecutor;
+    }
+
+    public void setRequestMonitoringExecutor(ExecutorService requestMonitoringExecutor) {
+        this.requestMonitoringExecutor = requestMonitoringExecutor;
+    }
 
     public void shutdown() {
         this.shutdown = true;
@@ -111,7 +122,7 @@ public class WebSocketConnectionManager {
         WebSocketClient client = clientMap.get(endpointUri);
         if (client == null) {
             try {
-                WebSocketClient newClient = new WebSocketClient(endpointUri);
+                WebSocketClient newClient = new WebSocketClient(endpointUri, requestMonitoringExecutor);
                 client = clientMap.putIfAbsent(endpointUri, newClient);
                 if (client == null) {
                     logger.info("Establishing connection:  remote={}", endpointUri);

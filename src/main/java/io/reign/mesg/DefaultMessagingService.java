@@ -1,3 +1,19 @@
+/*
+ Copyright 2013 Yen Pai ypai@reign.io
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
 package io.reign.mesg;
 
 import io.reign.AbstractService;
@@ -12,6 +28,7 @@ import io.reign.util.JacksonUtil;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
@@ -27,6 +44,8 @@ import org.slf4j.LoggerFactory;
 public class DefaultMessagingService extends AbstractService implements MessagingService {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultMessagingService.class);
+
+    private static final MessagingProviderCallback NULL_MESSAGING_PROVIDER_CALLBACK = new NullMessagingProviderCallback();
 
     private Integer port = Reign.DEFAULT_MESSAGING_PORT;
 
@@ -46,34 +65,43 @@ public class DefaultMessagingService extends AbstractService implements Messagin
      * @return
      */
     @Override
-    public ResponseMessage sendMessage(String clusterId, String serviceId, String canonicalIdString,
-            RequestMessage requestMessage) {
-        NodeId canonicalId = getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(canonicalIdString, null));
+    public ResponseMessage sendMessage(final String clusterId, final String serviceId, final NodeId nodeId,
+            final RequestMessage requestMessage) {
 
         // prefer ip, then use hostname if not available
-        String hostOrIpAddress = canonicalId.getIpAddress();
+        String hostOrIpAddress = nodeId.getIpAddress();
         if (hostOrIpAddress == null) {
-            hostOrIpAddress = canonicalId.getHost();
+            hostOrIpAddress = nodeId.getHost();
         }
 
         // get port
-        Integer port = canonicalId.getMessagingPort();
+        Integer port = nodeId.getMessagingPort();
 
         if (hostOrIpAddress == null || port == null) {
             throw new IllegalStateException("Host or port is not available:  host=" + hostOrIpAddress + "; port="
                     + port);
         }
 
-        if (requestMessage.getBody() instanceof String) {
-            String textResponse = this.messagingProvider.sendMessage(hostOrIpAddress, port,
-                    messageProtocol.toTextRequest(requestMessage));
-            return this.messageProtocol.fromTextResponse(textResponse);
-        } else {
-            byte[] binaryResponse = this.messagingProvider.sendMessage(hostOrIpAddress, port,
-                    messageProtocol.toBinaryRequest(requestMessage));
-            return this.messageProtocol.fromBinaryResponse(binaryResponse);
+        // send message and wait for response
+        final AtomicReference<ResponseMessage> responseValue = new AtomicReference<ResponseMessage>(null);
+        MessagingCallback messagingCallback = new MessagingCallback() {
+            @Override
+            public void response(String clusterId, String serviceId, NodeId nodeId, ResponseMessage responseMessage) {
+                responseValue.set(responseMessage);
+                synchronized (this) {
+                    this.notifyAll();
+                }
+            }
+        };
+        sendMessageAsync(clusterId, serviceId, nodeId, requestMessage, messagingCallback);
+        synchronized (messagingCallback) {
+            try {
+                messagingCallback.wait();
+            } catch (InterruptedException e) {
+                logger.warn("Interrupted while waiting for response:  " + e, e);
+            }
         }
-
+        return responseValue.get();
     }
 
     /**
@@ -93,30 +121,31 @@ public class DefaultMessagingService extends AbstractService implements Messagin
         }
         Map<String, ResponseMessage> responseMap = new HashMap<String, ResponseMessage>(serviceInfo.getNodeIdList()
                 .size());
-        for (String nodeId : serviceInfo.getNodeIdList()) {
+        for (String nodeIdString : serviceInfo.getNodeIdList()) {
             if (logger.isTraceEnabled()) {
                 logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
-                        new Object[] { clusterId, serviceId, nodeId, requestMessage });
+                        new Object[] { clusterId, serviceId, nodeIdString, requestMessage });
             }
-            ResponseMessage responseMessage = sendMessage(clusterId, serviceId, nodeId, requestMessage);
-            responseMap.put(getPathScheme().joinTokens(clusterId, serviceId, nodeId), responseMessage);
+            ResponseMessage responseMessage = sendMessage(clusterId, serviceId, getContext().getCanonicalIdProvider()
+                    .fromZk(new ZkNodeId(nodeIdString, null)), requestMessage);
+            responseMap.put(getPathScheme().joinTokens(clusterId, serviceId, nodeIdString), responseMessage);
         }
 
         return responseMap;
     }
 
-    public void sendMessageForget(String clusterId, String serviceId, String canonicalIdString,
-            RequestMessage requestMessage) {
-        NodeId canonicalId = getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(canonicalIdString, null));
+    @Override
+    public void sendMessageAsync(final String clusterId, final String serviceId, final NodeId nodeId,
+            final RequestMessage requestMessage, final MessagingCallback callback) {
 
         // prefer ip, then use hostname if not available
-        String hostOrIpAddress = canonicalId.getIpAddress();
+        String hostOrIpAddress = nodeId.getIpAddress();
         if (hostOrIpAddress == null) {
-            hostOrIpAddress = canonicalId.getHost();
+            hostOrIpAddress = nodeId.getHost();
         }
 
         // get port
-        Integer port = canonicalId.getMessagingPort();
+        Integer port = nodeId.getMessagingPort();
 
         if (hostOrIpAddress == null || port == null) {
             throw new IllegalStateException("Host or port is not available:  host=" + hostOrIpAddress + "; port="
@@ -124,30 +153,116 @@ public class DefaultMessagingService extends AbstractService implements Messagin
         }
 
         if (requestMessage.getBody() instanceof String) {
-            this.messagingProvider.sendMessageForget(hostOrIpAddress, port,
-                    messageProtocol.toTextRequest(requestMessage));
+            MessagingProviderCallback messagingProviderCallback = new MessagingProviderCallback() {
+                @Override
+                public void response(String response) {
+                    ResponseMessage responseMessage = messageProtocol.fromTextResponse(response);
+                    // responseMessage.setId(requestMessage.getId());
+                    callback.response(clusterId, serviceId, nodeId, responseMessage);
+                }
+
+                @Override
+                public void response(byte[] bytes) {
+                }
+
+                @Override
+                public void error(Object object) {
+                    callback.response(clusterId, serviceId, nodeId, SimpleResponseMessage.DEFAULT_ERROR_RESPONSE);
+                }
+            };
+            this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol.toTextRequest(requestMessage),
+                    messagingProviderCallback);
 
         } else {
-            this.messagingProvider.sendMessageForget(hostOrIpAddress, port,
-                    messageProtocol.toBinaryRequest(requestMessage));
+            MessagingProviderCallback messagingProviderCallback = new MessagingProviderCallback() {
+                @Override
+                public void response(String response) {
+                }
+
+                @Override
+                public void response(byte[] bytes) {
+                    ResponseMessage responseMessage = messageProtocol.fromBinaryResponse(bytes);
+                    // responseMessage.setId(requestMessage.getId());
+                    callback.response(clusterId, serviceId, nodeId, responseMessage);
+                }
+
+                @Override
+                public void error(Object object) {
+                    callback.response(clusterId, serviceId, nodeId, SimpleResponseMessage.DEFAULT_ERROR_RESPONSE);
+                }
+            };
+            this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol.toBinaryRequest(requestMessage),
+                    messagingProviderCallback);
 
         }
-
     }
 
-    public void sendMessageForget(String clusterId, String serviceId, RequestMessage requestMessage) {
+    @Override
+    public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
+            MessagingCallback callback) {
         PresenceService presenceService = getContext().getService("presence");
         ServiceInfo serviceInfo = presenceService.lookupServiceInfo(clusterId, serviceId);
         if (serviceInfo == null) {
             return;
         }
 
-        for (String nodeId : serviceInfo.getNodeIdList()) {
+        for (String nodeIdString : serviceInfo.getNodeIdList()) {
             if (logger.isTraceEnabled()) {
                 logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
-                        new Object[] { clusterId, serviceId, nodeId, requestMessage });
+                        new Object[] { clusterId, serviceId, nodeIdString, requestMessage });
             }
-            sendMessageForget(clusterId, serviceId, nodeId, requestMessage);
+            sendMessageAsync(clusterId, serviceId,
+                    getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)), requestMessage,
+                    callback);
+
+        }
+    }
+
+    @Override
+    public void sendMessageFireAndForget(String clusterId, String serviceId, NodeId nodeId,
+            RequestMessage requestMessage) {
+
+        // prefer ip, then use hostname if not available
+        String hostOrIpAddress = nodeId.getIpAddress();
+        if (hostOrIpAddress == null) {
+            hostOrIpAddress = nodeId.getHost();
+        }
+
+        // get port
+        Integer port = nodeId.getMessagingPort();
+
+        if (hostOrIpAddress == null || port == null) {
+            throw new IllegalStateException("Host or port is not available:  host=" + hostOrIpAddress + "; port="
+                    + port);
+        }
+
+        if (requestMessage.getBody() instanceof String) {
+            this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol.toTextRequest(requestMessage),
+                    NULL_MESSAGING_PROVIDER_CALLBACK);
+
+        } else {
+            this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol.toBinaryRequest(requestMessage),
+                    NULL_MESSAGING_PROVIDER_CALLBACK);
+
+        }
+
+    }
+
+    @Override
+    public void sendMessageFireAndForget(String clusterId, String serviceId, RequestMessage requestMessage) {
+        PresenceService presenceService = getContext().getService("presence");
+        ServiceInfo serviceInfo = presenceService.lookupServiceInfo(clusterId, serviceId);
+        if (serviceInfo == null) {
+            return;
+        }
+
+        for (String nodeIdString : serviceInfo.getNodeIdList()) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
+                        new Object[] { clusterId, serviceId, nodeIdString, requestMessage });
+            }
+            sendMessageFireAndForget(clusterId, serviceId,
+                    getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)), requestMessage);
 
         }
     }
@@ -242,24 +357,26 @@ public class DefaultMessagingService extends AbstractService implements Messagin
             String[] tokens = getPathScheme().tokenizePath(resource);
             String clusterId = tokens[0];
             String serviceId = tokens[1];
-            String nodeId = null;
+            String nodeIdString = null;
             if (tokens.length > 2) {
-                nodeId = tokens[2];
+                nodeIdString = tokens[2];
             }
 
             logger.debug("clusterId={}; serviceId={}; nodeId={}; meta={}; mesgBody={}", new Object[] { clusterId,
-                    serviceId, nodeId, meta, mesgBody });
+                    serviceId, nodeIdString, meta, mesgBody });
 
             /** take appropriate action **/
-            if (nodeId == null) {
+            if (nodeIdString == null) {
                 if ("forget".equals(meta)) {
-                    this.sendMessageForget(clusterId, serviceId, messageToSend);
+                    this.sendMessageFireAndForget(clusterId, serviceId, messageToSend);
                 } else {
                     return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  " + meta);
                 }
             } else {
                 if ("forget".equals(meta)) {
-                    this.sendMessageForget(clusterId, serviceId, nodeId, messageToSend);
+                    this.sendMessageFireAndForget(clusterId, serviceId,
+                            getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)),
+                            messageToSend);
                 } else {
                     return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  " + meta);
                 }
