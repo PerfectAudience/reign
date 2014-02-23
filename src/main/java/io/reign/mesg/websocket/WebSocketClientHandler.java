@@ -181,15 +181,15 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
             }
 
         } else if (frame instanceof PongWebSocketFrame) {
-            logger.trace("WebSocket Client received pong");
+            logger.trace("Received pong");
 
         } else if (frame instanceof CloseWebSocketFrame) {
-            logger.trace("WebSocket Client received closing");
+            logger.trace("Received closing");
 
             ch.close();
 
         } else if (frame instanceof PingWebSocketFrame) {
-            logger.trace("WebSocket Client received ping, response with pong");
+            logger.trace("Received ping:  respond with pong");
 
             ch.write(new PongWebSocketFrame(frame.getBinaryData()));
         }
