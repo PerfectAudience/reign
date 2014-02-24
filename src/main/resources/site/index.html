@@ -274,7 +274,7 @@ function renderIncomingMessage(divElementId, html) {
 
 function renderControlMessage(divElementId, html) {
     var currentValue = requestIdSequence;
-    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-warning">&#8227;&nbsp;'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-info">&#8227;&nbsp;'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
     cleanTerminal();
 }
 
