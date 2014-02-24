@@ -87,9 +87,10 @@
           <h2>General API Format</h2>
           
           <p>Core API calls are REST-ful in style and generally follow the form:<br/>
-          <pre>
-              [TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND][NEW_LINE_IF_MESSAGE_BODY] &gt; [OPTIONAL_REQUEST_ID]
-              [OPTIONAL_MESSAGE_BODY]</pre>
+          <code>
+	   	  [TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND] &gt; [OPTIONAL_REQUEST_ID][NEW_LINE]<br/>
+		  [OPTIONAL_MESSAGE_BODY]
+	      </code>
           </p>          
           <p>Most calls have been designed in a familiar HTTP REST style.</p>
           <p>&nbsp;</p> 
@@ -111,7 +112,7 @@
           <h2>Configuration Service</h2>
           <p>Route API calls to the Configuration Service by prefixing with <code>conf:</code></p>
           <p>Serializer to use is based on "file extension" part of path -- required for all configuration paths:<br/>
-			".properties" or ".props" = properties serializer</br>
+			".properties" = properties serializer</br>
 			".js" or ".json" = JSON serializer<br/>
 			</p>
 			<h4>List available clusters</h4>   
