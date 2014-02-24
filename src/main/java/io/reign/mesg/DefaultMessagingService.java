@@ -339,7 +339,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
             String resource = null;
             int hashLastIndex = resourceLine.lastIndexOf("#");
             if (hashLastIndex != -1) {
-                meta = resourceLine.substring(hashLastIndex + 1);
+                meta = resourceLine.substring(hashLastIndex + 1).trim();
                 resource = resourceLine.substring(0, hashLastIndex);
             } else {
                 resource = resourceLine;
@@ -370,7 +370,8 @@ public class DefaultMessagingService extends AbstractService implements Messagin
                 if ("ff".equals(meta)) {
                     this.sendMessageFireAndForget(clusterId, serviceId, messageToSend);
                 } else {
-                    return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  " + meta);
+                    return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  '" + meta
+                            + "'");
                 }
             } else {
                 if ("ff".equals(meta)) {
@@ -378,11 +379,12 @@ public class DefaultMessagingService extends AbstractService implements Messagin
                             getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)),
                             messageToSend);
                 } else {
-                    return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  " + meta);
+                    return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  '" + meta
+                            + "'");
                 }
             }
 
-            return SimpleResponseMessage.DEFAULT_OK_RESPONSE;
+            return new SimpleResponseMessage(ResponseStatus.OK, requestMessage.getId());
 
         } catch (Exception e) {
             logger.error("" + e, e);

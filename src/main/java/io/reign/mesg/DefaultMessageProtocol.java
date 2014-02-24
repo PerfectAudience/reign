@@ -18,7 +18,7 @@ public class DefaultMessageProtocol implements MessageProtocol {
 
     // private static final Pattern PATTERN_TEXT_REQUEST_SPLITTER = Pattern.compile("\\:");
 
-    public static final String MESSAGE_ID_DELIMITER = "\\";
+    public static final String MESSAGE_ID_DELIMITER = ">";
 
     /**
      * Reusable Jackson JSON mapper
@@ -30,33 +30,39 @@ public class DefaultMessageProtocol implements MessageProtocol {
      */
     @Override
     public RequestMessage fromTextRequest(String textRequest) {
-        // try {
-        String[] requestTokens = null;
-        int colonIndex = textRequest.indexOf(':');
-        if (colonIndex != -1) {
-            requestTokens = new String[2];
-            requestTokens[0] = textRequest.substring(0, colonIndex);
-            requestTokens[1] = textRequest.substring(colonIndex + 1);
+        try {
+            String[] requestTokens = null;
+            int colonIndex = textRequest.indexOf(':');
+            if (colonIndex != -1) {
+                requestTokens = new String[2];
+                requestTokens[0] = textRequest.substring(0, colonIndex);
+                requestTokens[1] = textRequest.substring(colonIndex + 1);
 
-        }
-        if (requestTokens != null) {
-            RequestMessage requestMessage = new SimpleRequestMessage();
-            requestMessage.setTargetService(requestTokens[0]);
-
-            int messageIdDelimiterIndex = requestTokens[1].lastIndexOf(MESSAGE_ID_DELIMITER);
-            if (messageIdDelimiterIndex == -1) {
-                requestMessage.setBody(requestTokens[1]);
-            } else {
-                requestMessage.setBody(requestTokens[1].substring(0, messageIdDelimiterIndex));
-                requestMessage.setId(Integer.parseInt(requestTokens[1].substring(messageIdDelimiterIndex + 1)));
             }
-            return requestMessage;
-        } else {
-            logger.warn("Poorly formatted message:  message='{}'", textRequest);
+            if (requestTokens != null) {
+                RequestMessage requestMessage = new SimpleRequestMessage();
+                requestMessage.setTargetService(requestTokens[0]);
+
+                int messageIdDelimiterIndex = requestTokens[1].lastIndexOf(MESSAGE_ID_DELIMITER);
+                if (messageIdDelimiterIndex == -1) {
+                    requestMessage.setBody(requestTokens[1]);
+                } else {
+                    int newlineIndex = requestTokens[1].indexOf("\n", messageIdDelimiterIndex + 1);
+                    if (newlineIndex == -1) {
+                        newlineIndex = requestTokens[1].length();
+                    }
+                    requestMessage.setBody(requestTokens[1].substring(0, messageIdDelimiterIndex).trim()
+                            + requestTokens[1].substring(newlineIndex));
+                    requestMessage.setId(Integer.parseInt(requestTokens[1].substring(messageIdDelimiterIndex + 1,
+                            newlineIndex).trim()));
+                }
+                return requestMessage;
+            } else {
+                logger.warn("Poorly formatted message:  message='{}'", textRequest);
+            }
+        } catch (Exception e) {
+            logger.error("Error trying to parse request message:  " + e, e);
         }
-        // } catch (UnsupportedEncodingException e) {
-        // logger.error("Error trying to parse request message:  " + e, e);
-        // }
         return null;
     }
 

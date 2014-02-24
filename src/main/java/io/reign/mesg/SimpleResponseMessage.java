@@ -30,6 +30,11 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
         setStatus(status);
     }
 
+    public SimpleResponseMessage(ResponseStatus status, Integer id) {
+        setStatus(status);
+        setId(id);
+    }
+
     public SimpleResponseMessage(ResponseStatus status, Object body) {
         setStatus(status);
         setBody(body);
@@ -37,6 +42,13 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
 
     public SimpleResponseMessage(ResponseStatus status, Object body, String comment) {
         setStatus(status);
+        setBody(body);
+        setComment(comment);
+    }
+
+    public SimpleResponseMessage(ResponseStatus status, Integer id, Object body, String comment) {
+        setStatus(status);
+        setId(id);
         setBody(body);
         setComment(comment);
     }

@@ -88,10 +88,10 @@
           
           <p>Core API calls are REST-ful in style and generally follow the form:<br/>
           <pre>
-              [TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND][OPTIONAL_NEW_LINE]
+              [TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND][NEW_LINE_IF_MESSAGE_BODY] &gt; [OPTIONAL_REQUEST_ID]
               [OPTIONAL_MESSAGE_BODY]</pre>
           </p>          
-          <p>Even though API calls are over Web Sockets, most calls have been designed in a familiar HTTP REST style.</p>
+          <p>Most calls have been designed in a familiar HTTP REST style.</p>
           <p>&nbsp;</p> 
           <hr/>            
 
@@ -190,6 +190,7 @@
 <script type="text/javascript">
 var socket; 
 var socketOpened = false;
+var requestIdSequence = 0;
 
 if (!window.WebSocket) {
   window.WebSocket = window.MozWebSocket;
@@ -197,6 +198,11 @@ if (!window.WebSocket) {
 
 function send(message) {
     if (!window.WebSocket) { return; }
+    requestIdSequence++;
+    var idDelimiterIndex = message.indexOf(">");
+    if( idDelimiterIndex<0 ) {
+    	message = message + " > " + requestIdSequence;
+    }
     if (!socket || socket.readyState != WebSocket.OPEN) {
         connectWebSocket(); 
         renderRequest('responseText', message);
@@ -212,13 +218,22 @@ function connectWebSocket() {
 	if( socket && socket.readyState!=socket.CLOSED ) return;
 	if (window.WebSocket) {
 		socket = new WebSocket($('#connectHost').val());
-		socket.onmessage = function(event) {    
-			renderResponse('responseText', event.data);
+		socket.onmessage = function(event) {
+			var statusIndex = -1;
+			var id = 0;
+			if( event.data ) {
+				statusIndex = event.data.indexOf("status");
+			}
+			if( statusIndex < 0 ) {
+				renderIncomingMessage('responseText', event.data);
+			} else {
+				renderResponse('responseText', event.data);
+			}
 		};
 		socket.onopen = function(event) { 
 			socketOpened = true; 
 			renderControlMessage('responseText', 'Web Socket opened:  '+$('#connectHost').val());
-			send("presence:/reign/client");
+			//send("presence:/reign/client");
 		};
 		socket.onclose = function(event) {
 		    if( socketOpened ) { 
@@ -239,51 +254,50 @@ function connectWebSocket() {
 	}
 } // function
 
-var resultCounter=0;
-
 function renderResponse(divElementId, html) {
-	var currentValue = resultCounter-1;
+	var currentValue = requestIdSequence;
     $('#termResultContent'+currentValue).append($('<div>'+html+'</div>').hide().fadeIn('fast'));
     
     // remove earlier items
-    var earliestValue = currentValue - 10;
-    if( earliestValue>=0 ) {
-	    $('#termResult'+earliestValue).fadeOut('slow', 
+    var cleanerStartIndex = currentValue - 10;
+    var found = $('#termResult'+cleanerStartIndex).length > 0 || $('#termResult'+cleanerStartIndex+'C').length > 0 ||  $('#termResult'+cleanerStartIndex+'I').length > 0;   
+    while ( cleanerStartIndex >= 0 && found ) {
+	    $('#termResult'+cleanerStartIndex).fadeOut('slow', 
 			function() {
-				$('#termResult'+earliestValue).remove();
+				$('#termResult'+cleanerStartIndex).remove();
 			}
 		);
-    }    
-}
-
-function renderControlMessage(divElementId, html) {
-    var currentValue = resultCounter++;
-    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-warning">&gt;&nbsp;'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
-
+	    $('#termResult'+cleanerStartIndex+'C').fadeOut('slow', 
+				function() {
+					$('#termResult'+cleanerStartIndex+'C').remove();
+				}
+		);
+	    $('#termResult'+cleanerStartIndex+'I').fadeOut('slow', 
+				function() {
+					$('#termResult'+cleanerStartIndex+'I').remove();
+				}
+		);	
+	    cleanerStartIndex--;
+	    found = $('#termResult'+cleanerStartIndex).length > 0 || $('#termResult'+cleanerStartIndex+'C').length > 0 ||  $('#termResult'+cleanerStartIndex+'I').length > 0;	    
+    }  
 }
 
 function renderRequest(divElementId, html) { 
-    //var theDiv = document.getElementById(divElementId);
-    //var contentDiv = document.createElement('div');
-    //var content = document.createElement('pre'); content.innerHTML = html;
-    //contentDiv.appendChild(content);
-    //theDiv.appendChild(contentDiv); 
-    var currentValue = resultCounter++;
+    var currentValue = requestIdSequence;
     $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
-//    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre>'+html+'<button id="termResultClose'+currentValue+'" class="close">&times;</button></pre></div></div>').hide().fadeIn('fast'));
-//     $('#termResultClose'+currentValue).on("click", 
-//     	function(event) { 
-//     		$('#termResult'+currentValue).fadeOut('fast', 
-//     			function() {
-//     				$('#termResult'+currentValue).remove();
-//     			}
-//     		); 
-//     	}
-//     );
-    
+}
 
-    //theDiv.scrollTop = theDiv.scrollHeight; 
-} // function
+function renderIncomingMessage(divElementId, html) {
+    var currentValue = requestIdSequence;
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'I"><div><pre id="termResultContent'+currentValue+'I"><div class="text-warning strong">'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+}
+
+function renderControlMessage(divElementId, html) {
+    var currentValue = requestIdSequence;
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-warning">&#8227;&nbsp;'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+}
+
+
 
 function checkKey(e) { 
 	if( e && e.keyCode==13 && $('#sendInput').val().match("^presence:")) { 
