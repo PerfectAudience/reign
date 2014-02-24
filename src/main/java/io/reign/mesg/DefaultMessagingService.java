@@ -367,13 +367,13 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
             /** take appropriate action **/
             if (nodeIdString == null) {
-                if ("forget".equals(meta)) {
+                if ("ff".equals(meta)) {
                     this.sendMessageFireAndForget(clusterId, serviceId, messageToSend);
                 } else {
                     return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  " + meta);
                 }
             } else {
-                if ("forget".equals(meta)) {
+                if ("ff".equals(meta)) {
                     this.sendMessageFireAndForget(clusterId, serviceId,
                             getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)),
                             messageToSend);

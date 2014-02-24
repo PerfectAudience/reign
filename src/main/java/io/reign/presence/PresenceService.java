@@ -307,9 +307,10 @@ public class PresenceService extends AbstractService {
                         "lookupServiceInfo():  error trying to fetch service info:  {}:  node does not exist:  path={}",
                         e.getMessage(), path);
             } else {
+                error = true;
                 logger.error("lookupServiceInfo():  error trying to fetch service info:  " + e, e);
             }
-            error = true;
+
         } catch (Exception e) {
             logger.warn("lookupServiceInfo():  error trying to fetch service info:  " + e, e);
             error = true;

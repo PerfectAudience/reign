@@ -76,7 +76,7 @@
            </form>
            
            <hr/>
-           <div id="responseText" class="pre-scollable"></div>
+           <div id="responseText" class="pre-scrollable"></div>
 	  </div>
 	  
 	   
@@ -161,7 +161,7 @@
           <h2>Messaging Service</h2>
           <p>Route API calls to the Messaging Service by prefixing with <code>mesg:</code></p>
 		  <h4>Send message to all connected clients and don't wait for response (goes to null service)</h4>
-	      <code>mesg:/reign/client#forget<br/>
+	      <code>mesg:/reign/client#ff<br/>
 	      {"body":"Hello World"}<br/>
 	      </code>       
           <hr/>         
@@ -178,9 +178,9 @@
 
     <!-- javascript ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="js/jquery-1.10.1.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="jquery.gracefulWebSocket.js"></script>
+    <script type="text/javascript" src="js/jquery-1.10.1.min.js"></script>
+    <script type="text/javascript" src="js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/jquery.gracefulWebSocket.js"></script>
 
 	<script>
 	   // show first tab
@@ -199,9 +199,11 @@ function send(message) {
     if (!window.WebSocket) { return; }
     if (!socket || socket.readyState != WebSocket.OPEN) {
         connectWebSocket(); 
+        renderRequest('responseText', message);
         // alert("The socket is not open:  reconnecting:  "+$('#connectHost').val()); 
         setTimeout( function(){ if (socket && socket.readyState == WebSocket.OPEN) {socket.send(message);} }, 200);
     } else { 
+    	renderRequest('responseText', message);
     	socket.send(message);
     }
 } // function
@@ -211,23 +213,23 @@ function connectWebSocket() {
 	if (window.WebSocket) {
 		socket = new WebSocket($('#connectHost').val());
 		socket.onmessage = function(event) {    
-			appendDiv('responseText', event.data);
+			renderResponse('responseText', event.data);
 		};
 		socket.onopen = function(event) { 
 			socketOpened = true; 
-			appendDiv('responseText', 'Web Socket opened:  '+$('#connectHost').val());
+			renderControlMessage('responseText', 'Web Socket opened:  '+$('#connectHost').val());
 			send("presence:/reign/client");
 		};
 		socket.onclose = function(event) {
 		    if( socketOpened ) { 
-		    	appendDiv('responseText', 'Web Socket closed:&nbsp; '+$('#connectHost').val()); 
+		    	renderControlMessage('responseText', 'Web Socket closed:&nbsp; '+$('#connectHost').val()); 
 		    }     
 		    socket = null; 
 		    socketOpened = false;
 		};  
 		socket.onerror = function(event) {
 	    	if( socket ) { 
-	    		appendDiv('responseText', 'Web Socket connection error:&nbsp; '+$('#connectHost').val()); 
+	    		renderControlMessage('responseText', 'Web Socket connection error:&nbsp; '+$('#connectHost').val()); 
 	    	}     
 	    	socket = null; 
 	    	socketOpened = false;
@@ -239,15 +241,47 @@ function connectWebSocket() {
 
 var resultCounter=0;
 
-function appendDiv(divElementId, html) { 
+function renderResponse(divElementId, html) {
+	var currentValue = resultCounter-1;
+    $('#termResultContent'+currentValue).append($('<div>'+html+'</div>').hide().fadeIn('fast'));
+    
+    // remove earlier items
+    var earliestValue = currentValue - 10;
+    if( earliestValue>=0 ) {
+	    $('#termResult'+earliestValue).fadeOut('slow', 
+			function() {
+				$('#termResult'+earliestValue).remove();
+			}
+		);
+    }    
+}
+
+function renderControlMessage(divElementId, html) {
+    var currentValue = resultCounter++;
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-warning">&gt;&nbsp;'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+
+}
+
+function renderRequest(divElementId, html) { 
     //var theDiv = document.getElementById(divElementId);
     //var contentDiv = document.createElement('div');
     //var content = document.createElement('pre'); content.innerHTML = html;
     //contentDiv.appendChild(content);
     //theDiv.appendChild(contentDiv); 
     var currentValue = resultCounter++;
-    $('#'+divElementId).append('<div id="termResult'+currentValue+'"><div><pre>'+html+'<button id="termResultClose'+currentValue+'" class="close">&times;</button></pre></div></div>');
-    $('#termResultClose'+currentValue).on("click", function(event) { $('#termResult'+currentValue).fadeOut('fast', function() {$('#termResult'+currentValue).remove();} ); });
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+//    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre>'+html+'<button id="termResultClose'+currentValue+'" class="close">&times;</button></pre></div></div>').hide().fadeIn('fast'));
+//     $('#termResultClose'+currentValue).on("click", 
+//     	function(event) { 
+//     		$('#termResult'+currentValue).fadeOut('fast', 
+//     			function() {
+//     				$('#termResult'+currentValue).remove();
+//     			}
+//     		); 
+//     	}
+//     );
+    
+
     //theDiv.scrollTop = theDiv.scrollHeight; 
 } // function
 
