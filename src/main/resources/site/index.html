@@ -257,9 +257,29 @@ function connectWebSocket() {
 function renderResponse(divElementId, html) {
 	var currentValue = requestIdSequence;
     $('#termResultContent'+currentValue).append($('<div>'+html+'</div>').hide().fadeIn('fast'));
-    
+}
+
+function renderRequest(divElementId, html) { 
+    var currentValue = requestIdSequence;
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+    cleanTerminal();
+}
+
+function renderIncomingMessage(divElementId, html) {
+    var currentValue = requestIdSequence;
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'I"><div><pre id="termResultContent'+currentValue+'I"><div class="text-warning strong">'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+    cleanTerminal();
+}
+
+function renderControlMessage(divElementId, html) {
+    var currentValue = requestIdSequence;
+    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-warning">&#8227;&nbsp;'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
+    cleanTerminal();
+}
+
+function cleanTerminal() {
     // remove earlier items
-    var cleanerStartIndex = currentValue - 10;
+    var cleanerStartIndex = requestIdSequence - 10;
     var found = $('#termResult'+cleanerStartIndex).length > 0 || $('#termResult'+cleanerStartIndex+'C').length > 0 ||  $('#termResult'+cleanerStartIndex+'I').length > 0;   
     while ( cleanerStartIndex >= 0 && found ) {
 	    $('#termResult'+cleanerStartIndex).fadeOut('slow', 
@@ -281,22 +301,6 @@ function renderResponse(divElementId, html) {
 	    found = $('#termResult'+cleanerStartIndex).length > 0 || $('#termResult'+cleanerStartIndex+'C').length > 0 ||  $('#termResult'+cleanerStartIndex+'I').length > 0;	    
     }  
 }
-
-function renderRequest(divElementId, html) { 
-    var currentValue = requestIdSequence;
-    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
-}
-
-function renderIncomingMessage(divElementId, html) {
-    var currentValue = requestIdSequence;
-    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'I"><div><pre id="termResultContent'+currentValue+'I"><div class="text-warning strong">'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
-}
-
-function renderControlMessage(divElementId, html) {
-    var currentValue = requestIdSequence;
-    $('#'+divElementId).prepend($('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-warning">&#8227;&nbsp;'+html+'</div></pre></div></div>').hide().fadeIn('fast'));
-}
-
 
 
 function checkKey(e) { 
