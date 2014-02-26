@@ -21,9 +21,9 @@ import io.reign.coord.CoordinationService;
 import io.reign.data.DataService;
 import io.reign.mesg.DefaultMessagingService;
 import io.reign.mesg.MessagingService;
+import io.reign.metrics.MetricsService;
 import io.reign.presence.PresenceService;
 import io.reign.zk.PathCache;
-import io.reign.zk.ResilientZkClient;
 import io.reign.zk.ResilientZkClientWithCache;
 import io.reign.zk.SimplePathCache;
 
@@ -78,7 +78,16 @@ public class ReignMaker {
 
         mesg();
 
+        metrics();
+
         nullService();
+
+        return this;
+    }
+
+    private ReignMaker metrics() {
+        MetricsService metricsService = new MetricsService();
+        serviceMap.put("metrics", metricsService);
 
         return this;
     }

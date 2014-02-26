@@ -14,10 +14,11 @@
  limitations under the License.
  */
 
-package io.reign.metric;
+package io.reign.metrics;
 
 import io.reign.AbstractService;
 
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -32,26 +33,38 @@ import com.codahale.metrics.MetricRegistry;
  * @author ypai
  * 
  */
-public class MetricService extends AbstractService {
+public class MetricsService extends AbstractService {
 
-    private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
+    private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
 
-    private static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
-
-    private ScheduledExecutorService executorService;
+    public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
 
     private int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
 
-    public void export(String clusterId, String serviceId, MetricRegistry registry) {
+    private ScheduledExecutorService executorService;
 
+    public void export(String clusterId, String serviceId, MetricRegistry registry, long interval,
+            TimeUnit intervalTimeUnit) {
+        final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+        executorService.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                reporter.report();
+            }
+        }, 0, interval, intervalTimeUnit);
     }
 
-    public int getUpdateIntervalMillis() {
-        return updateIntervalMillis;
+    public Map<String, Object> get(String clusterId, String serviceId) {
+        return null;
     }
 
     public void setUpdateIntervalMillis(int updateIntervalMillis) {
         this.updateIntervalMillis = updateIntervalMillis;
+    }
+
+    public int getUpdateIntervalMillis() {
+        return updateIntervalMillis;
     }
 
     @Override
@@ -64,19 +77,15 @@ public class MetricService extends AbstractService {
 
         executorService = new ScheduledThreadPoolExecutor(2);
 
-        if (this.updateIntervalMillis < 1000) {
-            this.setUpdateIntervalMillis(DEFAULT_UPDATE_INTERVAL_MILLIS);
-        }
-
         // schedule admin activity
-        Runnable adminRunnable = new AdminRunnable();// Runnable
+        Runnable adminRunnable = new AdminRunnable();
         executorService.scheduleAtFixedRate(adminRunnable, this.updateIntervalMillis / 2, this.updateIntervalMillis,
                 TimeUnit.MILLISECONDS);
     }
 
     @Override
     public void destroy() {
-
+        executorService.shutdown();
     }
 
     public class AdminRunnable implements Runnable {
@@ -86,7 +95,7 @@ public class MetricService extends AbstractService {
 
             // get all nodes
 
-            // aggregate service stats
+            // aggregate service stats and store in cache
 
         }
     }

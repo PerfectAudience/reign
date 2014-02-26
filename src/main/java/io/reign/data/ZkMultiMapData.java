@@ -16,17 +16,13 @@
 
 package io.reign.data;
 
-import io.reign.DataSerializer;
 import io.reign.PathScheme;
 import io.reign.ReignContext;
 import io.reign.ZkClient;
 import io.reign.coord.DistributedReadWriteLock;
-import io.reign.zk.PathCache;
-import io.reign.zk.SimplePathCacheEntry;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.ACL;
@@ -194,21 +190,10 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
         Stat stat = null;
         zkClientMultiDataUtil.lockForRead(readWriteLock, absoluteBasePath, this);
         try {
-            // if (readWriteLock == null) {
-            // SimplePathCacheEntry pce = pathCache.get(absoluteBasePath, -1);
-            // if (pce != null) {
-            // stat = pce.getStat();
-            // }
-            // }
 
-            if (stat == null) {
-                // invalid or non-existent value in cache, so get direct
-                stat = new Stat();
-                List<String> children = zkClient.getChildren(absoluteBasePath, true, stat);
-                // pathCache.put(absoluteBasePath, stat, null, children);
-            } else {
-                logger.trace("Got from cache:  path={}; size={}", absoluteBasePath, stat.getNumChildren());
-            }
+            stat = new Stat();
+            List<String> children = zkClient.getChildren(absoluteBasePath, true, stat);
+
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
                 if (logger.isDebugEnabled()) {
@@ -224,7 +209,7 @@ public class ZkMultiMapData<K> implements MultiMapData<K> {
             zkClientMultiDataUtil.unlockForRead(readWriteLock);
         }
 
-        return stat != null ? stat.getNumChildren() : -1;
+        return stat != null ? stat.getNumChildren() : 0;
     }
 
     @Override
