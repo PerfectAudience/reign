@@ -17,8 +17,12 @@
 package io.reign.metrics;
 
 import io.reign.AbstractService;
+import io.reign.data.DataService;
+import io.reign.data.MultiMapData;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -41,22 +45,54 @@ public class MetricsService extends AbstractService {
 
     private int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
 
+    private final Map<String, Boolean> exported = new ConcurrentHashMap<String, Boolean>(16, 0.9f, 1);
+
     private ScheduledExecutorService executorService;
 
-    public void export(String clusterId, String serviceId, MetricRegistry registry, long interval,
-            TimeUnit intervalTimeUnit) {
+    public void exportMetrics(final String clusterId, final String serviceId, MetricRegistry registry,
+            long updateInterval, TimeUnit updateIntervalTimeUnit) {
+
+        synchronized (this) {
+            String key = clusterId + "/" + serviceId;
+            if (!exported.containsKey(key)) {
+                exported.put(key, Boolean.TRUE);
+            } else {
+                logger.info("Already exported metrics:  {}", key);
+                return;
+            }
+        }
+
         final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+
         executorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
-                reporter.report();
+                StringBuilder sb = new StringBuilder();
+                sb = reporter.report(sb);
+
+                DataService dataService = getContext().getService("data");
+                MultiMapData<String> multiMapData = dataService.getMultiMap(clusterId, dataPath(clusterId, serviceId));
+                try {
+                    multiMapData.put("metrics", sb.toString().getBytes("UTF-8"));
+                } catch (UnsupportedEncodingException e) {
+                    logger.error("" + e, e);
+                }
             }
-        }, 0, interval, intervalTimeUnit);
+        }, 0, updateInterval, updateIntervalTimeUnit);
     }
 
-    public Map<String, Object> get(String clusterId, String serviceId) {
-        return null;
+    public MetricsData getMetrics(String clusterId, String serviceId) {
+        DataService dataService = getContext().getService("data");
+        MultiMapData<String> multiMapData = dataService.getMultiMap(clusterId, dataPath(clusterId, serviceId));
+        MetricsData metricsData = multiMapData.get("metrics", MetricsData.class);
+        return metricsData;
+    }
+
+    private String dataPath(String clusterId, String serviceId) {
+        String dataPath = getContext().getPathScheme().joinTokens(serviceId,
+                getContext().getCanonicalIdProvider().forZk().getPathToken());
+        return dataPath;
     }
 
     public void setUpdateIntervalMillis(int updateIntervalMillis) {

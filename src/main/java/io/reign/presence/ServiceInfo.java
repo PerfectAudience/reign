@@ -19,6 +19,8 @@ package io.reign.presence;
 import java.util.Collections;
 import java.util.List;
 
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
 /**
  * 
  * @author ypai
@@ -30,6 +32,7 @@ public class ServiceInfo {
 
     private final String serviceId;
 
+    @JsonSerialize(using = NodeIdListSerializer.class)
     private List<String> nodeIdList;
 
     public ServiceInfo(String clusterId, String serviceId, List<String> nodeIdList) {

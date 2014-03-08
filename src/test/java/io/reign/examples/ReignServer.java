@@ -19,7 +19,7 @@ public class ReignServer {
         reign.start();
 
         PresenceService presenceService = reign.getService("presence");
-        presenceService.observe("reign", "client", new PresenceObserver<ServiceInfo>() {
+        presenceService.observe("rtb", "bidder", new PresenceObserver<ServiceInfo>() {
             @Override
             public void updated(ServiceInfo info) {
                 if (info != null) {
@@ -30,6 +30,7 @@ public class ReignServer {
                 }
             }
         });
+        presenceService.announce("rtb", "bidder", true);
 
         /** let server run **/
         Object obj = new Object();

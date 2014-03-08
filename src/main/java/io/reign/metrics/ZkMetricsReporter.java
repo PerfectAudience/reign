@@ -1,10 +1,5 @@
 package io.reign.metrics;
 
-import io.reign.ReignContext;
-import io.reign.data.DataService;
-import io.reign.data.MultiMapData;
-
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.Map;
@@ -14,7 +9,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Clock;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
@@ -51,34 +45,16 @@ public class ZkMetricsReporter {
         private Locale locale;
         private TimeUnit rateUnit;
         private TimeUnit durationUnit;
-        private Clock clock;
+        // private final Clock clock;
         private MetricFilter filter;
-        private ReignContext context;
-        private String clusterId;
-        private String serviceId;
 
         private Builder(MetricRegistry registry) {
             this.registry = registry;
             this.locale = Locale.getDefault();
             this.rateUnit = TimeUnit.SECONDS;
             this.durationUnit = TimeUnit.MILLISECONDS;
-            this.clock = Clock.defaultClock();
+            // this.clock = Clock.defaultClock();
             this.filter = MetricFilter.ALL;
-        }
-
-        public Builder context(ReignContext context) {
-            this.context = context;
-            return this;
-        }
-
-        public Builder clusterId(String clusterId) {
-            this.clusterId = clusterId;
-            return this;
-        }
-
-        public Builder serviceId(String serviceId) {
-            this.serviceId = serviceId;
-            return this;
         }
 
         /**
@@ -117,17 +93,17 @@ public class ZkMetricsReporter {
             return this;
         }
 
-        /**
-         * Use the given {@link Clock} instance for the time.
-         * 
-         * @param clock
-         *            a {@link Clock} instance
-         * @return {@code this}
-         */
-        public Builder withClock(Clock clock) {
-            this.clock = clock;
-            return this;
-        }
+        // /**
+        // * Use the given {@link Clock} instance for the time.
+        // *
+        // * @param clock
+        // * a {@link Clock} instance
+        // * @return {@code this}
+        // */
+        // public Builder withClock(Clock clock) {
+        // this.clock = clock;
+        // return this;
+        // }
 
         /**
          * Only report metrics which match the given filter.
@@ -142,7 +118,7 @@ public class ZkMetricsReporter {
         }
 
         public ZkMetricsReporter build() {
-            return new ZkMetricsReporter(registry, rateUnit, durationUnit, clock, filter, context, clusterId, serviceId);
+            return new ZkMetricsReporter(registry, rateUnit, durationUnit, filter);
         }
     }
 
@@ -156,15 +132,7 @@ public class ZkMetricsReporter {
     private final double rateFactor;
     private final String rateUnit;
 
-    private final Clock clock;
-    private final ReignContext context;
-    private final String clusterId;
-    private final String serviceId;
-    private final MultiMapData<String> multiMapData;
-
-    private ZkMetricsReporter(MetricRegistry registry, TimeUnit rateUnit, TimeUnit durationUnit, Clock clock,
-            MetricFilter filter, ReignContext context, String clusterId, String serviceId) {
-
+    private ZkMetricsReporter(MetricRegistry registry, TimeUnit rateUnit, TimeUnit durationUnit, MetricFilter filter) {
         this.registry = registry;
         this.filter = filter;
         this.rateFactor = rateUnit.toSeconds(1);
@@ -172,51 +140,79 @@ public class ZkMetricsReporter {
         this.durationFactor = 1.0 / durationUnit.toNanos(1);
         this.durationUnit = durationUnit.toString().toLowerCase(Locale.US);
 
-        this.clock = clock;
-        this.context = context;
-        this.clusterId = clusterId;
-        this.serviceId = serviceId;
-
-        DataService dataService = context.getService("data");
-        String dataPath = context.getPathScheme().joinTokens(serviceId);
-        multiMapData = dataService.getMultiMap(clusterId, dataPath);
     }
 
-    public void report() {
-        report(registry.getGauges(filter), registry.getCounters(filter), registry.getHistograms(filter),
+    public StringBuilder report(StringBuilder sb) {
+        return report(sb, registry.getGauges(filter), registry.getCounters(filter), registry.getHistograms(filter),
                 registry.getMeters(filter), registry.getTimers(filter));
     }
 
-    public void report(SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters,
+    public StringBuilder report(StringBuilder sb, SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters,
             SortedMap<String, Histogram> histograms, SortedMap<String, Meter> meters, SortedMap<String, Timer> timers) {
-        final long timestamp = TimeUnit.MILLISECONDS.toSeconds(clock.getTime());
-
+        sb.append("{\n");
+        sb.append("\"gauges\":\n");
         for (Map.Entry<String, Gauge> entry : gauges.entrySet()) {
-            reportGauge(timestamp, entry.getKey(), entry.getValue());
+            String name = entry.getKey();
+            sb.append("{\"");
+            sb.append(name);
+            sb.append("\":");
+            reportGauge(sb, name, entry.getValue());
+            sb.append("}");
         }
+        sb.append(",\n");
 
+        sb.append("\"counters\":\n");
         for (Map.Entry<String, Counter> entry : counters.entrySet()) {
-            reportCounter(timestamp, entry.getKey(), entry.getValue());
+            String name = entry.getKey();
+            sb.append("{\"");
+            sb.append(name);
+            sb.append("\":");
+            reportCounter(sb, name, entry.getValue());
+            sb.append("}");
         }
+        sb.append(",\n");
 
+        sb.append("\"histograms\":\n");
         for (Map.Entry<String, Histogram> entry : histograms.entrySet()) {
-            reportHistogram(timestamp, entry.getKey(), entry.getValue());
+            String name = entry.getKey();
+            sb.append("{\"");
+            sb.append(name);
+            sb.append("\":");
+            reportHistogram(sb, entry.getKey(), entry.getValue());
+            sb.append("}");
         }
+        sb.append(",\n");
 
+        sb.append("\"meters\":\n");
         for (Map.Entry<String, Meter> entry : meters.entrySet()) {
-            reportMeter(timestamp, entry.getKey(), entry.getValue());
+            String name = entry.getKey();
+            sb.append("{\"");
+            sb.append(name);
+            sb.append("\":");
+            reportMeter(sb, entry.getKey(), entry.getValue());
+            sb.append("}");
         }
+        sb.append(",\n");
 
+        sb.append("\"timers\":\n");
         for (Map.Entry<String, Timer> entry : timers.entrySet()) {
-            reportTimer(timestamp, entry.getKey(), entry.getValue());
+            String name = entry.getKey();
+            sb.append("{\"");
+            sb.append(name);
+            sb.append("\":");
+            reportTimer(sb, entry.getKey(), entry.getValue());
+            sb.append("}");
         }
+        sb.append("\n}");
+
+        return sb;
     }
 
-    private void reportTimer(long timestamp, String name, Timer timer) {
+    private void reportTimer(StringBuilder sb, String name, Timer timer) {
         final Snapshot snapshot = timer.getSnapshot();
 
-        report(timestamp, name, new String[] { "count", "max", "mean", "min", "stddev", "p50", "p75", "p95", "p98",
-                "p99", "p999", "mean_rate", "m1_rate", "m5_rate", "m15_rate", "rate_unit", "duration_unit" },
+        report(sb, name, new String[] { "count", "max", "mean", "min", "stddev", "p50", "p75", "p95", "p98", "p99",
+                "p999", "mean_rate", "m1_rate", "m5_rate", "m15_rate", "rate_unit", "duration_unit" },
                 timer.getCount(), convertDuration(snapshot.getMax()), convertDuration(snapshot.getMean()),
                 convertDuration(snapshot.getMin()), convertDuration(snapshot.getStdDev()),
                 convertDuration(snapshot.getMedian()), convertDuration(snapshot.get75thPercentile()),
@@ -227,35 +223,29 @@ public class ZkMetricsReporter {
                 getDurationUnit());
     }
 
-    private void reportMeter(long timestamp, String name, Meter meter) {
-        report(timestamp, name, new String[] { "count", "mean_rate", "m1_rate", "m5_rate", "m15_rate", "rate_unit" },
+    private void reportMeter(StringBuilder sb, String name, Meter meter) {
+        report(sb, name, new String[] { "count", "mean_rate", "m1_rate", "m5_rate", "m15_rate", "rate_unit" },
                 meter.getCount(), convertRate(meter.getMeanRate()), convertRate(meter.getOneMinuteRate()),
                 convertRate(meter.getFiveMinuteRate()), convertRate(meter.getFifteenMinuteRate()), getRateUnit());
     }
 
-    private void reportHistogram(long timestamp, String name, Histogram histogram) {
+    private void reportHistogram(StringBuilder sb, String name, Histogram histogram) {
         final Snapshot snapshot = histogram.getSnapshot();
-        report(timestamp, name, new String[] { "count", "max", "mean", "min", "stddev", "p50", "p75", "p95", "p98",
-                "p99", "p999" }, histogram.getCount(), snapshot.getMax(), snapshot.getMean(), snapshot.getMin(),
+        report(sb, name, new String[] { "count", "max", "mean", "min", "stddev", "p50", "p75", "p95", "p98", "p99",
+                "p999" }, histogram.getCount(), snapshot.getMax(), snapshot.getMean(), snapshot.getMin(),
                 snapshot.getStdDev(), snapshot.getMedian(), snapshot.get75thPercentile(), snapshot.get95thPercentile(),
                 snapshot.get98thPercentile(), snapshot.get99thPercentile(), snapshot.get999thPercentile());
     }
 
-    private void reportCounter(long timestamp, String name, Counter counter) {
-        report(timestamp, name, new String[] { "count" }, counter.getCount());
+    private void reportCounter(StringBuilder sb, String name, Counter counter) {
+        report(sb, name, new String[] { "count" }, counter.getCount());
     }
 
-    private void reportGauge(long timestamp, String name, Gauge gauge) {
-        report(timestamp, name, new String[] { "value" }, gauge.getValue());
+    private void reportGauge(StringBuilder sb, String name, Gauge gauge) {
+        report(sb, name, new String[] { "value" }, gauge.getValue());
     }
 
-    private void report(long timestamp, String name, String[] keys, Object... values) {
-        StringBuilder sb = new StringBuilder();
-
-        // encode owner of data
-        sb.append("[ {\"");
-        sb.append(context.getCanonicalIdProvider().forZk().getPathToken());
-        sb.append("\"},\n");
+    private void report(StringBuilder sb, String name, String[] keys, Object... values) {
 
         // encode metrics data
         sb.append("{\n");
@@ -266,15 +256,8 @@ public class ZkMetricsReporter {
             sb.append("\"").append(values[i]).append("\"");
             sb.append(",");
         }
-        sb.append("\n} ]");
+        sb.append("\n}");
 
-        try {
-            byte[] bytes = sb.toString().getBytes("UTF-8");
-            multiMapData.put(name, bytes);
-
-        } catch (UnsupportedEncodingException e) {
-            logger.warn("" + e, e);
-        }
     }
 
     protected String sanitize(String name) {

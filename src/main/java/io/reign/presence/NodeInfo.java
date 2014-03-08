@@ -21,6 +21,8 @@ import io.reign.NodeId;
 import java.util.Collections;
 import java.util.Map;
 
+import org.codehaus.jackson.annotate.JsonRawValue;
+
 /**
  * 
  * @author ypai
@@ -31,6 +33,8 @@ public class NodeInfo {
     private Map<String, String> attributeMap;
     private final String clusterId;
     private final String serviceId;
+
+    @JsonRawValue
     private final NodeId nodeId;
 
     public NodeInfo(String clusterId, String serviceId, NodeId nodeId, Map<String, String> attributeMap) {

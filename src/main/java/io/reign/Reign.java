@@ -383,11 +383,11 @@ public class Reign implements Watcher {
 
         logger.info("START:  DONE");
 
-        /** announce as a client of framework: must be done after all other start-up tasks are complete **/
+        /** announce as a Reign Server: must be done after all other start-up tasks are complete **/
         PresenceService presenceService = context.getService("presence");
         if (presenceService != null) {
-            logger.info("START:  announcing node availability to framework via PresenceService");
-            presenceService.announce(pathScheme.getFrameworkClusterId(), "client", true);
+            logger.info("START:  announcing server availability...");
+            presenceService.announce(pathScheme.getFrameworkClusterId(), "server", true);
         } else {
             logger.warn("START:  did not announce node availability:  (presenceService==null)={}",
                     presenceService == null);

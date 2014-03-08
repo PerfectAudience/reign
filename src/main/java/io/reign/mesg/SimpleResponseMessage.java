@@ -2,6 +2,7 @@ package io.reign.mesg;
 
 import io.reign.util.JacksonUtil;
 
+import org.codehaus.jackson.annotate.JsonPropertyOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
+@JsonPropertyOrder({ "id", "status" })
 public class SimpleResponseMessage extends AbstractMessage implements ResponseMessage {
 
     private static final Logger logger = LoggerFactory.getLogger(SimpleResponseMessage.class);
