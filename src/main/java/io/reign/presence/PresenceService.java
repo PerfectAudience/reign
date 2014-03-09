@@ -107,11 +107,11 @@ public class PresenceService extends AbstractService {
     }
 
     public boolean isMemberOf(String clusterId) {
-        return false;
+        return true;
     }
 
     public boolean isMemberOf(String clusterId, String serviceId) {
-        return false;
+        return true;
     }
 
     public List<String> lookupClusters() {
@@ -757,49 +757,51 @@ public class PresenceService extends AbstractService {
             if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
                 // get exclusive leader lock to perform maintenance duties
                 CoordinationService coordinationService = getContext().getService("coord");
-                DistributedLock adminLock = coordinationService.getLock("presence", "zombie-checker");
+                DistributedLock adminLock = coordinationService.getLock("reign", "presence-zombie-checker");
                 logger.info("Checking for zombie nodes...");
-                if (adminLock.tryLock()) {
-                    try {
-                        List<String> clusterIdList = getZkClient().getChildren(
-                                getPathScheme().getAbsolutePath(PathType.PRESENCE), false);
-                        for (String clusterId : clusterIdList) {
-                            List<String> serviceIdList = lookupServices(clusterId);
-                            for (String serviceId : serviceIdList) {
-                                // service path
-                                String servicePath = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId,
-                                        serviceId);
+                try {
+                    if (adminLock.tryLock()) {
+                        try {
+                            List<String> clusterIdList = getZkClient().getChildren(
+                                    getPathScheme().getAbsolutePath(PathType.PRESENCE), false);
+                            for (String clusterId : clusterIdList) {
+                                List<String> serviceIdList = lookupServices(clusterId);
+                                for (String serviceId : serviceIdList) {
+                                    // service path
+                                    String servicePath = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId,
+                                            serviceId);
 
-                                // get children of each service
-                                List<String> serviceChildren = getZkClient().getChildren(servicePath, false);
+                                    // get children of each service
+                                    List<String> serviceChildren = getZkClient().getChildren(servicePath, false);
 
-                                // check stat and make sure mtime of each child is
-                                // within 4x heartbeatIntervalMillis; if not, delete
-                                for (String child : serviceChildren) {
-                                    String serviceChildPath = getPathScheme().joinPaths(servicePath, child);
-                                    logger.info("Checking for service zombie child nodes:  path={}", servicePath);
-                                    Stat stat = getZkClient().exists(serviceChildPath, false);
-                                    long timeDiff = System.currentTimeMillis() - stat.getMtime();
-                                    if (timeDiff > heartbeatIntervalMillis * 4) {
-                                        logger.warn(
-                                                "Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
-                                                serviceChildPath, timeDiff);
-                                        getZkClient().delete(serviceChildPath, -1);
-                                    }
+                                    // check stat and make sure mtime of each child is
+                                    // within 4x heartbeatIntervalMillis; if not, delete
+                                    for (String child : serviceChildren) {
+                                        String serviceChildPath = getPathScheme().joinPaths(servicePath, child);
+                                        logger.info("Checking for service zombie child nodes:  path={}", servicePath);
+                                        Stat stat = getZkClient().exists(serviceChildPath, false);
+                                        long timeDiff = System.currentTimeMillis() - stat.getMtime();
+                                        if (timeDiff > heartbeatIntervalMillis * 4) {
+                                            logger.warn(
+                                                    "Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
+                                                    serviceChildPath, timeDiff);
+                                            getZkClient().delete(serviceChildPath, -1);
+                                        }
+                                    }// for
+
                                 }// for
-
                             }// for
-                        }// for
 
-                        // update last check timestamp
-                        lastZombieCheckTimestamp = System.currentTimeMillis();
-                    } catch (Exception e) {
-                        logger.warn("Error while checking for and removing zombie nodes:  " + e, e);
-                    } finally {
-                        adminLock.unlock();
-                        adminLock.destroy();
-                    }
-                }// if tryLock
+                            // update last check timestamp
+                            lastZombieCheckTimestamp = System.currentTimeMillis();
+                        } catch (Exception e) {
+                            logger.warn("Error while checking for and removing zombie nodes:  " + e, e);
+                        }
+                    }// if tryLock
+                } finally {
+                    adminLock.unlock();
+                    adminLock.destroy();
+                }
 
             }// if
         } // run()

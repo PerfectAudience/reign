@@ -4,7 +4,7 @@ import io.reign.Reign;
 import io.reign.metrics.MetricsData;
 import io.reign.metrics.MetricsService;
 import io.reign.metrics.RotatingMetricRegistryRef;
-import io.reign.util.JacksonUtil;
+import io.reign.presence.PresenceService;
 
 import java.util.concurrent.TimeUnit;
 
@@ -24,6 +24,9 @@ public class MetricsServiceExample {
         Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).get();
         reign.start();
 
+        PresenceService presenceService = reign.getService("presence");
+        presenceService.announce("clusterA", "serviceA", true);
+
         MetricsService metricsService = reign.getService("metrics");
 
         RotatingMetricRegistryRef registryRef = new RotatingMetricRegistryRef(30, TimeUnit.SECONDS);
@@ -32,13 +35,13 @@ public class MetricsServiceExample {
         counter1.inc();
         counter2.inc(3);
 
-        logger.info("MetricsData JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(new MetricsData()));
-        MetricsData metricsDataTest = JacksonUtil
-                .getObjectMapper()
-                .readValue(
-                        "{\"interval_start_ts\":1394385681765,\"interval_length\":30,\"interval_length_unit\":\"SECONDS\",\"counters\":{\"counter1\":{\"count\":\"1\"},\"counter2\":{\"count\":\"3\"}}}",
-                        MetricsData.class);
-        logger.info("MetricsData Test JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(metricsDataTest));
+        // logger.info("MetricsData JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(new MetricsData()));
+        // MetricsData metricsDataTest = JacksonUtil
+        // .getObjectMapper()
+        // .readValue(
+        // "{\"interval_start_ts\":1394385681765,\"interval_length\":30,\"interval_length_unit\":\"SECONDS\",\"counters\":{\"counter1\":{\"count\":\"1\"},\"counter2\":{\"count\":\"3\"}}}",
+        // MetricsData.class);
+        // logger.info("MetricsData Test JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(metricsDataTest));
 
         metricsService.exportMetrics("clusterA", "serviceA", registryRef, 10, TimeUnit.SECONDS);
 
