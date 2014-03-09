@@ -150,30 +150,43 @@ public class ZkMetricsReporter {
     public StringBuilder report(StringBuilder sb, SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters,
             SortedMap<String, Histogram> histograms, SortedMap<String, Meter> meters, SortedMap<String, Timer> timers) {
         sb.append("{\n");
-        sb.append("\"gauges\":\n");
+
+        int i = 0;
+        sb.append("\"gauges\":{\n");
         for (Map.Entry<String, Gauge> entry : gauges.entrySet()) {
+            if (i++ > 0) {
+                sb.append(",\n");
+            }
             String name = entry.getKey();
-            sb.append("{\"");
+            sb.append("    {\"");
             sb.append(name);
             sb.append("\":");
             reportGauge(sb, name, entry.getValue());
             sb.append("}");
         }
-        sb.append(",\n");
+        sb.append("\n},\n");
 
-        sb.append("\"counters\":\n");
+        i = 0;
+        sb.append("\"counters\":{\n");
         for (Map.Entry<String, Counter> entry : counters.entrySet()) {
+            if (i++ > 0) {
+                sb.append(",\n");
+            }
             String name = entry.getKey();
-            sb.append("{\"");
+            sb.append("    {\"");
             sb.append(name);
             sb.append("\":");
             reportCounter(sb, name, entry.getValue());
             sb.append("}");
         }
-        sb.append(",\n");
+        sb.append("\n},\n");
 
-        sb.append("\"histograms\":\n");
+        i = 0;
+        sb.append("\"histograms\":{\n");
         for (Map.Entry<String, Histogram> entry : histograms.entrySet()) {
+            if (i++ > 0) {
+                sb.append(",\n");
+            }
             String name = entry.getKey();
             sb.append("{\"");
             sb.append(name);
@@ -181,10 +194,14 @@ public class ZkMetricsReporter {
             reportHistogram(sb, entry.getKey(), entry.getValue());
             sb.append("}");
         }
-        sb.append(",\n");
+        sb.append("\n},\n");
 
-        sb.append("\"meters\":\n");
+        i = 0;
+        sb.append("\"meters\":{\n");
         for (Map.Entry<String, Meter> entry : meters.entrySet()) {
+            if (i++ > 0) {
+                sb.append(",\n");
+            }
             String name = entry.getKey();
             sb.append("{\"");
             sb.append(name);
@@ -192,10 +209,14 @@ public class ZkMetricsReporter {
             reportMeter(sb, entry.getKey(), entry.getValue());
             sb.append("}");
         }
-        sb.append(",\n");
+        sb.append("\n},\n");
 
-        sb.append("\"timers\":\n");
+        i = 0;
+        sb.append("\"timers\":{\n");
         for (Map.Entry<String, Timer> entry : timers.entrySet()) {
+            if (i++ > 0) {
+                sb.append(",\n");
+            }
             String name = entry.getKey();
             sb.append("{\"");
             sb.append(name);
@@ -203,7 +224,7 @@ public class ZkMetricsReporter {
             reportTimer(sb, entry.getKey(), entry.getValue());
             sb.append("}");
         }
-        sb.append("\n}");
+        sb.append("\n}\n}");
 
         return sb;
     }
@@ -248,15 +269,17 @@ public class ZkMetricsReporter {
     private void report(StringBuilder sb, String name, String[] keys, Object... values) {
 
         // encode metrics data
-        sb.append("{\n");
+        sb.append("{");
         for (int i = 0; i < keys.length; i++) {
+            if (i > 0) {
+                sb.append(",");
+            }
             String key = keys[i];
             sb.append("\"").append(key).append("\"");
-            sb.append(" : ");
+            sb.append(":");
             sb.append("\"").append(values[i]).append("\"");
-            sb.append(",");
         }
-        sb.append("\n}");
+        sb.append("}");
 
     }
 

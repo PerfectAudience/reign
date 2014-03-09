@@ -106,6 +106,14 @@ public class PresenceService extends AbstractService {
         executorService.shutdown();
     }
 
+    public boolean isMemberOf(String clusterId) {
+        return false;
+    }
+
+    public boolean isMemberOf(String clusterId, String serviceId) {
+        return false;
+    }
+
     public List<String> lookupClusters() {
         /** get node data from zk **/
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE);

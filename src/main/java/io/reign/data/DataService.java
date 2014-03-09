@@ -86,10 +86,14 @@ public class DataService extends AbstractService {
     public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath, boolean processSafe, List<ACL> aclList) {
         dataPath = dataPath + MAP_PATH_SUFFIX;
 
+        logger.trace("Getting multimap:  clusterId={}; dataPath={}", dataPath);
+
         DistributedReadWriteLock readWriteLock = null;
         if (processSafe) {
             readWriteLock = getReadWriteLock(clusterId, dataPath);
         }
+
+        logger.trace("Got read/write lock...");
 
         PathScheme pathScheme = getPathScheme();
         String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
@@ -134,6 +138,7 @@ public class DataService extends AbstractService {
     }
 
     DistributedReadWriteLock getReadWriteLock(String clusterId, String dataPath) {
+        logger.trace("Getting read/write lock:  clusterId={}; dataPath={}", clusterId, dataPath);
         CoordinationService coordinationService = getContext().getService("coord");
         DistributedReadWriteLock readWriteLock = coordinationService.getReadWriteLock(clusterId, dataPath);
         return readWriteLock;
@@ -156,8 +161,8 @@ public class DataService extends AbstractService {
 
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(), requestMessage
-                        .getBody());
+                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
+                        requestMessage.getBody());
             }
 
             /** preprocess request **/

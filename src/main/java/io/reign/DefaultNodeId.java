@@ -19,12 +19,14 @@ package io.reign;
 import io.reign.util.JacksonUtil;
 
 import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.annotate.JsonPropertyOrder;
 
 /**
  * 
  * @author ypai
  * 
  */
+@JsonPropertyOrder({ "h", "ip", "mp", "pid" })
 public class DefaultNodeId implements NodeId {
 
     /**
