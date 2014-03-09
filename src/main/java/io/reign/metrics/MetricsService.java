@@ -17,10 +17,11 @@
 package io.reign.metrics;
 
 import io.reign.AbstractService;
+import io.reign.JsonDataSerializer;
 import io.reign.PathScheme;
 import io.reign.PathType;
-import io.reign.data.DataService;
-import io.reign.data.MultiMapData;
+import io.reign.ReignException;
+import io.reign.util.JacksonUtil;
 import io.reign.util.ZkClientUtil;
 
 import java.nio.charset.Charset;
@@ -31,10 +32,10 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.codahale.metrics.MetricRegistry;
 
 /**
  * 
@@ -49,85 +50,144 @@ public class MetricsService extends AbstractService {
 
     public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
 
+    private static final JsonDataSerializer<MetricsData> jsonSerializer = new JsonDataSerializer<MetricsData>();
+
+    /** interval btw. aggregations at service level */
     private int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
 
-    private final Map<String, String> exportPathMap = new ConcurrentHashMap<String, String>(16, 0.9f, 1);
+    private final Map<String, ExportMeta> exportPathMap = new ConcurrentHashMap<String, ExportMeta>(16, 0.9f, 1);
+
+    private static class ExportMeta {
+        public String dataPath;
+        public RotatingMetricRegistryRef registryRef;
+
+        public ExportMeta(String dataPath, RotatingMetricRegistryRef registryRef) {
+            this.dataPath = dataPath;
+            this.registryRef = registryRef;
+        }
+    }
 
     private final ZkClientUtil zkClientUtil = new ZkClientUtil();
 
     private ScheduledExecutorService executorService;
 
-    public void exportMetrics(final String clusterId, final String serviceId, MetricRegistry registry,
-            long updateInterval, TimeUnit updateIntervalTimeUnit) {
+    public void exportMetrics(final String clusterId, final String serviceId,
+            final RotatingMetricRegistryRef registryRef, long updateInterval, TimeUnit updateIntervalTimeUnit) {
 
         final String key = clusterId + "/" + serviceId;
         synchronized (this) {
             if (!exportPathMap.containsKey(key)) {
-                exportPathMap.put(key, "");
+                exportPathMap.put(key, new ExportMeta(null, registryRef));
             } else {
                 logger.info("Already exported metrics:  {}", key);
                 return;
             }
         }
 
-        final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
+        final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registryRef).convertRatesTo(TimeUnit.SECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS).build();
 
         executorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
-                logger.trace("EXPORTING METRICS...");
+                // logger.trace("EXPORTING METRICS...");
                 StringBuilder sb = new StringBuilder();
                 sb = reporter.report(sb);
                 logger.trace("EXPORTING METRICS:  {}", sb);
 
-                PathScheme pathScheme = getContext().getPathScheme();
-                String dataPathPrefix = pathScheme.getAbsolutePath(
-                        PathType.DATA,
-                        pathScheme.joinTokens(clusterId, serviceId, getContext().getCanonicalIdProvider().forZk()
-                                .getPathToken()));
-
-                String dataPath = exportPathMap.get(key);
+                // export to zk
+                ExportMeta exportMeta = exportPathMap.get(key);
                 try {
-                    if (dataPath == null || "".equals(dataPath)) {
-                        dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(),
-                                dataPathPrefix + "-", sb.toString().getBytes(UTF_8),
-                                getContext().getDefaultZkAclList(), CreateMode.PERSISTENT_SEQUENTIAL, -1);
-                        exportPathMap.put(key, dataPath);
+                    if (exportMeta == null || exportMeta.dataPath == null) {
+                        PathScheme pathScheme = getContext().getPathScheme();
+                        String dataPathPrefix = pathScheme.getAbsolutePath(
+                                PathType.DATA,
+                                pathScheme.joinTokens(clusterId, serviceId, getContext().getCanonicalIdProvider()
+                                        .forZk().getPathToken()));
+                        exportMeta.dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext()
+                                .getPathScheme(), dataPathPrefix + "-", sb.toString().getBytes(UTF_8), getContext()
+                                .getDefaultZkAclList(), CreateMode.PERSISTENT_SEQUENTIAL, -1);
+                        exportPathMap.put(key, exportMeta);
                     } else {
-                        dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(),
-                                dataPath, sb.toString().getBytes(UTF_8), getContext().getDefaultZkAclList(),
+                        zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(),
+                                exportMeta.dataPath, sb.toString().getBytes(UTF_8), getContext().getDefaultZkAclList(),
                                 CreateMode.PERSISTENT, -1);
                     }
-                    logger.debug("Updated metrics data:  dataPath={}", dataPath);
+
+                    logger.debug("Updated metrics data:  dataPath={}", exportMeta.dataPath);
                 } catch (Exception e) {
-                    logger.error("Could not export metrics data:  pathPrefix=" + dataPath, e);
+                    logger.error("Could not export metrics data:  pathPrefix=" + exportMeta.dataPath, e);
                 }
 
-                // DataService dataService = getContext().getService("data");
-                // logger.trace("Got data service");
-                // MultiMapData<String> multiMapData = dataService.getMultiMap(clusterId, serviceId);
-                // logger.trace("Got multimap");
-                // try {
-                // multiMapData.put(getContext().getCanonicalIdProvider().forZk().getPathToken(), "metrics", sb
-                // .toString().getBytes("UTF-8"));
-                // } catch (UnsupportedEncodingException e) {
-                // logger.error("" + e, e);
-                // }
+                // rotate as necessary
+                registryRef.rotateAsNecessary();
+
             }
         }, 0, updateInterval, updateIntervalTimeUnit);
     }
 
+    public MetricsData getServiceMetrics(String clusterId, String serviceId) {
+        try {
+            PathScheme pathScheme = getContext().getPathScheme();
+            String dataPath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, serviceId));
+            byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
+            // String metricsDataJson = new String(bytes, UTF_8);
+            // metricsDataJson.replaceAll("\n", "");
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            return metricsData;
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NODEEXISTS) {
+                return null;
+            }
+            throw new ReignException(e);
+        } catch (Exception e) {
+            throw new ReignException(e);
+        }
+    }
+
     public MetricsData getMetrics(String clusterId, String serviceId) {
-        return getMetrics(clusterId, serviceId, getContext().getCanonicalIdProvider().forZk().getPathToken());
+        String key = clusterId + "/" + serviceId;
+        ExportMeta exportMeta = exportPathMap.get(key);
+        if (exportMeta == null || exportMeta.dataPath == null) {
+            logger.trace("MetricsData not found:  clusterId={}; serviceId={}", clusterId, serviceId);
+            return null;
+        }
+
+        try {
+            logger.debug("Retrieving metrics:  path={}", exportMeta.dataPath);
+            byte[] bytes = getContext().getZkClient().getData(exportMeta.dataPath, true, new Stat());
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            return metricsData;
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NODEEXISTS) {
+                return null;
+            }
+            throw new ReignException(e);
+        } catch (Exception e) {
+            throw new ReignException(e);
+        }
+
     }
 
     public MetricsData getMetrics(String clusterId, String serviceId, String nodeId) {
-        DataService dataService = getContext().getService("data");
-        MultiMapData<String> multiMapData = dataService.getMultiMap(clusterId, serviceId);
-        MetricsData metricsData = multiMapData.get(nodeId, MetricsData.class);
-        return metricsData;
+        try {
+            PathScheme pathScheme = getContext().getPathScheme();
+            String dataPath = pathScheme.getAbsolutePath(
+                    PathType.DATA,
+                    pathScheme.joinTokens(clusterId, serviceId, getContext().getCanonicalIdProvider().forZk()
+                            .getPathToken()));
+            byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            return metricsData;
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NODEEXISTS) {
+                return null;
+            }
+            throw new ReignException(e);
+        } catch (Exception e) {
+            throw new ReignException(e);
+        }
     }
 
     public void setUpdateIntervalMillis(int updateIntervalMillis) {
@@ -149,7 +209,7 @@ public class MetricsService extends AbstractService {
         executorService = new ScheduledThreadPoolExecutor(2);
 
         // schedule admin activity
-        Runnable adminRunnable = new AdminRunnable();
+        Runnable adminRunnable = new AggregationRunnable();
         executorService.scheduleAtFixedRate(adminRunnable, this.updateIntervalMillis / 2, this.updateIntervalMillis,
                 TimeUnit.MILLISECONDS);
     }
@@ -159,16 +219,16 @@ public class MetricsService extends AbstractService {
         executorService.shutdown();
     }
 
-    public class AdminRunnable implements Runnable {
+    public class AggregationRunnable implements Runnable {
         @Override
         public void run() {
             // list all services in cluster
 
-            // get lock for a service
+            // get lock for a service -- should only perform if in cluster
 
             // get all data nodes for a service
 
-            // aggregate service stats
+            /** aggregate service stats for data nodes that within current rotation interval **/
 
             // gauges: weighted avg
 
@@ -183,6 +243,20 @@ public class MetricsService extends AbstractService {
 
             // store aggregated results in ZK at service level
 
+        }
+    }
+
+    public class CleanerRunnable implements Runnable {
+        @Override
+        public void run() {
+
+            // list all services in cluster
+
+            // get lock for a service -- should only perform if in cluster
+
+            // get all data nodes for a service
+
+            /** remove all nodes that are older than rotation interval **/
         }
     }
 

@@ -10,6 +10,8 @@ import io.reign.util.Structs;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -125,7 +127,8 @@ public class PresenceServiceTest {
                     }
                 });
 
-        assertTrue(serviceInfo == null);
+        assertTrue("serviceInfo=" + ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE),
+                serviceInfo == null);
 
         presenceService.announce("clusterC", "serviceC1", true);
         synchronized (serviceInfoRef) {

@@ -53,7 +53,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
     private MessageProtocol messageProtocol = new DefaultMessageProtocol();
 
-    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapperInstance();
+    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
 
     /**
      * Send message to a single node.

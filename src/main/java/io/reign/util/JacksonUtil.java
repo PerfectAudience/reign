@@ -37,7 +37,7 @@ public class JacksonUtil {
 
     }
 
-    public static ObjectMapper getObjectMapperInstance() {
+    public static ObjectMapper getObjectMapper() {
         return DEFAULT_OBJECT_MAPPER;
     }
 }

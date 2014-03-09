@@ -23,7 +23,7 @@ public class DefaultMessageProtocol implements MessageProtocol {
     /**
      * Reusable Jackson JSON mapper
      */
-    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapperInstance();
+    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
 
     /**
      * Simple ASCII protocol: [SERVICE_NAME][COLON][MESSAGE_PAYLOAD]

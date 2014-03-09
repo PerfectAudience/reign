@@ -14,7 +14,6 @@ import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 
@@ -32,8 +31,8 @@ public class ZkMetricsReporter {
      *            the registry to report
      * @return a {@link Builder} instance for a {@link ZkMetricsReporter}
      */
-    public static Builder forRegistry(MetricRegistry registry) {
-        return new Builder(registry);
+    public static Builder forRegistry(RotatingMetricRegistryRef registryRef) {
+        return new Builder(registryRef);
     }
 
     /**
@@ -41,15 +40,15 @@ public class ZkMetricsReporter {
      * events/second, converting durations to milliseconds, and not filtering metrics.
      */
     public static class Builder {
-        private final MetricRegistry registry;
+        private final RotatingMetricRegistryRef registryRef;
         private Locale locale;
         private TimeUnit rateUnit;
         private TimeUnit durationUnit;
         // private final Clock clock;
         private MetricFilter filter;
 
-        private Builder(MetricRegistry registry) {
-            this.registry = registry;
+        private Builder(RotatingMetricRegistryRef registryRef) {
+            this.registryRef = registryRef;
             this.locale = Locale.getDefault();
             this.rateUnit = TimeUnit.SECONDS;
             this.durationUnit = TimeUnit.MILLISECONDS;
@@ -118,22 +117,23 @@ public class ZkMetricsReporter {
         }
 
         public ZkMetricsReporter build() {
-            return new ZkMetricsReporter(registry, rateUnit, durationUnit, filter);
+            return new ZkMetricsReporter(registryRef, rateUnit, durationUnit, filter);
         }
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ZkMetricsReporter.class);
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-    private final MetricRegistry registry;
+    private final RotatingMetricRegistryRef registryRef;
     private final MetricFilter filter;
     private final double durationFactor;
     private final String durationUnit;
     private final double rateFactor;
     private final String rateUnit;
 
-    private ZkMetricsReporter(MetricRegistry registry, TimeUnit rateUnit, TimeUnit durationUnit, MetricFilter filter) {
-        this.registry = registry;
+    private ZkMetricsReporter(RotatingMetricRegistryRef registryRef, TimeUnit rateUnit, TimeUnit durationUnit,
+            MetricFilter filter) {
+        this.registryRef = registryRef;
         this.filter = filter;
         this.rateFactor = rateUnit.toSeconds(1);
         this.rateUnit = calculateRateUnit(rateUnit);
@@ -143,88 +143,124 @@ public class ZkMetricsReporter {
     }
 
     public StringBuilder report(StringBuilder sb) {
-        return report(sb, registry.getGauges(filter), registry.getCounters(filter), registry.getHistograms(filter),
-                registry.getMeters(filter), registry.getTimers(filter));
+        return report(sb, registryRef.get().getGauges(filter), registryRef.get().getCounters(filter), registryRef.get()
+                .getHistograms(filter), registryRef.get().getMeters(filter), registryRef.get().getTimers(filter));
     }
 
     public StringBuilder report(StringBuilder sb, SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters,
             SortedMap<String, Histogram> histograms, SortedMap<String, Meter> meters, SortedMap<String, Timer> timers) {
         sb.append("{\n");
 
-        int i = 0;
-        sb.append("\"gauges\":{\n");
-        for (Map.Entry<String, Gauge> entry : gauges.entrySet()) {
-            if (i++ > 0) {
-                sb.append(",\n");
-            }
-            String name = entry.getKey();
-            sb.append("    {\"");
-            sb.append(name);
-            sb.append("\":");
-            reportGauge(sb, name, entry.getValue());
-            sb.append("}");
-        }
-        sb.append("\n},\n");
+        sb.append("\"interval_start_ts\":");
+        sb.append(registryRef.getLastRotatedTimestamp());
+        sb.append(",\n");
 
-        i = 0;
-        sb.append("\"counters\":{\n");
-        for (Map.Entry<String, Counter> entry : counters.entrySet()) {
-            if (i++ > 0) {
-                sb.append(",\n");
-            }
-            String name = entry.getKey();
-            sb.append("    {\"");
-            sb.append(name);
-            sb.append("\":");
-            reportCounter(sb, name, entry.getValue());
-            sb.append("}");
-        }
-        sb.append("\n},\n");
+        sb.append("\"interval_length\":");
+        sb.append(registryRef.getRotationInterval());
+        sb.append(",\n");
 
-        i = 0;
-        sb.append("\"histograms\":{\n");
-        for (Map.Entry<String, Histogram> entry : histograms.entrySet()) {
-            if (i++ > 0) {
-                sb.append(",\n");
-            }
-            String name = entry.getKey();
-            sb.append("{\"");
-            sb.append(name);
-            sb.append("\":");
-            reportHistogram(sb, entry.getKey(), entry.getValue());
-            sb.append("}");
-        }
-        sb.append("\n},\n");
+        sb.append("\"interval_length_unit\":\"");
+        sb.append(calculateRateUnit(registryRef.getRotationTimeUnit()));
+        sb.append("\",\n");
 
-        i = 0;
-        sb.append("\"meters\":{\n");
-        for (Map.Entry<String, Meter> entry : meters.entrySet()) {
-            if (i++ > 0) {
-                sb.append(",\n");
+        if (counters.size() > 0) {
+            int i = 0;
+            sb.append("\"counters\":{\n");
+            for (Map.Entry<String, Counter> entry : counters.entrySet()) {
+                if (i++ > 0) {
+                    sb.append(",\n");
+                }
+                String name = entry.getKey();
+                sb.append("    \"");
+                sb.append(name);
+                sb.append("\":");
+                reportCounter(sb, name, entry.getValue());
             }
-            String name = entry.getKey();
-            sb.append("{\"");
-            sb.append(name);
-            sb.append("\":");
-            reportMeter(sb, entry.getKey(), entry.getValue());
-            sb.append("}");
+            sb.append("\n}");
         }
-        sb.append("\n},\n");
 
-        i = 0;
-        sb.append("\"timers\":{\n");
-        for (Map.Entry<String, Timer> entry : timers.entrySet()) {
-            if (i++ > 0) {
+        if (gauges.size() > 0) {
+            if (counters.size() > 0) {
                 sb.append(",\n");
             }
-            String name = entry.getKey();
-            sb.append("{\"");
-            sb.append(name);
-            sb.append("\":");
-            reportTimer(sb, entry.getKey(), entry.getValue());
-            sb.append("}");
+            int i = 0;
+            sb.append("\"gauges\":{\n");
+            for (Map.Entry<String, Gauge> entry : gauges.entrySet()) {
+                if (i++ > 0) {
+                    sb.append(",\n");
+                }
+                String name = entry.getKey();
+                sb.append("    { \"");
+                sb.append(name);
+                sb.append("\":");
+                reportGauge(sb, name, entry.getValue());
+                sb.append(" }");
+            }
+            sb.append("\n}");
         }
-        sb.append("\n}\n}");
+
+        if (histograms.size() > 0) {
+            if (counters.size() > 0) {
+                sb.append(",\n");
+            }
+            int i = 0;
+            sb.append("\"histograms\":{\n");
+            for (Map.Entry<String, Histogram> entry : histograms.entrySet()) {
+                if (i++ > 0) {
+                    sb.append(",\n");
+                }
+                String name = entry.getKey();
+                sb.append("    { \"");
+                sb.append(name);
+                sb.append("\":");
+                reportHistogram(sb, entry.getKey(), entry.getValue());
+                sb.append(" }");
+            }
+            sb.append("\n}");
+        }
+
+        if (meters.size() > 0) {
+            if (histograms.size() > 0) {
+                sb.append(",\n");
+            }
+            sb.append(",\n");
+            int i = 0;
+            sb.append("\"meters\":{\n");
+            for (Map.Entry<String, Meter> entry : meters.entrySet()) {
+                if (i++ > 0) {
+                    sb.append(",\n");
+                }
+                String name = entry.getKey();
+                sb.append("    {\"");
+                sb.append(name);
+                sb.append("\":");
+                reportMeter(sb, entry.getKey(), entry.getValue());
+                sb.append(" }");
+            }
+            sb.append("\n}");
+        }
+
+        if (timers.size() > 0) {
+            if (meters.size() > 0) {
+                sb.append(",\n");
+            }
+            sb.append(",\n");
+            int i = 0;
+            sb.append("\"timers\":{\n");
+            for (Map.Entry<String, Timer> entry : timers.entrySet()) {
+                if (i++ > 0) {
+                    sb.append(",\n");
+                }
+                String name = entry.getKey();
+                sb.append("    {\"");
+                sb.append(name);
+                sb.append("\":");
+                reportTimer(sb, entry.getKey(), entry.getValue());
+                sb.append(" }");
+            }
+            sb.append("\n}");
+        }
+        sb.append("\n}");
 
         return sb;
     }
@@ -304,7 +340,8 @@ public class ZkMetricsReporter {
     }
 
     private String calculateRateUnit(TimeUnit unit) {
-        final String s = unit.toString().toLowerCase(Locale.US);
-        return s.substring(0, s.length() - 1);
+        // final String s = unit.toString().toLowerCase(Locale.US);
+        // return s.substring(0, s.length() - 1);
+        return unit.name();
     }
 }

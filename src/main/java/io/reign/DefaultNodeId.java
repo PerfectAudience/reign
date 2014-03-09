@@ -134,7 +134,7 @@ public class DefaultNodeId implements NodeId {
     @Override
     public String toString() {
         try {
-            return JacksonUtil.getObjectMapperInstance().writeValueAsString(this);
+            return JacksonUtil.getObjectMapper().writeValueAsString(this);
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }

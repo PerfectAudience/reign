@@ -303,6 +303,8 @@ public class PresenceService extends AbstractService {
             children = getZkClient().getChildren(path, true, stat);
 
         } catch (KeeperException e) {
+            error = true;
+
             if (e.code() == Code.NONODE) {
                 // set up watch on that node
                 try {
@@ -315,7 +317,6 @@ public class PresenceService extends AbstractService {
                         "lookupServiceInfo():  error trying to fetch service info:  {}:  node does not exist:  path={}",
                         e.getMessage(), path);
             } else {
-                error = true;
                 logger.error("lookupServiceInfo():  error trying to fetch service info:  " + e, e);
             }
 

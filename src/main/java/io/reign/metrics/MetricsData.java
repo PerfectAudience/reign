@@ -17,61 +17,124 @@
 package io.reign.metrics;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.annotate.JsonPropertyOrder;
 
 /**
  * 
  * @author ypai
  * 
  */
+@JsonPropertyOrder({ "interval_start_ts", "interval_length", "interval_length_unit" })
 public class MetricsData {
 
-    private Map<String, Object> gauges;
+    @JsonProperty("gauges")
+    private Map<String, GaugeData> gauges;
 
-    private Map<String, Object> counters;
+    @JsonProperty("counters")
+    private Map<String, CounterData> counters;
 
-    private Map<String, Object> histograms;
+    @JsonProperty("histograms")
+    private Map<String, HistogramData> histograms;
 
-    private Map<String, Object> meters;
+    @JsonProperty("meters")
+    private Map<String, MeterData> meters;
 
-    private Map<String, Object> timers;
+    @JsonProperty("timers")
+    private Map<String, TimerData> timers;
 
-    public Map<String, Object> getGauges() {
+    @JsonProperty("interval_start_ts")
+    private long intervalStartTimestamp;
+
+    @JsonProperty("interval_length")
+    private int intervalLength;
+
+    @JsonProperty("interval_length_unit")
+    private TimeUnit intervalLengthTimeUnit;
+
+    public long getIntervalStartTimestamp() {
+        return intervalStartTimestamp;
+    }
+
+    public void setIntervalStartTimestamp(long intervalStartTimestamp) {
+        this.intervalStartTimestamp = intervalStartTimestamp;
+    }
+
+    public int getIntervalLength() {
+        return intervalLength;
+    }
+
+    public void setIntervalLength(int intervalLength) {
+        this.intervalLength = intervalLength;
+    }
+
+    public TimeUnit getIntervalLengthTimeUnit() {
+        return intervalLengthTimeUnit;
+    }
+
+    public void setIntervalLengthTimeUnit(TimeUnit intervalLengthTimeUnit) {
+        this.intervalLengthTimeUnit = intervalLengthTimeUnit;
+    }
+
+    public GaugeData getGauge(String key) {
+        return gauges.get(key);
+    }
+
+    public Map<String, GaugeData> getGauges() {
         return gauges;
     }
 
-    public void setGauges(Map<String, Object> gauges) {
+    public void setGauges(Map<String, GaugeData> gauges) {
         this.gauges = gauges;
     }
 
-    public Map<String, Object> getCounters() {
+    public CounterData getCounter(String key) {
+        return counters.get(key);
+    }
+
+    public Map<String, CounterData> getCounters() {
         return counters;
     }
 
-    public void setCounters(Map<String, Object> counters) {
+    public void setCounters(Map<String, CounterData> counters) {
         this.counters = counters;
     }
 
-    public Map<String, Object> getHistograms() {
+    public HistogramData getHistogram(String key) {
+        return histograms.get(key);
+    }
+
+    public Map<String, HistogramData> getHistograms() {
         return histograms;
     }
 
-    public void setHistograms(Map<String, Object> histograms) {
+    public void setHistograms(Map<String, HistogramData> histograms) {
         this.histograms = histograms;
     }
 
-    public Map<String, Object> getMeters() {
+    public MeterData getMeter(String key) {
+        return meters.get(key);
+    }
+
+    public Map<String, MeterData> getMeters() {
         return meters;
     }
 
-    public void setMeters(Map<String, Object> meters) {
+    public void setMeters(Map<String, MeterData> meters) {
         this.meters = meters;
     }
 
-    public Map<String, Object> getTimers() {
+    public TimerData getTimer(String key) {
+        return timers.get(key);
+    }
+
+    public Map<String, TimerData> getTimers() {
         return timers;
     }
 
-    public void setTimers(Map<String, Object> timers) {
+    public void setTimers(Map<String, TimerData> timers) {
         this.timers = timers;
     }
 

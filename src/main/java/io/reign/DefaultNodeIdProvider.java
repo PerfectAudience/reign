@@ -79,7 +79,7 @@ public class DefaultNodeIdProvider implements NodeIdProvider {
     @Override
     public NodeId fromZk(ZkNodeId zkNodeId) {
         try {
-            return JacksonUtil.getObjectMapperInstance().readValue(zkNodeId.getPathToken(),
+            return JacksonUtil.getObjectMapper().readValue(zkNodeId.getPathToken(),
                     new TypeReference<DefaultNodeId>() {
                     });
         } catch (Exception e) {

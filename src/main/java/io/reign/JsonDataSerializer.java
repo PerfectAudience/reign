@@ -37,7 +37,7 @@ public class JsonDataSerializer<T> implements DataSerializer<T> {
     /**
      * Reusable Jackson JSON mapper
      */
-    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapperInstance();
+    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
 
     @Override
     public byte[] serialize(T data) throws RuntimeException {

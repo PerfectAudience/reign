@@ -86,7 +86,7 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
     @Override
     public String toString() {
         try {
-            return JacksonUtil.getObjectMapperInstance().writeValueAsString(this);
+            return JacksonUtil.getObjectMapper().writeValueAsString(this);
         } catch (Exception e) {
             logger.error("" + e, e);
             return super.toString();
