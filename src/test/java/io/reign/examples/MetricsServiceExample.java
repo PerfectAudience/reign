@@ -43,7 +43,7 @@ public class MetricsServiceExample {
         // MetricsData.class);
         // logger.info("MetricsData Test JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(metricsDataTest));
 
-        metricsService.exportMetrics("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);
 
         MetricsData metricsData = null;
         while ((metricsData = metricsService.getMetrics("clusterA", "serviceA")) == null) {

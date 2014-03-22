@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
@@ -34,7 +35,7 @@ public class MetricsServiceTest {
     @Test
     public void testExportSelfMetrics() throws Exception {
         MetricRegistryManager registryManager = getMetricRegistryManager();
-        metricsService.exportMetrics("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
 
         MetricsData metricsData = metricsService.getMetrics("clusterA", "serviceA");
         while (metricsData == null) {
@@ -57,7 +58,7 @@ public class MetricsServiceTest {
         MeterData meter1 = metricsData.getMeter("meter1");
         MeterData meter2 = metricsData.getMeter("meter2");
         assertTrue(meter1.getCount() == 1000);
-        assertTrue(meter2.getCount() == 2000);
+        assertTrue(meter2.getCount() == 4000);
 
         // timers
         TimerData timer1 = metricsData.getTimer("timer1");
@@ -68,6 +69,18 @@ public class MetricsServiceTest {
         assertTrue(Math.round(timer2.getMax()) == 200);
 
         // histograms
+        HistogramData histo1 = metricsData.getHistogram("histo1");
+        HistogramData histo2 = metricsData.getHistogram("histo2");
+        assertTrue(histo1.getCount() == 3);
+        assertTrue(histo1.getMin() == 10);
+        assertTrue(histo1.getMean() == 20);
+        assertTrue(histo1.getMax() == 30);
+        assertTrue(histo1.getP999() == 30);
+        assertTrue(histo2.getCount() == 6);
+        assertTrue(histo2.getMin() == 100);
+        assertTrue(histo2.getMean() == 350);
+        assertTrue(histo2.getMax() == 600);
+        assertTrue(histo2.getP999() == 600);
     }
 
     MetricRegistryManager getMetricRegistryManager() throws Exception {
@@ -99,6 +112,7 @@ public class MetricsServiceTest {
 
         meter1.mark(1000);
         meter2.mark(2000);
+        meter2.mark(2000);
 
         // wait 5 secs after initial mark so meters can fill out some rates
         Thread.sleep(5000);
@@ -126,6 +140,17 @@ public class MetricsServiceTest {
         }
 
         // histograms
+        Histogram histo1 = registryManager.get().histogram("histo1");
+        Histogram histo2 = registryManager.get().histogram("histo2");
+        histo1.update(10);
+        histo1.update(20);
+        histo1.update(30);
+        histo2.update(100);
+        histo2.update(200);
+        histo2.update(300);
+        histo2.update(400);
+        histo2.update(500);
+        histo2.update(600);
 
         return registryManager;
     }

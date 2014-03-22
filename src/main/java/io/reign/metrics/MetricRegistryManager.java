@@ -10,6 +10,7 @@ import com.codahale.metrics.MetricRegistry;
  * 
  */
 public interface MetricRegistryManager {
+
     public MetricRegistry get();
 
     public void rotateAsNecessary();

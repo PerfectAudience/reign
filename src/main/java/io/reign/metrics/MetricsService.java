@@ -75,7 +75,7 @@ public class MetricsService extends AbstractService {
 
     private ScheduledExecutorService executorService;
 
-    public void exportMetrics(final String clusterId, final String serviceId,
+    public void scheduleExport(final String clusterId, final String serviceId,
             final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
 
         final String key = clusterId + "/" + serviceId;
