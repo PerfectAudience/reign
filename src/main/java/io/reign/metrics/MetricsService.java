@@ -17,7 +17,6 @@
 package io.reign.metrics;
 
 import io.reign.AbstractService;
-import io.reign.JsonDataSerializer;
 import io.reign.PathScheme;
 import io.reign.PathType;
 import io.reign.ReignException;
@@ -55,18 +54,18 @@ public class MetricsService extends AbstractService {
 
     public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
 
-    private static final JsonDataSerializer<MetricsData> jsonSerializer = new JsonDataSerializer<MetricsData>();
+    // private static final JsonDataSerializer<MetricsData> jsonSerializer = new JsonDataSerializer<MetricsData>();
 
     /** interval btw. aggregations at service level */
-    private int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
+    private final int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
 
     private final Map<String, ExportMeta> exportPathMap = new ConcurrentHashMap<String, ExportMeta>(16, 0.9f, 1);
 
     private static class ExportMeta {
         public String dataPath;
-        public RotatingMetricRegistryRef registryRef;
+        public MetricRegistryManager registryRef;
 
-        public ExportMeta(String dataPath, RotatingMetricRegistryRef registryRef) {
+        public ExportMeta(String dataPath, MetricRegistryManager registryRef) {
             this.dataPath = dataPath;
             this.registryRef = registryRef;
         }
@@ -77,20 +76,20 @@ public class MetricsService extends AbstractService {
     private ScheduledExecutorService executorService;
 
     public void exportMetrics(final String clusterId, final String serviceId,
-            final RotatingMetricRegistryRef registryRef, long updateInterval, TimeUnit updateIntervalTimeUnit) {
+            final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
 
         final String key = clusterId + "/" + serviceId;
         synchronized (this) {
             if (!exportPathMap.containsKey(key)) {
-                exportPathMap.put(key, new ExportMeta(null, registryRef));
+                exportPathMap.put(key, new ExportMeta(null, registryManager));
             } else {
                 logger.info("Already exported metrics:  {}", key);
                 return;
             }
         }
 
-        final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registryRef).convertRatesTo(TimeUnit.SECONDS)
-                .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+        final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registryManager)
+                .convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS).build();
 
         executorService.scheduleAtFixedRate(new Runnable() {
 
@@ -99,12 +98,12 @@ public class MetricsService extends AbstractService {
                 // logger.trace("EXPORTING METRICS...");
                 StringBuilder sb = new StringBuilder();
                 sb = reporter.report(sb);
-                // logger.trace("EXPORTING METRICS:  {}", sb);
+                logger.trace("EXPORTING METRICS:  {}", sb);
 
                 // export to zk
                 ExportMeta exportMeta = exportPathMap.get(key);
                 try {
-                    if (exportMeta == null || exportMeta.dataPath == null) {
+                    if (exportMeta.dataPath == null) {
                         PathScheme pathScheme = getContext().getPathScheme();
                         String dataPathPrefix = pathScheme.getAbsolutePath(
                                 PathType.DATA,
@@ -113,7 +112,14 @@ public class MetricsService extends AbstractService {
                         exportMeta.dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext()
                                 .getPathScheme(), dataPathPrefix + "-", sb.toString().getBytes(UTF_8), getContext()
                                 .getDefaultZkAclList(), CreateMode.PERSISTENT_SEQUENTIAL, -1);
+
+                        // put in again to update data
                         exportPathMap.put(key, exportMeta);
+
+                        synchronized (exportMeta) {
+                            exportMeta.notifyAll();
+                        }
+
                     } else {
                         zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(),
                                 exportMeta.dataPath, sb.toString().getBytes(UTF_8), getContext().getDefaultZkAclList(),
@@ -126,12 +132,15 @@ public class MetricsService extends AbstractService {
                 }
 
                 // rotate as necessary
-                registryRef.rotateAsNecessary();
+                registryManager.rotateAsNecessary();
 
             }
         }, 0, updateInterval, updateIntervalTimeUnit);
     }
 
+    /**
+     * Get metrics data for given service.
+     */
     public MetricsData getServiceMetrics(String clusterId, String serviceId) {
         try {
             PathScheme pathScheme = getContext().getPathScheme();
@@ -151,12 +160,29 @@ public class MetricsService extends AbstractService {
         }
     }
 
+    /**
+     * Get metrics data for this service node (self).
+     */
     public MetricsData getMetrics(String clusterId, String serviceId) {
         String key = clusterId + "/" + serviceId;
         ExportMeta exportMeta = exportPathMap.get(key);
-        if (exportMeta == null || exportMeta.dataPath == null) {
-            logger.trace("MetricsData not found:  clusterId={}; serviceId={}", clusterId, serviceId);
+        if (exportMeta == null) {
+            logger.trace(
+                    "MetricsData not found:  data has not been exported:  clusterId={}; serviceId={}; exportMeta={}",
+                    clusterId, serviceId, exportMeta);
             return null;
+        }
+        if (exportMeta.dataPath == null) {
+            logger.trace(
+                    "MetricsData not found:  waiting for data to be reported in ZK:  clusterId={}; serviceId={}; exportMeta.dataPath={}",
+                    clusterId, serviceId, exportMeta.dataPath);
+            synchronized (exportMeta) {
+                try {
+                    exportMeta.wait();
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted while waiting:  " + e, e);
+                }
+            }
         }
 
         try {
@@ -175,7 +201,7 @@ public class MetricsService extends AbstractService {
 
     }
 
-    public MetricsData getMetrics(String clusterId, String serviceId, String nodeId) {
+    MetricsData getMetrics(String clusterId, String serviceId, String nodeId) {
         try {
             PathScheme pathScheme = getContext().getPathScheme();
             String dataPath = pathScheme.getAbsolutePath(PathType.DATA,
@@ -193,13 +219,13 @@ public class MetricsService extends AbstractService {
         }
     }
 
-    public void setUpdateIntervalMillis(int updateIntervalMillis) {
-        this.updateIntervalMillis = updateIntervalMillis;
-    }
-
-    public int getUpdateIntervalMillis() {
-        return updateIntervalMillis;
-    }
+    // public void setUpdateIntervalMillis(int updateIntervalMillis) {
+    // this.updateIntervalMillis = updateIntervalMillis;
+    // }
+    //
+    // public int getUpdateIntervalMillis() {
+    // return updateIntervalMillis;
+    // }
 
     @Override
     public synchronized void init() {
@@ -225,44 +251,97 @@ public class MetricsService extends AbstractService {
         executorService.shutdown();
     }
 
+    long millisLeft(MetricsData metricsData) {
+        if (metricsData == null) {
+            return -1;
+        }
+        long currentTimestamp = System.currentTimeMillis();
+        long intervalLengthMillis = metricsData.getIntervalLengthTimeUnit().toMillis(metricsData.getIntervalLength());
+        return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 30000 - currentTimestamp;
+    }
+
     public class AggregationRunnable implements Runnable {
         @Override
         public void run() {
             // list all services in cluster
+            PresenceService presenceService = getContext().getService("presence");
+            CoordinationService coordinationService = getContext().getService("coord");
+            ZkClient zkClient = getContext().getZkClient();
+            PathScheme pathScheme = getContext().getPathScheme();
 
-            // get lock for a service -- should only perform if in cluster
+            // list all services in cluster
+            List<String> clusterIds = presenceService.lookupClusters();
+            for (String clusterId : clusterIds) {
 
-            // get all data nodes for a service
+                // only proceed if in cluster
+                if (presenceService.isMemberOf(clusterId)) {
+                    continue;
+                }
 
-            /** aggregate service stats for data nodes that within current rotation interval **/
+                List<String> serviceIds = presenceService.lookupServices(clusterId);
+                for (String serviceId : serviceIds) {
+                    logger.trace("Finding data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
 
-            // gauges: weighted avg
+                    // get lock for a service
+                    DistributedLock lock = coordinationService.getLock("reign", "metrics-aggregator-" + serviceId);
+                    try {
+                        if (lock.tryLock()) {
+                            // get all data nodes for a service
+                            String dataParentPath = pathScheme.getAbsolutePath(PathType.DATA,
+                                    pathScheme.joinTokens(clusterId, serviceId));
+                            List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
-            // counters: sum
+                            // remove all nodes that are older than rotation interval
+                            for (String dataNode : dataNodes) {
+                                logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
+                                        serviceId, dataNode);
+                                String dataPath = pathScheme.getAbsolutePath(PathType.DATA,
+                                        pathScheme.joinTokens(clusterId, serviceId, dataNode));
+                                MetricsData metricsData = getMetrics(clusterId, serviceId, dataNode);
+                                long millisLeft = millisLeft(metricsData);
+                                if (millisLeft > 0) {
+                                    logger.trace("Aggregating data node:  path={}; millisLeft={}", dataPath, millisLeft);
+                                    // aggregate service stats for data nodes that within current rotation interval
 
-            // histogram: sum count, take max, take min, weighted avg of averages, sqrt of sum of variances (sum of
-            // each stddev squared), weighted avg. of percentiles
+                                    // gauges: weighted avg
 
-            // timers: treat like histograms
+                                    // counters: sum
 
-            // meters: sum count, weighted avg. of results
+                                    // histogram: sum count, take max, take min, weighted avg of averages, sqrt of sum
+                                    // of
+                                    // variances (sum
+                                    // of
+                                    // each stddev squared), weighted avg. of percentiles
 
-            // store aggregated results in ZK at service level
+                                    // timers: treat like histograms
+
+                                    // meters: sum count, weighted avg. of results
+                                }
+                            }
+
+                        }
+                    } catch (KeeperException e) {
+                        if (e.code() != KeeperException.Code.NONODE) {
+                            logger.warn("Error trying to clean up data directory for service:  clusterId=" + clusterId
+                                    + "; serviceId=" + serviceId + ":  " + e, e);
+                        }
+                    } catch (Exception e) {
+                        logger.warn("Error trying to clean up data directory for service:  clusterId=" + clusterId
+                                + "; serviceId=" + serviceId + ":  " + e, e);
+                    } finally {
+                        lock.unlock();
+                        lock.destroy();
+                    }// try
+
+                }// for service
+
+                // store aggregated results in ZK at service level
+            }// for cluster
 
         }
     }
 
     public class CleanerRunnable implements Runnable {
-
-        long millisLeft(MetricsData metricsData) {
-            if (metricsData == null) {
-                return -1;
-            }
-            long currentTimestamp = System.currentTimeMillis();
-            long intervalLengthMillis = metricsData.getIntervalLengthTimeUnit().toMillis(
-                    metricsData.getIntervalLength());
-            return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 30000 - currentTimestamp;
-        }
 
         @Override
         public void run() {
@@ -274,14 +353,20 @@ public class MetricsService extends AbstractService {
             // list all services in cluster
             List<String> clusterIds = presenceService.lookupClusters();
             for (String clusterId : clusterIds) {
+
+                // only proceed if in cluster
+                if (presenceService.isMemberOf(clusterId)) {
+                    continue;
+                }
+
                 List<String> serviceIds = presenceService.lookupServices(clusterId);
                 for (String serviceId : serviceIds) {
-                    logger.trace("Checking data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
+                    logger.trace("Checking data nodes expiry:  clusterId={}; serviceId={}", clusterId, serviceId);
 
-                    // get lock for a service -- should only perform if in cluster
-                    DistributedLock cleanerLock = coordinationService.getLock("reign", "metrics-cleaner-" + serviceId);
+                    // get lock for a service
+                    DistributedLock lock = coordinationService.getLock("reign", "metrics-cleaner-" + serviceId);
                     try {
-                        if (cleanerLock.tryLock()) {
+                        if (lock.tryLock()) {
                             // get all data nodes for a service
                             String dataParentPath = pathScheme.getAbsolutePath(PathType.DATA,
                                     pathScheme.joinTokens(clusterId, serviceId));
@@ -289,8 +374,8 @@ public class MetricsService extends AbstractService {
 
                             // remove all nodes that are older than rotation interval
                             for (String dataNode : dataNodes) {
-                                logger.trace("Checking data nodes:  clusterId={}; serviceId={}; nodeId={}", clusterId,
-                                        serviceId, dataNode);
+                                logger.trace("Checking data node expiry:  clusterId={}; serviceId={}; nodeId={}",
+                                        clusterId, serviceId, dataNode);
                                 String dataPath = pathScheme.getAbsolutePath(PathType.DATA,
                                         pathScheme.joinTokens(clusterId, serviceId, dataNode));
                                 MetricsData metricsData = getMetrics(clusterId, serviceId, dataNode);
@@ -314,8 +399,8 @@ public class MetricsService extends AbstractService {
                         logger.warn("Error trying to clean up data directory for service:  clusterId=" + clusterId
                                 + "; serviceId=" + serviceId + ":  " + e, e);
                     } finally {
-                        cleanerLock.unlock();
-                        cleanerLock.destroy();
+                        lock.unlock();
+                        lock.destroy();
                     }// try
                 }// for service
             }// for cluster

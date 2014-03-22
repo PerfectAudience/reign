@@ -1,0 +1,132 @@
+package io.reign.metrics;
+
+import static org.junit.Assert.assertTrue;
+import io.reign.MasterTestSuite;
+import io.reign.presence.PresenceService;
+
+import java.util.concurrent.TimeUnit;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+
+public class MetricsServiceTest {
+    private static final Logger logger = LoggerFactory.getLogger(MetricsServiceTest.class);
+
+    private MetricsService metricsService;
+    private PresenceService presenceService;
+
+    @Before
+    public void setUp() throws Exception {
+        metricsService = MasterTestSuite.getReign().getService("metrics");
+        presenceService = MasterTestSuite.getReign().getService("presence");
+        presenceService.announce("clusterA", "serviceA", true);
+        presenceService.announce("clusterA", "serviceB", false);
+    }
+
+    @Test
+    public void testExportSelfMetrics() throws Exception {
+        MetricRegistryManager registryManager = getMetricRegistryManager();
+        metricsService.exportMetrics("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
+
+        MetricsData metricsData = metricsService.getMetrics("clusterA", "serviceA");
+        while (metricsData == null) {
+            metricsData = metricsService.getMetrics("clusterA", "serviceA");
+        }
+
+        // counters
+        CounterData counter1Data = metricsData.getCounter("counter1");
+        CounterData counter2Data = metricsData.getCounter("counter2");
+        assertTrue(counter1Data.getCount() == 1L);
+        assertTrue(counter2Data.getCount() == 2L);
+
+        // gauges
+        GaugeData gauge1 = metricsData.getGauge("gauge1");
+        GaugeData gauge2 = metricsData.getGauge("gauge2");
+        assertTrue(gauge1.getValue() == 1.0);
+        assertTrue(gauge2.getValue() == 2.0);
+
+        // meters
+        MeterData meter1 = metricsData.getMeter("meter1");
+        MeterData meter2 = metricsData.getMeter("meter2");
+        assertTrue(meter1.getCount() == 1000);
+        assertTrue(meter2.getCount() == 2000);
+
+        // timers
+        TimerData timer1 = metricsData.getTimer("timer1");
+        TimerData timer2 = metricsData.getTimer("timer2");
+        assertTrue(timer1.getCount() == 1);
+        assertTrue(timer2.getCount() == 2);
+        assertTrue(Math.round(timer1.getMax()) == 100);
+        assertTrue(Math.round(timer2.getMax()) == 200);
+
+        // histograms
+    }
+
+    MetricRegistryManager getMetricRegistryManager() throws Exception {
+        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(15, TimeUnit.SECONDS);
+
+        // counters
+        Counter counter1 = registryManager.get().counter(MetricRegistry.name("counter1"));
+        Counter counter2 = registryManager.get().counter(MetricRegistry.name("counter2"));
+        counter1.inc();
+        counter2.inc(2);
+
+        // gauges
+        Gauge<Integer> gauge1 = registryManager.get().register(MetricRegistry.name("gauge1"), new Gauge<Integer>() {
+            @Override
+            public Integer getValue() {
+                return 1;
+            }
+        });
+        Gauge<Integer> gauge2 = registryManager.get().register(MetricRegistry.name("gauge2"), new Gauge<Integer>() {
+            @Override
+            public Integer getValue() {
+                return 2;
+            }
+        });
+
+        // meters
+        Meter meter1 = registryManager.get().meter(MetricRegistry.name("meter1"));
+        Meter meter2 = registryManager.get().meter(MetricRegistry.name("meter2"));
+
+        meter1.mark(1000);
+        meter2.mark(2000);
+
+        // wait 5 secs after initial mark so meters can fill out some rates
+        Thread.sleep(5000);
+
+        // timers
+        Timer timer1 = registryManager.get().timer("timer1");
+        Timer timer2 = registryManager.get().timer("timer2");
+        final Timer.Context context1 = timer1.time();
+        try {
+            Thread.sleep(100);
+        } finally {
+            context1.stop();
+        }
+        final Timer.Context context2 = timer2.time();
+        try {
+            Thread.sleep(200);
+        } finally {
+            context2.stop();
+        }
+        final Timer.Context context3 = timer2.time();
+        try {
+            Thread.sleep(200);
+        } finally {
+            context3.stop();
+        }
+
+        // histograms
+
+        return registryManager;
+    }
+}

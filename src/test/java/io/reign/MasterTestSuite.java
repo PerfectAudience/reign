@@ -32,31 +32,37 @@ public class MasterTestSuite {
     public static final int ZK_TEST_SERVER_PORT = 21810;
 
     public static Reign getReign() {
+        setUpClass();
         return reign;
     }
 
     @BeforeClass
     public static void setUpClass() {
-
-        /** bootstrap a real ZooKeeper instance **/
-        logger.debug("Starting Test ZooKeeper server...");
-        try {
-            String dataDirectory = System.getProperty("java.io.tmpdir");
-            if (!dataDirectory.endsWith("/")) {
-                dataDirectory += File.separator;
+        synchronized (logger) {
+            if (reign != null) {
+                return;
             }
-            dataDirectory += UUID.randomUUID().toString();
-            logger.debug("ZK dataDirectory={}", dataDirectory);
-            File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
-            zkTestServer = new TestingServer(ZK_TEST_SERVER_PORT, dir);
-        } catch (Exception e) {
-            logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
-        }
 
-        /** init and start reign using builder **/
-        reign = Reign.maker().messagingPort(33133).zkClient("localhost:" + MasterTestSuite.ZK_TEST_SERVER_PORT, 30000)
-                .pathCache(1024, 8).get();
-        reign.start();
+            /** bootstrap a real ZooKeeper instance **/
+            logger.debug("Starting Test ZooKeeper server...");
+            try {
+                String dataDirectory = System.getProperty("java.io.tmpdir");
+                if (!dataDirectory.endsWith("/")) {
+                    dataDirectory += File.separator;
+                }
+                dataDirectory += UUID.randomUUID().toString();
+                logger.debug("ZK dataDirectory={}", dataDirectory);
+                File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
+                zkTestServer = new TestingServer(ZK_TEST_SERVER_PORT, dir);
+            } catch (Exception e) {
+                logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
+            }
+
+            /** init and start reign using builder **/
+            reign = Reign.maker().messagingPort(33133)
+                    .zkClient("localhost:" + MasterTestSuite.ZK_TEST_SERVER_PORT, 30000).pathCache(1024, 8).get();
+            reign.start();
+        }
     }
 
     @AfterClass

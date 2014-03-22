@@ -3,7 +3,7 @@ package io.reign.examples;
 import io.reign.Reign;
 import io.reign.metrics.MetricsData;
 import io.reign.metrics.MetricsService;
-import io.reign.metrics.RotatingMetricRegistryRef;
+import io.reign.metrics.RotatingMetricRegistryManager;
 import io.reign.presence.PresenceService;
 
 import java.util.concurrent.TimeUnit;
@@ -29,9 +29,9 @@ public class MetricsServiceExample {
 
         MetricsService metricsService = reign.getService("metrics");
 
-        RotatingMetricRegistryRef registryRef = new RotatingMetricRegistryRef(30, TimeUnit.SECONDS);
-        Counter counter1 = registryRef.get().counter(MetricRegistry.name("counter1"));
-        Counter counter2 = registryRef.get().counter(MetricRegistry.name("counter2"));
+        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(30, TimeUnit.SECONDS);
+        Counter counter1 = registryManager.get().counter(MetricRegistry.name("counter1"));
+        Counter counter2 = registryManager.get().counter(MetricRegistry.name("counter2"));
         counter1.inc();
         counter2.inc(3);
 
@@ -43,7 +43,7 @@ public class MetricsServiceExample {
         // MetricsData.class);
         // logger.info("MetricsData Test JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(metricsDataTest));
 
-        metricsService.exportMetrics("clusterA", "serviceA", registryRef, 10, TimeUnit.SECONDS);
+        metricsService.exportMetrics("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);
 
         MetricsData metricsData = null;
         while ((metricsData = metricsService.getMetrics("clusterA", "serviceA")) == null) {
@@ -53,7 +53,7 @@ public class MetricsServiceExample {
         logger.debug("counter1={}", metricsData.getCounter("counter1").getCount());
 
         Thread.sleep(35000);
-        Counter counter3 = registryRef.get().counter(MetricRegistry.name(MetricsService.class, "counter3"));
+        Counter counter3 = registryManager.get().counter(MetricRegistry.name(MetricsService.class, "counter3"));
         counter3.inc(5);
 
         Thread.sleep(60000);

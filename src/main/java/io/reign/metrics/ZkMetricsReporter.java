@@ -31,7 +31,7 @@ public class ZkMetricsReporter {
      *            the registry to report
      * @return a {@link Builder} instance for a {@link ZkMetricsReporter}
      */
-    public static Builder forRegistry(RotatingMetricRegistryRef registryRef) {
+    public static Builder forRegistry(MetricRegistryManager registryRef) {
         return new Builder(registryRef);
     }
 
@@ -40,14 +40,14 @@ public class ZkMetricsReporter {
      * events/second, converting durations to milliseconds, and not filtering metrics.
      */
     public static class Builder {
-        private final RotatingMetricRegistryRef registryRef;
+        private final MetricRegistryManager registryRef;
         private Locale locale;
         private TimeUnit rateUnit;
         private TimeUnit durationUnit;
         // private final Clock clock;
         private MetricFilter filter;
 
-        private Builder(RotatingMetricRegistryRef registryRef) {
+        private Builder(MetricRegistryManager registryRef) {
             this.registryRef = registryRef;
             this.locale = Locale.getDefault();
             this.rateUnit = TimeUnit.SECONDS;
@@ -124,21 +124,21 @@ public class ZkMetricsReporter {
     private static final Logger logger = LoggerFactory.getLogger(ZkMetricsReporter.class);
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-    private final RotatingMetricRegistryRef registryRef;
+    private final MetricRegistryManager registryRef;
     private final MetricFilter filter;
     private final double durationFactor;
     private final String durationUnit;
     private final double rateFactor;
     private final String rateUnit;
 
-    private ZkMetricsReporter(RotatingMetricRegistryRef registryRef, TimeUnit rateUnit, TimeUnit durationUnit,
+    private ZkMetricsReporter(MetricRegistryManager registryRef, TimeUnit rateUnit, TimeUnit durationUnit,
             MetricFilter filter) {
         this.registryRef = registryRef;
         this.filter = filter;
         this.rateFactor = rateUnit.toSeconds(1);
-        this.rateUnit = calculateRateUnit(rateUnit);
+        this.rateUnit = serializeUnit(rateUnit);
         this.durationFactor = 1.0 / durationUnit.toNanos(1);
-        this.durationUnit = durationUnit.toString().toLowerCase(Locale.US);
+        this.durationUnit = serializeUnit(durationUnit);
 
     }
 
@@ -160,7 +160,7 @@ public class ZkMetricsReporter {
         sb.append(",\n");
 
         sb.append("\"interval_length_unit\":\"");
-        sb.append(calculateRateUnit(registryRef.getRotationTimeUnit()));
+        sb.append(serializeUnit(registryRef.getRotationTimeUnit()));
 
         if (counters.size() > 0) {
             sb.append("\",\n");
@@ -177,12 +177,11 @@ public class ZkMetricsReporter {
                 reportCounter(sb, name, entry.getValue());
             }
             sb.append("\n}");
+
+            sb.append(",\n");
         }
 
         if (gauges.size() > 0) {
-            if (counters.size() > 0) {
-                sb.append(",\n");
-            }
             int i = 0;
             sb.append("\"gauges\":{\n");
             for (Map.Entry<String, Gauge> entry : gauges.entrySet()) {
@@ -190,19 +189,17 @@ public class ZkMetricsReporter {
                     sb.append(",\n");
                 }
                 String name = entry.getKey();
-                sb.append("    { \"");
+                sb.append("    \"");
                 sb.append(name);
                 sb.append("\":");
                 reportGauge(sb, name, entry.getValue());
-                sb.append(" }");
             }
             sb.append("\n}");
+
+            sb.append(",\n");
         }
 
         if (histograms.size() > 0) {
-            if (counters.size() > 0) {
-                sb.append(",\n");
-            }
             int i = 0;
             sb.append("\"histograms\":{\n");
             for (Map.Entry<String, Histogram> entry : histograms.entrySet()) {
@@ -210,20 +207,17 @@ public class ZkMetricsReporter {
                     sb.append(",\n");
                 }
                 String name = entry.getKey();
-                sb.append("    { \"");
+                sb.append("    \"");
                 sb.append(name);
                 sb.append("\":");
                 reportHistogram(sb, entry.getKey(), entry.getValue());
-                sb.append(" }");
             }
             sb.append("\n}");
+
+            sb.append(",\n");
         }
 
         if (meters.size() > 0) {
-            if (histograms.size() > 0) {
-                sb.append(",\n");
-            }
-            sb.append(",\n");
             int i = 0;
             sb.append("\"meters\":{\n");
             for (Map.Entry<String, Meter> entry : meters.entrySet()) {
@@ -231,20 +225,17 @@ public class ZkMetricsReporter {
                     sb.append(",\n");
                 }
                 String name = entry.getKey();
-                sb.append("    {\"");
+                sb.append("    \"");
                 sb.append(name);
                 sb.append("\":");
                 reportMeter(sb, entry.getKey(), entry.getValue());
-                sb.append(" }");
             }
             sb.append("\n}");
+
+            sb.append(",\n");
         }
 
         if (timers.size() > 0) {
-            if (meters.size() > 0) {
-                sb.append(",\n");
-            }
-            sb.append(",\n");
             int i = 0;
             sb.append("\"timers\":{\n");
             for (Map.Entry<String, Timer> entry : timers.entrySet()) {
@@ -252,11 +243,10 @@ public class ZkMetricsReporter {
                     sb.append(",\n");
                 }
                 String name = entry.getKey();
-                sb.append("    {\"");
+                sb.append("    \"");
                 sb.append(name);
                 sb.append("\":");
                 reportTimer(sb, entry.getKey(), entry.getValue());
-                sb.append(" }");
             }
             sb.append("\n}");
         }
@@ -339,7 +329,7 @@ public class ZkMetricsReporter {
         return rate * rateFactor;
     }
 
-    private String calculateRateUnit(TimeUnit unit) {
+    private String serializeUnit(TimeUnit unit) {
         // final String s = unit.toString().toLowerCase(Locale.US);
         // return s.substring(0, s.length() - 1);
         return unit.name();

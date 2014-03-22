@@ -14,9 +14,9 @@ import com.codahale.metrics.MetricRegistry;
  * @author ypai
  * 
  */
-public class RotatingMetricRegistryRef {
+public class RotatingMetricRegistryManager implements MetricRegistryManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(RotatingMetricRegistryRef.class);
+    private static final Logger logger = LoggerFactory.getLogger(RotatingMetricRegistryManager.class);
 
     private volatile MetricRegistry metricRegistry;
     private volatile long lastRotatedTimestamp = 0L;
@@ -25,30 +25,35 @@ public class RotatingMetricRegistryRef {
     private final TimeUnit rotationTimeUnit;
     private final long rotationIntervalMillis;
 
-    public RotatingMetricRegistryRef(int rotationInterval, TimeUnit rotationTimeUnit) {
+    public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit) {
         this.rotationInterval = rotationInterval;
         this.rotationTimeUnit = rotationTimeUnit;
         rotationIntervalMillis = rotationTimeUnit.toMillis(rotationInterval);
         rotateAsNecessary();
     }
 
+    @Override
     public MetricRegistry get() {
         return this.metricRegistry;
     }
 
+    @Override
     public int getRotationInterval() {
         return this.rotationInterval;
     }
 
+    @Override
     public TimeUnit getRotationTimeUnit() {
         return this.rotationTimeUnit;
     }
 
+    @Override
     public long getLastRotatedTimestamp() {
         return this.lastRotatedTimestamp;
     }
 
-    synchronized void rotateAsNecessary() {
+    @Override
+    public synchronized void rotateAsNecessary() {
         if (System.currentTimeMillis() - lastRotatedTimestamp > rotationIntervalMillis) {
             this.metricRegistry = new MetricRegistry();
             this.lastRotatedTimestamp = getNormalizedTimestamp(rotationIntervalMillis);

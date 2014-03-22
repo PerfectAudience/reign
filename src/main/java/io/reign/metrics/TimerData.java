@@ -1,6 +1,9 @@
 package io.reign.metrics;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * 
@@ -20,12 +23,72 @@ public class TimerData {
     private double p98;
     private double p99;
     private double p999;
+
+    @JsonProperty("mean_rate")
     private double meanRate;
+
+    @JsonProperty("m1_rate")
     private double m1Rate;
+
+    @JsonProperty("m5_rate")
     private double m5Rate;
+
+    @JsonProperty("m15_rate")
     private double m15Rate;
+
+    @JsonProperty("rate_unit")
     private TimeUnit rateUnit;
+
+    @JsonProperty("duration_unit")
     private TimeUnit durationUnit;
+
+    public static TimerData merge(List<TimerData> dataList) {
+        int samples = 0;
+        double meanSum = 0;
+        double min = 0;
+        double max = 0;
+
+        double stddevSum = 0;
+
+        double p50Sum = 0;
+        double p75Sum = 0;
+        double p98Sum = 0;
+        double p99Sum = 0;
+        double p999Sum = 0;
+
+        for (TimerData data : dataList) {
+            samples += data.getCount();
+            meanSum += data.getMean() * data.getCount();
+            min = Math.min(data.getMin(), min);
+            max = Math.max(data.getMax(), max);
+
+            stddevSum += Math.pow(data.getStddev(), 2);
+
+            p50Sum += data.getP50() * data.getCount();
+            p75Sum += data.getP75() * data.getCount();
+            p98Sum += data.getP98() * data.getCount();
+            p99Sum += data.getP99() * data.getCount();
+            p999Sum += data.getP999() * data.getCount();
+        }
+
+        TimerData data = new TimerData();
+        data.setCount(samples);
+        data.setMin(min);
+        data.setMax(max);
+
+        // sqrt of variances
+        data.setStddev(Math.sqrt(stddevSum));
+
+        // weighted avgs
+        data.setMean(meanSum / samples);
+        data.setP50(p50Sum / samples);
+        data.setP75(p75Sum / samples);
+        data.setP98(p98Sum / samples);
+        data.setP99(p99Sum / samples);
+        data.setP999(p999Sum / samples);
+
+        return data;
+    }
 
     public long getCount() {
         return count;
