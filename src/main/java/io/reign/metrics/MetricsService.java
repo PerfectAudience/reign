@@ -54,10 +54,8 @@ public class MetricsService extends AbstractService {
 
     public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
 
-    // private static final JsonDataSerializer<MetricsData> jsonSerializer = new JsonDataSerializer<MetricsData>();
-
     /** interval btw. aggregations at service level */
-    private final int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
+    private int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
 
     private final Map<String, ExportMeta> exportPathMap = new ConcurrentHashMap<String, ExportMeta>(16, 0.9f, 1);
 
@@ -106,7 +104,7 @@ public class MetricsService extends AbstractService {
                     if (exportMeta.dataPath == null) {
                         PathScheme pathScheme = getContext().getPathScheme();
                         String dataPathPrefix = pathScheme.getAbsolutePath(
-                                PathType.DATA,
+                                PathType.METRICS,
                                 pathScheme.joinTokens(clusterId, serviceId, getContext().getCanonicalIdProvider()
                                         .forZk().getPathToken()));
                         exportMeta.dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext()
@@ -144,7 +142,7 @@ public class MetricsService extends AbstractService {
     public MetricsData getServiceMetrics(String clusterId, String serviceId) {
         try {
             PathScheme pathScheme = getContext().getPathScheme();
-            String dataPath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, serviceId));
+            String dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId, serviceId));
             byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
             // String metricsDataJson = new String(bytes, UTF_8);
             // metricsDataJson.replaceAll("\n", "");
@@ -204,7 +202,7 @@ public class MetricsService extends AbstractService {
     MetricsData getMetrics(String clusterId, String serviceId, String nodeId) {
         try {
             PathScheme pathScheme = getContext().getPathScheme();
-            String dataPath = pathScheme.getAbsolutePath(PathType.DATA,
+            String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                     pathScheme.joinTokens(clusterId, serviceId, nodeId));
             byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
@@ -219,13 +217,13 @@ public class MetricsService extends AbstractService {
         }
     }
 
-    // public void setUpdateIntervalMillis(int updateIntervalMillis) {
-    // this.updateIntervalMillis = updateIntervalMillis;
-    // }
-    //
-    // public int getUpdateIntervalMillis() {
-    // return updateIntervalMillis;
-    // }
+    public void setUpdateIntervalMillis(int updateIntervalMillis) {
+        this.updateIntervalMillis = updateIntervalMillis;
+    }
+
+    public int getUpdateIntervalMillis() {
+        return updateIntervalMillis;
+    }
 
     @Override
     public synchronized void init() {
@@ -287,7 +285,7 @@ public class MetricsService extends AbstractService {
                     try {
                         if (lock.tryLock()) {
                             // get all data nodes for a service
-                            String dataParentPath = pathScheme.getAbsolutePath(PathType.DATA,
+                            String dataParentPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                     pathScheme.joinTokens(clusterId, serviceId));
                             List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
@@ -295,7 +293,7 @@ public class MetricsService extends AbstractService {
                             for (String dataNode : dataNodes) {
                                 logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
                                         serviceId, dataNode);
-                                String dataPath = pathScheme.getAbsolutePath(PathType.DATA,
+                                String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                         pathScheme.joinTokens(clusterId, serviceId, dataNode));
                                 MetricsData metricsData = getMetrics(clusterId, serviceId, dataNode);
                                 long millisLeft = millisLeft(metricsData);
@@ -368,7 +366,7 @@ public class MetricsService extends AbstractService {
                     try {
                         if (lock.tryLock()) {
                             // get all data nodes for a service
-                            String dataParentPath = pathScheme.getAbsolutePath(PathType.DATA,
+                            String dataParentPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                     pathScheme.joinTokens(clusterId, serviceId));
                             List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
@@ -376,7 +374,7 @@ public class MetricsService extends AbstractService {
                             for (String dataNode : dataNodes) {
                                 logger.trace("Checking data node expiry:  clusterId={}; serviceId={}; nodeId={}",
                                         clusterId, serviceId, dataNode);
-                                String dataPath = pathScheme.getAbsolutePath(PathType.DATA,
+                                String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                         pathScheme.joinTokens(clusterId, serviceId, dataNode));
                                 MetricsData metricsData = getMetrics(clusterId, serviceId, dataNode);
                                 long millisLeft = millisLeft(metricsData);
