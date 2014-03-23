@@ -3,6 +3,7 @@ package io.reign;
 import io.reign.conf.ConfServiceTestSuite;
 import io.reign.coord.CoordServiceTestSuite;
 import io.reign.data.DataServiceTestSuite;
+import io.reign.metrics.MetricsServiceTest;
 import io.reign.presence.PresenceServiceTestSuite;
 
 import java.io.File;
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 @RunWith(Suite.class)
 @SuiteClasses({ PresenceServiceTestSuite.class, DataServiceTestSuite.class, CoordServiceTestSuite.class,
-        ConfServiceTestSuite.class })
+        ConfServiceTestSuite.class, MetricsServiceTest.class })
 public class MasterTestSuite {
 
     private static final Logger logger = LoggerFactory.getLogger(MasterTestSuite.class);
