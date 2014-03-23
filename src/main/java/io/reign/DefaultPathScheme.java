@@ -55,8 +55,12 @@ public class DefaultPathScheme implements PathScheme {
     }
 
     @Override
-    public String getAbsolutePath(PathType pathType) {
+    public String getPathTokenizer() {
+        return "/";
+    }
 
+    @Override
+    public String getAbsolutePath(PathType pathType) {
         return basePath + "/" + pathType;
     }
 

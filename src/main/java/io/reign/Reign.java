@@ -289,10 +289,15 @@ public class Reign implements Watcher {
                 }
             }
 
-            // @Override
-            // public CanonicalId getCanonicalId() {
-            // return nodeIdProvider.get();
-            // }
+            @Override
+            public NodeId getNodeId() {
+                return nodeIdProvider.get();
+            }
+
+            @Override
+            public ZkNodeId getZkNodeId() {
+                return nodeIdProvider.forZk();
+            }
 
             @Override
             public ZkClient getZkClient() {
@@ -320,9 +325,14 @@ public class Reign implements Watcher {
             }
 
             @Override
-            public NodeIdProvider getCanonicalIdProvider() {
-                return nodeIdProvider;
+            public NodeId getNodeIdFromZk(ZkNodeId zkNodeId) {
+                return nodeIdProvider.fromZk(zkNodeId);
             }
+
+            // @Override
+            // public NodeIdProvider getNodeIdProvider() {
+            // return nodeIdProvider;
+            // }
 
         };
 

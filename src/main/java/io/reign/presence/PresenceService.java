@@ -20,6 +20,7 @@ import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
 import io.reign.PathType;
+import io.reign.ReignException;
 import io.reign.ZkNodeId;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
@@ -59,8 +60,6 @@ public class PresenceService extends AbstractService {
     public static final int DEFAULT_ZOMBIE_CHECK_INTERVAL_MILLIS = 300000;
 
     public static final int DEFAULT_HEARTBEAT_INTERVAL_MILLIS = 30000;
-
-    // public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
 
     private int heartbeatIntervalMillis = DEFAULT_HEARTBEAT_INTERVAL_MILLIS;
 
@@ -107,14 +106,22 @@ public class PresenceService extends AbstractService {
     }
 
     public boolean isMemberOf(String clusterId) {
-        return true;
+        String prefixToCheck = clusterId + getContext().getPathScheme().getPathTokenizer();
+        for (String key : announcementMap.keySet()) {
+            if (key.startsWith(prefixToCheck)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isMemberOf(String clusterId, String serviceId) {
-        return true;
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
+        Announcement announcement = this.getAnnouncement(nodePath, null);
+        return announcement != null;
     }
 
-    public List<String> lookupClusters() {
+    public List<String> getClusters() {
         /** get node data from zk **/
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE);
         List<String> children = Collections.EMPTY_LIST;
@@ -139,7 +146,7 @@ public class PresenceService extends AbstractService {
         return children != null ? children : Collections.EMPTY_LIST;
     }
 
-    public List<String> lookupServices(String clusterId) {
+    public List<String> getServices(String clusterId) {
         /** get node data from zk **/
         if (!getPathScheme().isValidToken(clusterId)) {
             throw new IllegalArgumentException("Invalid path token:  pathToken='" + clusterId + "'");
@@ -166,7 +173,6 @@ public class PresenceService extends AbstractService {
     }
 
     public void observe(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer) {
-        // ServiceInfo result = lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer, true);
         String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
 
@@ -183,7 +189,7 @@ public class PresenceService extends AbstractService {
 
         observer.setClusterId(clusterId);
         observer.setServiceId(serviceId);
-        observer.setNodeId(getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeId, null)));
+        observer.setNodeId(getContext().getNodeIdFromZk(new ZkNodeId(nodeId, null)));
 
         getObserverManager().put(path, observer);
     }
@@ -238,7 +244,7 @@ public class PresenceService extends AbstractService {
             PresenceObserver<T> newObserver = new PresenceObserver<T>() {
 
                 @Override
-                public void updated(T updated) {
+                public void updated(T updated, T previous) {
 
                 }
 
@@ -417,9 +423,8 @@ public class PresenceService extends AbstractService {
         NodeInfo result = null;
         if (!error) {
             try {
-                result = new NodeInfo(clusterId, serviceId, getContext().getCanonicalIdProvider().fromZk(
-                        new ZkNodeId(nodeId, null)), bytes != null ? nodeAttributeSerializer.deserialize(bytes)
-                        : Collections.EMPTY_MAP);
+                result = new NodeInfo(clusterId, serviceId, getContext().getNodeIdFromZk(new ZkNodeId(nodeId, null)),
+                        bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
             } catch (Exception e) {
                 throw new IllegalStateException("lookupNodeInfo():  error trying to fetch node info:  path=" + path
                         + ":  " + e, e);
@@ -430,11 +435,11 @@ public class PresenceService extends AbstractService {
     }
 
     public void announce(String clusterId, String serviceId, boolean visible) {
-        announce(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString(), visible, null);
+        announce(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), visible, null);
     }
 
     public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
-        announce(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString(), visible, attributeMap);
+        announce(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), visible, attributeMap);
     }
 
     public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
@@ -444,19 +449,14 @@ public class PresenceService extends AbstractService {
     public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
             Map<String, String> attributeMap) {
 
-        // defaults
-        if (nodeAttributeSerializer == null) {
-            nodeAttributeSerializer = this.getNodeAttributeSerializer();
-        }
-
         // get announcement using path to node
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath, getContext().getDefaultZkAclList());
         announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
 
         // update announcement if node data is different
-        NodeInfo nodeInfo = new NodeInfo(clusterId, serviceId, getContext().getCanonicalIdProvider().fromZk(
-                new ZkNodeId(nodeId, null)), attributeMap);
+        NodeInfo nodeInfo = new NodeInfo(clusterId, serviceId,
+                getContext().getNodeIdFromZk(new ZkNodeId(nodeId, null)), attributeMap);
         // if (!nodeInfo.equals(announcement.getNodeInfo())) {
         announcement.setNodeInfo(nodeInfo);
         announcement.setLastUpdated(-1);
@@ -471,11 +471,11 @@ public class PresenceService extends AbstractService {
     }
 
     public void hide(String clusterId, String serviceId) {
-        hide(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString());
+        hide(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
     }
 
     public void show(String clusterId, String serviceId) {
-        show(clusterId, serviceId, getContext().getCanonicalIdProvider().get().toString());
+        show(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
     }
 
     void hide(String clusterId, String serviceId, String nodeId) {
@@ -519,6 +519,10 @@ public class PresenceService extends AbstractService {
 
     }
 
+    public void dead(String clusterId, String serviceId) {
+        dead(clusterId, serviceId, getContext().getNodeId().toString());
+    }
+
     void show(String clusterId, String serviceId, String nodeId) {
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         Announcement announcement = this.getAnnouncement(nodePath, null);
@@ -558,9 +562,8 @@ public class PresenceService extends AbstractService {
 
     void throwExceptionIfNull(String path, Announcement announcement) {
         if (announcement == null) {
-            throw new IllegalStateException("No announcement found:  path=" + path);
+            throw new ReignException("No announcement found:  path=" + path);
         }
-
     }
 
     @Override
@@ -589,7 +592,7 @@ public class PresenceService extends AbstractService {
             // if base path, just return available clusters
             if (resource.length() == 0) {
                 // list available clusters
-                List<String> clusterList = this.lookupClusters();
+                List<String> clusterList = this.getClusters();
                 responseMessage = new SimpleResponseMessage();
                 responseMessage.setBody(clusterList);
 
@@ -599,7 +602,7 @@ public class PresenceService extends AbstractService {
 
                 if (tokens.length == 1) {
                     // list available services
-                    List<String> serviceList = this.lookupServices(resource);
+                    List<String> serviceList = this.getServices(resource);
 
                     responseMessage = new SimpleResponseMessage();
                     responseMessage.setBody(serviceList);
@@ -655,7 +658,7 @@ public class PresenceService extends AbstractService {
 
     public void setHeartbeatIntervalMillis(int heartbeatIntervalMillis) {
         if (heartbeatIntervalMillis < 1000) {
-            throw new IllegalArgumentException("heartbeatIntervalMillis is too short:  heartbeatIntervalMillis="
+            throw new ReignException("heartbeatIntervalMillis is too short:  heartbeatIntervalMillis="
                     + heartbeatIntervalMillis);
         }
         this.heartbeatIntervalMillis = heartbeatIntervalMillis;
@@ -757,16 +760,29 @@ public class PresenceService extends AbstractService {
             if (System.currentTimeMillis() - lastZombieCheckTimestamp > zombieCheckIntervalMillis) {
                 // get exclusive leader lock to perform maintenance duties
                 CoordinationService coordinationService = getContext().getService("coord");
-                DistributedLock adminLock = coordinationService.getLock("reign", "presence-zombie-checker");
+
                 logger.info("Checking for zombie nodes...");
                 try {
-                    if (adminLock.tryLock()) {
-                        try {
-                            List<String> clusterIdList = getZkClient().getChildren(
-                                    getPathScheme().getAbsolutePath(PathType.PRESENCE), false);
-                            for (String clusterId : clusterIdList) {
-                                List<String> serviceIdList = lookupServices(clusterId);
-                                for (String serviceId : serviceIdList) {
+
+                    // iterate through clusters
+                    List<String> clusterIdList = getZkClient().getChildren(
+                            getPathScheme().getAbsolutePath(PathType.PRESENCE), false);
+                    for (String clusterId : clusterIdList) {
+                        if (!isMemberOf(clusterId)) {
+                            continue;
+                        }
+
+                        // iterate through services in cluster
+                        List<String> serviceIdList = getServices(clusterId);
+                        for (String serviceId : serviceIdList) {
+                            if (!isMemberOf(clusterId, serviceId)) {
+                                continue;
+                            }
+
+                            DistributedLock adminLock = coordinationService.getLock("reign", "presence-zombie-checker-"
+                                    + clusterId + "-" + serviceId);
+                            try {
+                                if (adminLock.tryLock()) {
                                     // service path
                                     String servicePath = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId,
                                             serviceId);
@@ -787,20 +803,23 @@ public class PresenceService extends AbstractService {
                                                     serviceChildPath, timeDiff);
                                             getZkClient().delete(serviceChildPath, -1);
                                         }
-                                    }// for
+                                    }// for service children
 
-                                }// for
-                            }// for
+                                }// if tryLock
 
-                            // update last check timestamp
-                            lastZombieCheckTimestamp = System.currentTimeMillis();
-                        } catch (Exception e) {
-                            logger.warn("Error while checking for and removing zombie nodes:  " + e, e);
-                        }
-                    }// if tryLock
-                } finally {
-                    adminLock.unlock();
-                    adminLock.destroy();
+                            } finally {
+                                adminLock.unlock();
+                                adminLock.destroy();
+                            }
+
+                        }// for service
+
+                    }// for
+
+                    // update last check timestamp
+                    lastZombieCheckTimestamp = System.currentTimeMillis();
+                } catch (Exception e) {
+                    logger.warn("Error while checking for and removing zombie nodes:  " + e, e);
                 }
 
             }// if

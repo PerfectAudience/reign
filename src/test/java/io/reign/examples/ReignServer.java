@@ -21,10 +21,10 @@ public class ReignServer {
         PresenceService presenceService = reign.getService("presence");
         presenceService.observe("rtb", "bidder", new PresenceObserver<ServiceInfo>() {
             @Override
-            public void updated(ServiceInfo info) {
-                if (info != null) {
+            public void updated(ServiceInfo updated, ServiceInfo previous) {
+                if (updated != null) {
                     logger.info("***** Observer:  serviceInfo={}",
-                            ReflectionToStringBuilder.toString(info, ToStringStyle.DEFAULT_STYLE));
+                            ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
                 } else {
                     logger.info("***** Observer:  serviceInfo deleted");
                 }

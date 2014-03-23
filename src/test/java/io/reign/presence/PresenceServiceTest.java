@@ -101,7 +101,7 @@ public class PresenceServiceTest {
         presenceService.waitUntilAvailable("clusterA", "serviceA1", -1);
         presenceService.waitUntilAvailable("clusterB", "serviceB1", -1);
 
-        List<String> clusterIdList = presenceService.lookupClusters();
+        List<String> clusterIdList = presenceService.getClusters();
 
         // should be 3 clusters, including the default "reign" cluster
         assertTrue("Should be 3 but got " + clusterIdList.size() + ":  " + clusterIdList, clusterIdList.size() == 3);
@@ -119,7 +119,7 @@ public class PresenceServiceTest {
         ServiceInfo serviceInfo = presenceService.lookupServiceInfo("clusterC", "serviceC1",
                 new PresenceObserver<ServiceInfo>() {
                     @Override
-                    public void updated(ServiceInfo updated) {
+                    public void updated(ServiceInfo updated, ServiceInfo previous) {
                         serviceInfoRef.set(updated);
                         synchronized (serviceInfoRef) {
                             serviceInfoRef.notifyAll();
@@ -144,7 +144,7 @@ public class PresenceServiceTest {
         NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterD", "serviceD1", nodeId,
                 new PresenceObserver<NodeInfo>() {
                     @Override
-                    public void updated(NodeInfo updated) {
+                    public void updated(NodeInfo updated, NodeInfo previous) {
                         nodeInfoRef.set(updated);
                         synchronized (nodeInfoRef) {
                             nodeInfoRef.notifyAll();
@@ -179,7 +179,7 @@ public class PresenceServiceTest {
         presenceService.waitUntilAvailable("clusterA", "serviceA1", -1);
         presenceService.waitUntilAvailable("clusterA", "serviceA2", -1);
 
-        List<String> serviceIdList = presenceService.lookupServices("clusterA");
+        List<String> serviceIdList = presenceService.getServices("clusterA");
         assertTrue("Should be 2 but got " + serviceIdList.size() + ":  " + serviceIdList, serviceIdList.size() == 2);
         assertTrue(serviceIdList.contains("serviceA1"));
         assertTrue(serviceIdList.contains("serviceA2"));

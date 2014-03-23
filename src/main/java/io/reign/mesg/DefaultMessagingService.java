@@ -126,16 +126,15 @@ public class DefaultMessagingService extends AbstractService implements Messagin
                 logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
                         new Object[] { clusterId, serviceId, nodeIdString, requestMessage });
             }
-            ResponseMessage responseMessage = sendMessage(clusterId, serviceId, getContext().getCanonicalIdProvider()
-                    .fromZk(new ZkNodeId(nodeIdString, null)), requestMessage);
+            ResponseMessage responseMessage = sendMessage(clusterId, serviceId,
+                    getContext().getNodeIdFromZk(new ZkNodeId(nodeIdString, null)), requestMessage);
             responseMap.put(getPathScheme().joinTokens(clusterId, serviceId, nodeIdString), responseMessage);
         }
 
         return responseMap;
     }
 
-    @Override
-    public void sendMessageAsync(final String clusterId, final String serviceId, final NodeId nodeId,
+    void sendMessageAsync(final String clusterId, final String serviceId, final NodeId nodeId,
             final RequestMessage requestMessage, final MessagingCallback callback) {
 
         // prefer ip, then use hostname if not available
@@ -211,16 +210,13 @@ public class DefaultMessagingService extends AbstractService implements Messagin
                 logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
                         new Object[] { clusterId, serviceId, nodeIdString, requestMessage });
             }
-            sendMessageAsync(clusterId, serviceId,
-                    getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)), requestMessage,
-                    callback);
+            sendMessageAsync(clusterId, serviceId, getContext().getNodeIdFromZk(new ZkNodeId(nodeIdString, null)),
+                    requestMessage, callback);
 
         }
     }
 
-    @Override
-    public void sendMessageFireAndForget(String clusterId, String serviceId, NodeId nodeId,
-            RequestMessage requestMessage) {
+    void sendMessageFireAndForget(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage) {
 
         // prefer ip, then use hostname if not available
         String hostOrIpAddress = nodeId.getIpAddress();
@@ -262,7 +258,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
                         new Object[] { clusterId, serviceId, nodeIdString, requestMessage });
             }
             sendMessageFireAndForget(clusterId, serviceId,
-                    getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)), requestMessage);
+                    getContext().getNodeIdFromZk(new ZkNodeId(nodeIdString, null)), requestMessage);
 
         }
     }
@@ -376,8 +372,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
             } else {
                 if ("ff".equals(meta)) {
                     this.sendMessageFireAndForget(clusterId, serviceId,
-                            getContext().getCanonicalIdProvider().fromZk(new ZkNodeId(nodeIdString, null)),
-                            messageToSend);
+                            getContext().getNodeIdFromZk(new ZkNodeId(nodeIdString, null)), messageToSend);
                 } else {
                     return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  '" + meta
                             + "'");

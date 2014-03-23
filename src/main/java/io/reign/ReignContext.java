@@ -38,7 +38,13 @@ public interface ReignContext {
 
     // public String getCanonicalIdPathToken();
 
-    public NodeIdProvider getCanonicalIdProvider();
+    // public NodeIdProvider getNodeIdProvider();
+
+    public NodeId getNodeId();
+
+    public ZkNodeId getZkNodeId();
+
+    public NodeId getNodeIdFromZk(ZkNodeId zkNodeId);
 
     public ZkClient getZkClient();
 

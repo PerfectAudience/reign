@@ -47,6 +47,8 @@ public interface PathScheme {
 
     public String getParentPath(String path);
 
+    public String getPathTokenizer();
+
     // /**
     // * Try to parse input String as canonical ID with some embedded information
     // *
