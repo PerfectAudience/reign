@@ -29,7 +29,7 @@ public class MetricsServiceTest {
         metricsService = MasterTestSuite.getReign().getService("metrics");
         presenceService = MasterTestSuite.getReign().getService("presence");
         presenceService.announce("clusterA", "serviceA", true);
-        presenceService.announce("clusterA", "serviceB", false);
+        presenceService.announce("clusterA", "serviceB", true);
     }
 
     @Test
@@ -83,8 +83,65 @@ public class MetricsServiceTest {
         assertTrue(histo2.getP999() == 600);
     }
 
+    @Test
+    public void testExportServiceMetrics() throws Exception {
+        MetricRegistryManager registryManager1 = getMetricRegistryManager();
+        metricsService.scheduleExport("clusterA", "serviceB", "node1", registryManager1, 5, TimeUnit.SECONDS);
+
+        MetricRegistryManager registryManager2 = getMetricRegistryManager();
+        metricsService.scheduleExport("clusterA", "serviceB", "node2", registryManager2, 5, TimeUnit.SECONDS);
+
+        // get service metrics
+        MetricsData metricsData = null;
+        while ((metricsData = metricsService.getServiceMetrics("clusterA", "serviceB")) == null) {
+            // wait for aggregation to happen
+            Thread.sleep(metricsService.getUpdateIntervalMillis() + 2000);
+        }
+
+        // counters
+        CounterData counter1Data = metricsData.getCounter("counter1");
+        CounterData counter2Data = metricsData.getCounter("counter2");
+        assertTrue(counter1Data.getCount() == 2L);
+        assertTrue(counter2Data.getCount() == 4L);
+
+        // gauges
+        GaugeData gauge1 = metricsData.getGauge("gauge1");
+        GaugeData gauge2 = metricsData.getGauge("gauge2");
+        assertTrue(gauge1.getValue() == 1.0);
+        assertTrue(gauge2.getValue() == 2.0);
+
+        // meters
+        MeterData meter1 = metricsData.getMeter("meter1");
+        MeterData meter2 = metricsData.getMeter("meter2");
+        assertTrue(meter1.getCount() == 2000);
+        assertTrue(meter2.getCount() == 8000);
+
+        // timers
+        TimerData timer1 = metricsData.getTimer("timer1");
+        TimerData timer2 = metricsData.getTimer("timer2");
+        assertTrue(timer1.getCount() == 2);
+        assertTrue(timer2.getCount() == 4);
+        assertTrue(Math.round(timer1.getMax()) == 100);
+        assertTrue(Math.round(timer2.getMax()) == 200);
+
+        // histograms
+        HistogramData histo1 = metricsData.getHistogram("histo1");
+        HistogramData histo2 = metricsData.getHistogram("histo2");
+        assertTrue(histo1.getCount() == 6);
+        assertTrue(histo1.getMin() == 10);
+        assertTrue(histo1.getMean() == 20);
+        assertTrue(histo1.getMax() == 30);
+        assertTrue(histo1.getP999() == 30);
+        assertTrue(histo2.getCount() == 12);
+        assertTrue(histo2.getMin() == 100);
+        assertTrue(histo2.getMean() == 350);
+        assertTrue(histo2.getMax() == 600);
+        assertTrue(histo2.getP999() == 600);
+
+    }
+
     MetricRegistryManager getMetricRegistryManager() throws Exception {
-        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(15, TimeUnit.SECONDS);
+        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(300, TimeUnit.SECONDS);
 
         // counters
         Counter counter1 = registryManager.get().counter(MetricRegistry.name("counter1"));

@@ -24,8 +24,8 @@ public class HistogramData {
     public static HistogramData merge(List<HistogramData> dataList) {
         int samples = 0;
         double meanSum = 0;
-        long min = 0;
-        long max = 0;
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
 
         double stddevSum = 0;
 

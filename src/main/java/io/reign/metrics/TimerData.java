@@ -45,8 +45,8 @@ public class TimerData {
     public static TimerData merge(List<TimerData> dataList) {
         int samples = 0;
         double meanSum = 0;
-        double min = 0;
-        double max = 0;
+        double min = Double.MAX_VALUE;
+        double max = Double.MIN_VALUE;
 
         double stddevSum = 0;
 
