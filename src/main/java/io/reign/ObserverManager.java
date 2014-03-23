@@ -56,7 +56,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     private final ExecutorService executorService;
 
     public ObserverManager() {
-        this(2, 8, 60000);
+        this(2, 16, 60000);
     }
 
     public ObserverManager(int baseEventHandlerThreads, int maxEventHandlerThreads, int threadTimeOutMillis) {
