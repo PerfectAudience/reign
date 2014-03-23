@@ -25,12 +25,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +43,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * Class for managing observers for services. Deals with multiple observers for a single path, etc.
+ * 
+ * Has a separate thread pool for dealing with observer callbacks, so as not to tie up the ZooKeeper event thread.
  * 
  * @author ypai
  * 
@@ -49,32 +55,80 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     private static final Logger logger = LoggerFactory.getLogger(ObserverManager.class);
 
+    private static final long DEFAULT_MAX_TIMEOUT_MILLIS = 120000;
+
     private final ConcurrentMap<String, Set<T>> observerMap = new ConcurrentHashMap<String, Set<T>>(16, 0.9f, 2);
 
-    private ZkClient zkClient;
+    private final ZkClient zkClient;
 
-    private final ExecutorService executorService;
+    private ExecutorService executorService;
 
-    public ObserverManager() {
-        this(2, 16, 60000);
-    }
+    private final ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1);
 
-    public ObserverManager(int baseEventHandlerThreads, int maxEventHandlerThreads, int threadTimeOutMillis) {
-        executorService = new ThreadPoolExecutor(baseEventHandlerThreads, maxEventHandlerThreads, threadTimeOutMillis,
-                TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(128), new ThreadFactoryBuilder()
-                        .setNameFormat("reign-observerManager-%d").build());
-    }
+    private int baseEventHandlerThreads = 2;
+    private int maxEventHandlerThreads = 16;
+    private int eventHandlingQueueMaxDepth = 128;
+    private int threadTimeOutMillis = 60000;
+    private int sweeperInterval = 5000;
 
-    public ZkClient getZkClient() {
-        return zkClient;
-    }
-
-    public void setZkClient(ZkClient zkClient) {
+    public ObserverManager(ZkClient zkClient) {
         this.zkClient = zkClient;
     }
 
+    public int getSweeperInterval() {
+        return sweeperInterval;
+    }
+
+    public void setSweeperInterval(int sweeperInterval) {
+        this.sweeperInterval = sweeperInterval;
+    }
+
+    public int getBaseEventHandlerThreads() {
+        return baseEventHandlerThreads;
+    }
+
+    public void setBaseEventHandlerThreads(int baseEventHandlerThreads) {
+        this.baseEventHandlerThreads = baseEventHandlerThreads;
+    }
+
+    public int getMaxEventHandlerThreads() {
+        return maxEventHandlerThreads;
+    }
+
+    public void setMaxEventHandlerThreads(int maxEventHandlerThreads) {
+        this.maxEventHandlerThreads = maxEventHandlerThreads;
+    }
+
+    public int getThreadTimeOutMillis() {
+        return threadTimeOutMillis;
+    }
+
+    public void setThreadTimeOutMillis(int threadTimeOutMillis) {
+        this.threadTimeOutMillis = threadTimeOutMillis;
+    }
+
+    public int getEventHandlingQueueMaxDepth() {
+        return eventHandlingQueueMaxDepth;
+    }
+
+    public void setEventHandlingQueueMaxDepth(int eventHandlingQueueMaxDepth) {
+        this.eventHandlingQueueMaxDepth = eventHandlingQueueMaxDepth;
+    }
+
+    // public ZkClient getZkClient() {
+    // return zkClient;
+    // }
+    //
+    // public void setZkClient(ZkClient zkClient) {
+    // this.zkClient = zkClient;
+    //
+    // }
+
     public void init() {
         this.zkClient.register(this);
+        executorService = new ThreadPoolExecutor(baseEventHandlerThreads, maxEventHandlerThreads, threadTimeOutMillis,
+                TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(eventHandlingQueueMaxDepth),
+                new ThreadFactoryBuilder().setNameFormat("reign-observerManager-%d").build());
     }
 
     public void put(String path, T observer) {
@@ -121,6 +175,70 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     }
 
+    public static interface RecheckedWatchedEvent {
+
+    }
+
+    public static class MarkedWatchedEvent extends WatchedEvent implements RecheckedWatchedEvent {
+        MarkedWatchedEvent(WatchedEvent event) {
+            super(event.getType(), event.getState(), event.getPath());
+        }
+
+        MarkedWatchedEvent(EventType eventType, KeeperState keeperState, String path) {
+            super(eventType, keeperState, path);
+        }
+    }
+
+    void scheduleCheck(final WatchedEvent event) {
+        // do not schedule a check if we have already checked this one (to prevent infinite cycles from re-using
+        // event handling methods for watched ZK events)
+        if (event instanceof RecheckedWatchedEvent) {
+            return;
+        }
+
+        logger.debug("Scheduling re-check after watch triggered:  path={}; eventType={}; intervalMillis={}",
+                event.getPath(), event.getType(), sweeperInterval);
+
+        this.scheduledExecutorService.schedule(new Runnable() {
+
+            @Override
+            public void run() {
+                String path = event.getPath();
+                try {
+                    Stat stat = zkClient.exists(path, true);
+
+                    switch (event.getType()) {
+                    case NodeChildrenChanged:
+                        if (stat != null) {
+                            nodeChildrenChanged(new MarkedWatchedEvent(event));
+                        }
+                        break;
+                    case NodeCreated:
+                        if (stat == null) {
+                            nodeDeleted(new MarkedWatchedEvent(event));
+                        }
+                        break;
+                    case NodeDataChanged:
+                        if (stat != null) {
+                            nodeDataChanged(new MarkedWatchedEvent(event));
+                        }
+                        break;
+                    case NodeDeleted:
+                        if (stat != null) {
+                            nodeCreated(new MarkedWatchedEvent(event));
+                        }
+                        break;
+                    default:
+                    }
+
+                } catch (Exception e) {
+                    logger.warn("Unable to check event:  path=" + path, e);
+                }
+            }
+
+        }, this.sweeperInterval, TimeUnit.MILLISECONDS);
+    }
+
     @Override
     public boolean filterWatchedEvent(WatchedEvent event) {
         if (this.getObserverSet(event.getPath(), false).size() == 0) {
@@ -157,33 +275,18 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                             logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
 
                             synchronized (observer) {
-                                List<String> childList = observer.getChildList();
-                                if (childList == null) {
-                                    childList = Collections.EMPTY_LIST;
-                                }
-
-                                boolean updatedValueDiffers = childList.size() != updatedChildList.size();
-
-                                // if sizes are the same, compare contents independent of order
-                                if (!updatedValueDiffers) {
-                                    Set<String> childListSet = new HashSet<String>(childList.size() + 1, 1.0f);
-                                    childListSet.addAll(childList);
-
-                                    Set<String> updatedChildListSet = new HashSet<String>(updatedChildList.size() + 1,
-                                            1.0f);
-                                    updatedChildListSet.addAll(updatedChildList);
-
-                                    updatedValueDiffers = childListSet.equals(updatedChildListSet);
-                                }
-
+                                List<String> previousChildList = observer.getChildList();
+                                boolean updatedValueDiffers = childListsDiffer(updatedChildList, previousChildList);
                                 if (updatedValueDiffers) {
-                                    List<String> previousChildList = observer.getChildList();
                                     observer.setChildList(updatedChildList);
                                     observer.nodeChildrenChanged(updatedChildList, previousChildList);
                                 }
                             }
-                        }
-                    }
+                        }// for
+
+                        scheduleCheck(event);
+
+                    }// if observerSet > 0
                 } catch (KeeperException e) {
                     logger.warn("Unable to notify observers:  path=" + path, e);
                 } catch (Exception e) {
@@ -191,6 +294,30 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                 }
             }
         });
+    }
+
+    boolean childListsDiffer(List<String> updatedChildList, List<String> previousChildList) {
+        if (previousChildList == null) {
+            previousChildList = Collections.EMPTY_LIST;
+        }
+        if (updatedChildList == null) {
+            updatedChildList = Collections.EMPTY_LIST;
+        }
+
+        boolean updatedValueDiffers = previousChildList.size() != updatedChildList.size();
+
+        // if sizes are the same, compare contents independent of order
+        if (!updatedValueDiffers) {
+            Set<String> childListSet = new HashSet<String>(previousChildList.size() + 1, 1.0f);
+            childListSet.addAll(previousChildList);
+
+            Set<String> updatedChildListSet = new HashSet<String>(updatedChildList.size() + 1, 1.0f);
+            updatedChildListSet.addAll(updatedChildList);
+
+            updatedValueDiffers = childListSet.equals(updatedChildListSet);
+        }
+
+        return updatedValueDiffers;
     }
 
     @Override
@@ -210,11 +337,18 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                         for (T observer : observerSet) {
                             logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
                             synchronized (observer) {
+                                byte[] previousData = observer.getData();
+                                List<String> previousChildList = observer.getChildList();
                                 observer.setData(data);
                                 observer.setChildList(childList);
-                                observer.nodeCreated(data, childList);
+
+                                if (previousData == null && previousChildList == Collections.EMPTY_LIST) {
+                                    observer.nodeCreated(data, childList);
+                                }
                             }
                         }
+
+                        scheduleCheck(event);
                     }
                 } catch (KeeperException e) {
                     logger.warn("Unable to notify observers:  path=" + path, e);
@@ -246,6 +380,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                                 }
                             }
                         }
+
+                        scheduleCheck(event);
                     }
                 } catch (KeeperException e) {
                     logger.warn("Unable to notify observers:  path=" + path, e);
@@ -284,10 +420,15 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                             List<String> previousChildList = observer.getChildList();
                             observer.setChildList(Collections.EMPTY_LIST);
 
-                            observer.nodeDeleted(previousData, previousChildList);
+                            if (previousChildList != observer.getChildList() || previousData != observer.getData()) {
+                                observer.nodeDeleted(previousData, previousChildList);
+                            }
                         }
                     }
-                }
+
+                    scheduleCheck(event);
+
+                }// if observerSet>0
             }
         });
     }

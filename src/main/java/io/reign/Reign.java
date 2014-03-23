@@ -81,14 +81,14 @@ public class Reign implements Watcher {
 
     private NodeIdProvider nodeIdProvider;
 
-    private final ObserverManager observerManager = new ObserverManager();
+    private final ObserverManager observerManager;
 
     public static ReignMaker maker() {
         return new ReignMaker();
     }
 
-    public Reign() {
-    }
+    // public Reign() {
+    // }
 
     public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, NodeIdProvider nodeIdProvider) {
 
@@ -99,6 +99,8 @@ public class Reign implements Watcher {
         this.pathCache = pathCache;
 
         this.nodeIdProvider = nodeIdProvider;
+
+        observerManager = new ObserverManager(zkClient);
 
     }
 
@@ -258,8 +260,7 @@ public class Reign implements Watcher {
         });
 
         /** init observer manager **/
-        observerManager.setZkClient(zkClient);
-        zkClient.register(observerManager);
+        observerManager.init();
 
         // /** init path cache **/
         // logger.info("START:  initializing pathCache...");
