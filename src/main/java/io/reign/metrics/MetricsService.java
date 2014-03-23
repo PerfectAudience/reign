@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -54,10 +55,10 @@ public class MetricsService extends AbstractService {
 
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-    public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
+    public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 10000;
 
     /** interval btw. aggregations at service level */
-    private int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
+    private volatile int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
 
     private final Map<String, ExportMeta> exportPathMap = new ConcurrentHashMap<String, ExportMeta>(16, 0.9f, 1);
 
@@ -74,14 +75,21 @@ public class MetricsService extends AbstractService {
     private final ZkClientUtil zkClientUtil = new ZkClientUtil();
 
     private ScheduledExecutorService executorService;
+    private volatile ScheduledFuture aggregationFuture;
 
-    void scheduleExport(final String clusterId, final String serviceId, final MetricRegistryManager registryManager,
-            long updateInterval, TimeUnit updateIntervalTimeUnit) {
-        scheduleExport(clusterId, serviceId, getContext().getCanonicalIdProvider().forZk().getPathToken(),
-                registryManager, updateInterval, updateIntervalTimeUnit);
+    public void observe(final String clusterId, final String serviceId, MetricsObserver observer) {
+        String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
+        String path = getPathScheme().getAbsolutePath(PathType.METRICS, servicePath);
+        getObserverManager().put(path, observer);
     }
 
-    public void scheduleExport(final String clusterId, final String serviceId, final String nodeId,
+    public void scheduleExport(final String clusterId, final String serviceId,
+            final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
+        scheduleExport(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), registryManager,
+                updateInterval, updateIntervalTimeUnit);
+    }
+
+    void scheduleExport(final String clusterId, final String serviceId, final String nodeId,
             final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
 
         final String key = clusterId + "/" + serviceId + "/" + nodeId;
@@ -104,7 +112,7 @@ public class MetricsService extends AbstractService {
                 // logger.trace("EXPORTING METRICS...");
                 StringBuilder sb = new StringBuilder();
                 sb = reporter.report(sb);
-                logger.trace("EXPORTING METRICS:  clusterId={}; serviceId={}; data=\n{}", clusterId, serviceId, sb);
+                // logger.trace("EXPORTING METRICS:  clusterId={}; serviceId={}; data=\n{}", clusterId, serviceId, sb);
 
                 // export to zk
                 ExportMeta exportMeta = exportPathMap.get(key);
@@ -171,7 +179,7 @@ public class MetricsService extends AbstractService {
      * Get metrics data for this service node (self).
      */
     public MetricsData getMetrics(String clusterId, String serviceId) {
-        String key = clusterId + "/" + serviceId + "/" + getContext().getCanonicalIdProvider().forZk().getPathToken();
+        String key = clusterId + "/" + serviceId + "/" + getContext().getZkNodeId().getPathToken();
         ExportMeta exportMeta = exportPathMap.get(key);
         if (exportMeta == null) {
             logger.trace(
@@ -227,7 +235,11 @@ public class MetricsService extends AbstractService {
     }
 
     public void setUpdateIntervalMillis(int updateIntervalMillis) {
+        if (updateIntervalMillis < 1000) {
+            throw new ReignException("updateIntervalMillis is too short:  updateIntervalMillis=" + updateIntervalMillis);
+        }
         this.updateIntervalMillis = updateIntervalMillis;
+        scheduleAggregation();
     }
 
     public int getUpdateIntervalMillis() {
@@ -245,12 +257,24 @@ public class MetricsService extends AbstractService {
         executorService = new ScheduledThreadPoolExecutor(2);
 
         // schedule admin activity
-        Runnable aggregationRunnable = new AggregationRunnable();
+        scheduleAggregation();
+        scheduleCleaner();
+
+    }
+
+    public synchronized void scheduleCleaner() {
         Runnable cleanerRunnable = new CleanerRunnable();
-        executorService.scheduleAtFixedRate(aggregationRunnable, this.updateIntervalMillis / 2,
-                this.updateIntervalMillis, TimeUnit.MILLISECONDS);
         executorService.scheduleAtFixedRate(cleanerRunnable, this.updateIntervalMillis / 2,
                 Math.max(this.updateIntervalMillis * 2, 60000), TimeUnit.MILLISECONDS);
+    }
+
+    public synchronized void scheduleAggregation() {
+        if (aggregationFuture != null) {
+            aggregationFuture.cancel(false);
+        }
+        Runnable aggregationRunnable = new AggregationRunnable();
+        aggregationFuture = executorService.scheduleAtFixedRate(aggregationRunnable,
+                Math.min(this.updateIntervalMillis / 2, 1000), this.updateIntervalMillis, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -270,7 +294,7 @@ public class MetricsService extends AbstractService {
     public class AggregationRunnable implements Runnable {
         @Override
         public void run() {
-            logger.trace("AggregationRunnable starting...");
+            logger.trace("AggregationRunnable starting:  hashCode={}", this.hashCode());
 
             // list all services in cluster
             PresenceService presenceService = getContext().getService("presence");
@@ -279,7 +303,7 @@ public class MetricsService extends AbstractService {
             PathScheme pathScheme = getContext().getPathScheme();
 
             // list all services in cluster
-            List<String> clusterIds = presenceService.lookupClusters();
+            List<String> clusterIds = presenceService.getClusters();
             for (String clusterId : clusterIds) {
 
                 // only proceed if in cluster
@@ -287,12 +311,18 @@ public class MetricsService extends AbstractService {
                     continue;
                 }
 
-                List<String> serviceIds = presenceService.lookupServices(clusterId);
+                List<String> serviceIds = presenceService.getServices(clusterId);
                 for (String serviceId : serviceIds) {
                     logger.trace("Finding data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
 
+                    // only proceed if in service
+                    if (!presenceService.isMemberOf(clusterId, serviceId)) {
+                        continue;
+                    }
+
                     // get lock for a service
-                    DistributedLock lock = coordinationService.getLock("reign", "metrics-aggregator-" + serviceId);
+                    DistributedLock lock = coordinationService.getLock("reign", "metrics-aggregator-" + clusterId + "-"
+                            + serviceId);
                     try {
                         if (lock.tryLock()) {
                             // get all data nodes for a service
@@ -311,6 +341,7 @@ public class MetricsService extends AbstractService {
                                     dataNodes.size() + 1, 1.0f);
                             Map<String, List<TimerData>> timerMap = new HashMap<String, List<TimerData>>(
                                     dataNodes.size() + 1, 1.0f);
+                            int nodeCount = 0;
                             for (String dataNode : dataNodes) {
                                 logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
                                         serviceId, dataNode);
@@ -328,6 +359,9 @@ public class MetricsService extends AbstractService {
                                 // aggregate service stats for data nodes that within current rotation interval
                                 logger.trace("Aggregating data node:  path={}; millisToExpiry={}", dataPath,
                                         millisToExpiry);
+
+                                // increment node count
+                                nodeCount++;
 
                                 // counters
                                 Map<String, CounterData> counters = metricsData.getCounters();
@@ -399,6 +433,11 @@ public class MetricsService extends AbstractService {
                                     1.0f);
                             for (String key : counterMap.keySet()) {
                                 List<CounterData> counterList = counterMap.get(key);
+                                if (counterList.size() != nodeCount) {
+                                    logger.warn(
+                                            "counterList size does not match nodeCount:  counterList.size={}; nodeCount={}",
+                                            counterList.size(), nodeCount);
+                                }
                                 CounterData counterData = CounterData.merge(counterList);
                                 counters.put(key, counterData);
                             }
@@ -408,6 +447,11 @@ public class MetricsService extends AbstractService {
                             Map<String, GaugeData> gauges = new HashMap<String, GaugeData>(gaugeMap.size() + 1, 1.0f);
                             for (String key : gaugeMap.keySet()) {
                                 List<GaugeData> gaugeList = gaugeMap.get(key);
+                                if (gaugeList.size() != nodeCount) {
+                                    logger.warn(
+                                            "gaugeList size does not match nodeCount:  gaugeList.size={}; nodeCount={}",
+                                            gaugeList.size(), nodeCount);
+                                }
                                 GaugeData gaugeData = GaugeData.merge(gaugeList);
                                 gauges.put(key, gaugeData);
                             }
@@ -418,6 +462,11 @@ public class MetricsService extends AbstractService {
                                     histogramMap.size() + 1, 1.0f);
                             for (String key : histogramMap.keySet()) {
                                 List<HistogramData> histogramList = histogramMap.get(key);
+                                if (histogramList.size() != nodeCount) {
+                                    logger.warn(
+                                            "histogramList size does not match nodeCount:  histogramList.size={}; nodeCount={}",
+                                            histogramList.size(), nodeCount);
+                                }
                                 HistogramData histogramData = HistogramData.merge(histogramList);
                                 histograms.put(key, histogramData);
                             }
@@ -427,6 +476,11 @@ public class MetricsService extends AbstractService {
                             Map<String, MeterData> meters = new HashMap<String, MeterData>(meterMap.size() + 1, 1.0f);
                             for (String key : meterMap.keySet()) {
                                 List<MeterData> meterList = meterMap.get(key);
+                                if (meterList.size() != nodeCount) {
+                                    logger.warn(
+                                            "meterList size does not match nodeCount:  meterList.size={}; nodeCount={}",
+                                            meterList.size(), nodeCount);
+                                }
                                 MeterData meterData = MeterData.merge(meterList);
                                 meters.put(key, meterData);
                             }
@@ -436,17 +490,24 @@ public class MetricsService extends AbstractService {
                             Map<String, TimerData> timers = new HashMap<String, TimerData>(timerMap.size() + 1, 1.0f);
                             for (String key : timerMap.keySet()) {
                                 List<TimerData> timerList = timerMap.get(key);
+                                if (timerList.size() != nodeCount) {
+                                    logger.warn(
+                                            "timerList size does not match nodeCount:  timerList.size={}; nodeCount={}",
+                                            timerList.size(), nodeCount);
+                                }
                                 TimerData timerData = TimerData.merge(timerList);
                                 timers.put(key, timerData);
                             }
                             serviceMetricsData.setTimers(timers);
+
+                            serviceMetricsData.setNodeCount(nodeCount);
 
                             // write to ZK
                             String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                     pathScheme.joinTokens(clusterId, serviceId));
                             String serviceMetricsDataString = JacksonUtil.getObjectMapper().writeValueAsString(
                                     serviceMetricsData);
-                            logger.trace("EXPORT SERVICE DATA:  {}", serviceMetricsDataString);
+                            // logger.trace("EXPORT SERVICE DATA:  {}", serviceMetricsDataString);
                             zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(), dataPath,
                                     serviceMetricsDataString.getBytes(UTF_8), getContext().getDefaultZkAclList(),
                                     CreateMode.PERSISTENT, -1);
@@ -471,14 +532,13 @@ public class MetricsService extends AbstractService {
             }// for cluster
 
         }// run
-
     }
 
     public class CleanerRunnable implements Runnable {
 
         @Override
         public void run() {
-            logger.trace("CleanerRunnable starting...");
+            logger.trace("CleanerRunnable starting:  hashCode={}", this.hashCode());
 
             PresenceService presenceService = getContext().getService("presence");
             CoordinationService coordinationService = getContext().getService("coord");
@@ -486,7 +546,7 @@ public class MetricsService extends AbstractService {
             PathScheme pathScheme = getContext().getPathScheme();
 
             // list all services in cluster
-            List<String> clusterIds = presenceService.lookupClusters();
+            List<String> clusterIds = presenceService.getClusters();
             for (String clusterId : clusterIds) {
 
                 // only proceed if in cluster
@@ -494,12 +554,18 @@ public class MetricsService extends AbstractService {
                     continue;
                 }
 
-                List<String> serviceIds = presenceService.lookupServices(clusterId);
+                List<String> serviceIds = presenceService.getServices(clusterId);
                 for (String serviceId : serviceIds) {
                     logger.trace("Checking data nodes expiry:  clusterId={}; serviceId={}", clusterId, serviceId);
 
+                    // only proceed if in service
+                    if (!presenceService.isMemberOf(clusterId, serviceId)) {
+                        continue;
+                    }
+
                     // get lock for a service
-                    DistributedLock lock = coordinationService.getLock("reign", "metrics-cleaner-" + serviceId);
+                    DistributedLock lock = coordinationService.getLock("reign", "metrics-cleaner-" + clusterId + "-"
+                            + serviceId);
                     String dataPath = null;
                     try {
                         if (lock.tryLock()) {

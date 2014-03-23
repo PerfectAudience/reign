@@ -5,6 +5,7 @@ import io.reign.MasterTestSuite;
 import io.reign.presence.PresenceService;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -27,9 +28,44 @@ public class MetricsServiceTest {
     @Before
     public void setUp() throws Exception {
         metricsService = MasterTestSuite.getReign().getService("metrics");
+        metricsService.setUpdateIntervalMillis(3000);
+
         presenceService = MasterTestSuite.getReign().getService("presence");
         presenceService.announce("clusterA", "serviceA", true);
         presenceService.announce("clusterA", "serviceB", true);
+        presenceService.announce("clusterA", "serviceC", true);
+    }
+
+    @Test
+    public void testObserver() throws Exception {
+        MetricRegistryManager registryManager = getMetricRegistryManager();
+        metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
+
+        final AtomicInteger calledCount = new AtomicInteger(0);
+        metricsService.observe("clusterA", "serviceC", new MetricsObserver() {
+
+            @Override
+            public void updated(MetricsData updated, MetricsData previous) {
+                logger.debug("*** OBSERVER:  updated={}; previous={}", updated, previous);
+                calledCount.incrementAndGet();
+
+            }
+
+        });
+
+        // has not been updated yet
+        assertTrue("calledCount should be 0, but is " + calledCount.get(), calledCount.get() == 0);
+
+        // will have been updated
+        Thread.sleep((metricsService.getUpdateIntervalMillis() / 2) + 1000);
+        assertTrue(calledCount.get() == 1);
+
+        // force a change so observer will be called again
+        Counter counter1 = registryManager.get().counter("counter1");
+        counter1.inc();
+        Thread.sleep(metricsService.getUpdateIntervalMillis());
+        assertTrue(calledCount.get() == 2);
+
     }
 
     @Test
@@ -86,22 +122,23 @@ public class MetricsServiceTest {
     @Test
     public void testExportServiceMetrics() throws Exception {
         MetricRegistryManager registryManager1 = getMetricRegistryManager();
-        metricsService.scheduleExport("clusterA", "serviceB", "node1", registryManager1, 5, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceB", "node1", registryManager1, 1, TimeUnit.SECONDS);
 
         MetricRegistryManager registryManager2 = getMetricRegistryManager();
-        metricsService.scheduleExport("clusterA", "serviceB", "node2", registryManager2, 5, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceB", "node2", registryManager2, 1, TimeUnit.SECONDS);
 
-        // get service metrics
+        // get service metrics, but wait for both service nodes to be there before checking values
         MetricsData metricsData = null;
-        while ((metricsData = metricsService.getServiceMetrics("clusterA", "serviceB")) == null) {
+        while ((metricsData = metricsService.getServiceMetrics("clusterA", "serviceB")) == null
+                || metricsData.getNodeCount() < 2) {
             // wait for aggregation to happen
-            Thread.sleep(metricsService.getUpdateIntervalMillis() + 2000);
+            Thread.sleep(metricsService.getUpdateIntervalMillis() / 2);
         }
 
         // counters
         CounterData counter1Data = metricsData.getCounter("counter1");
         CounterData counter2Data = metricsData.getCounter("counter2");
-        assertTrue(counter1Data.getCount() == 2L);
+        assertTrue("Unexpected value:  " + counter1Data.getCount(), counter1Data.getCount() == 2L);
         assertTrue(counter2Data.getCount() == 4L);
 
         // gauges

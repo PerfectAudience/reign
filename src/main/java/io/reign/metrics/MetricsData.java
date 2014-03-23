@@ -30,6 +30,9 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
 @JsonPropertyOrder({ "interval_start_ts", "interval_length", "interval_length_unit" })
 public class MetricsData {
 
+    @JsonProperty("node_count")
+    private int nodeCount = 1;
+
     @JsonProperty("gauges")
     private Map<String, GaugeData> gauges;
 
@@ -53,6 +56,14 @@ public class MetricsData {
 
     @JsonProperty("interval_length_unit")
     private TimeUnit intervalLengthTimeUnit;
+
+    public void setNodeCount(int nodeCount) {
+        this.nodeCount = nodeCount;
+    }
+
+    public int getNodeCount() {
+        return nodeCount;
+    }
 
     public long getIntervalStartTimestamp() {
         return intervalStartTimestamp;
