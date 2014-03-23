@@ -145,8 +145,9 @@ public class ZkReentrantLock implements DistributedReentrantLock {
                 acquiredLockPath = zkReservationManager
                         .acquire(ownerId, entityPath, reservationType, aclList, 0, false);
             }
-
-            holdCount.incrementAndGet();
+            if (acquiredLockPath != null) {
+                holdCount.incrementAndGet();
+            }
         } catch (InterruptedException e) {
             logger.warn("Interrupted in lock():  should not happen:  " + e, e);
         }
@@ -168,7 +169,9 @@ public class ZkReentrantLock implements DistributedReentrantLock {
             acquiredLockPath = zkReservationManager.acquire(ownerId, entityPath, reservationType, aclList,
                     timeWaitMillis, true);
 
-            holdCount.incrementAndGet();
+            if (acquiredLockPath != null) {
+                holdCount.incrementAndGet();
+            }
         } else {
             holdCount.incrementAndGet();
         }

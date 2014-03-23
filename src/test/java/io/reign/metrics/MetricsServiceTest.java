@@ -6,6 +6,7 @@ import io.reign.presence.PresenceService;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -27,6 +28,7 @@ public class MetricsServiceTest {
 
     @Before
     public void setUp() throws Exception {
+
         metricsService = MasterTestSuite.getReign().getService("metrics");
         metricsService.setUpdateIntervalMillis(3000);
 
@@ -42,15 +44,14 @@ public class MetricsServiceTest {
         metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
 
         final AtomicInteger calledCount = new AtomicInteger(0);
+        final AtomicReference<MetricsData> latest = new AtomicReference<MetricsData>();
         metricsService.observe("clusterA", "serviceC", new MetricsObserver() {
-
             @Override
             public void updated(MetricsData updated, MetricsData previous) {
                 logger.debug("*** OBSERVER:  updated={}; previous={}", updated, previous);
                 calledCount.incrementAndGet();
-
+                latest.set(updated);
             }
-
         });
 
         // has not been updated yet
@@ -60,11 +61,19 @@ public class MetricsServiceTest {
         Thread.sleep((metricsService.getUpdateIntervalMillis() / 2) + 1000);
         assertTrue(calledCount.get() == 1);
 
+        // sleep beyond observer manager re-check
+        Thread.sleep(MasterTestSuite.getReign().getContext().getObserverManager().getSweeperInterval() + 1000);
+
         // force a change so observer will be called again
         Counter counter1 = registryManager.get().counter("counter1");
+        long counter1PreviousValue = counter1.getCount();
         counter1.inc();
         Thread.sleep(metricsService.getUpdateIntervalMillis());
-        assertTrue(calledCount.get() == 2);
+        assertTrue("calledCount should be >1, but is " + calledCount.get(), calledCount.get() > 1);
+        assertTrue(
+                "latest.counter1 should be " + (counter1PreviousValue + 1) + ", but is "
+                        + latest.get().getCounter("counter1").getCount(), latest.get().getCounter("counter1")
+                        .getCount() == (counter1PreviousValue + 1));
 
     }
 

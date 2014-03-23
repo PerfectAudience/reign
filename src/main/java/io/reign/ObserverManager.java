@@ -131,6 +131,12 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                 new ThreadFactoryBuilder().setNameFormat("reign-observerManager-%d").build());
     }
 
+    void update(String path, T observer) {
+        // set again to make changes visible to other threads
+        Set<T> observerSet = getObserverSet(path, true);
+        observerSet.add(observer);
+    }
+
     public void put(String path, T observer) {
         Set<T> observerSet = getObserverSet(path, true);
         try {
@@ -277,8 +283,12 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                             synchronized (observer) {
                                 List<String> previousChildList = observer.getChildList();
                                 boolean updatedValueDiffers = childListsDiffer(updatedChildList, previousChildList);
+
+                                observer.setChildList(updatedChildList);
+
+                                update(path, observer);
+
                                 if (updatedValueDiffers) {
-                                    observer.setChildList(updatedChildList);
                                     observer.nodeChildrenChanged(updatedChildList, previousChildList);
                                 }
                             }
@@ -305,9 +315,10 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         }
 
         boolean updatedValueDiffers = previousChildList.size() != updatedChildList.size();
-
-        // if sizes are the same, compare contents independent of order
-        if (!updatedValueDiffers) {
+        if (updatedValueDiffers) {
+            return true;
+        } else {
+            // if sizes are the same, compare contents independent of order
             Set<String> childListSet = new HashSet<String>(previousChildList.size() + 1, 1.0f);
             childListSet.addAll(previousChildList);
 
@@ -341,6 +352,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                                 List<String> previousChildList = observer.getChildList();
                                 observer.setData(data);
                                 observer.setChildList(childList);
+
+                                update(path, observer);
 
                                 if (previousData == null && previousChildList == Collections.EMPTY_LIST) {
                                     observer.nodeCreated(data, childList);
@@ -376,6 +389,9 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                                 if (!Arrays.equals(observer.getData(), updatedData)) {
                                     byte[] previousData = observer.getData();
                                     observer.setData(updatedData);
+
+                                    update(path, observer);
+
                                     observer.nodeDataChanged(updatedData, previousData);
                                 }
                             }
@@ -419,6 +435,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
                             List<String> previousChildList = observer.getChildList();
                             observer.setChildList(Collections.EMPTY_LIST);
+
+                            update(path, observer);
 
                             if (previousChildList != observer.getChildList() || previousData != observer.getData()) {
                                 observer.nodeDeleted(previousData, previousChildList);
