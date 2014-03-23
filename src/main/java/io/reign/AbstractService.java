@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * @author ypai
  * 
  */
-public abstract class AbstractService extends AbstractZkEventHandler implements Service {
+public abstract class AbstractService implements Service {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractService.class);
 

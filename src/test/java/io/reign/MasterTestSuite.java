@@ -6,7 +6,6 @@ import io.reign.data.DataServiceTestSuite;
 import io.reign.presence.PresenceServiceTestSuite;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.UUID;
 
 import org.apache.curator.test.TestingServer;
@@ -67,15 +66,16 @@ public class MasterTestSuite {
 
     @AfterClass
     public static void tearDownClass() {
-
-        /** stop reign **/
-        reign.stop();
-
-        /** shutdown ZooKeeper instance **/
         try {
+            // wait a bit for any async tasks to finish
+            Thread.sleep(3000);
+
+            // stop reign
+            reign.stop();
+
             logger.debug("Stopping Test ZooKeeper server...");
             zkTestServer.stop();
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
         }
     }
