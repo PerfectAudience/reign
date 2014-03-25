@@ -116,7 +116,7 @@ public class PresenceServiceTest {
     @Test
     public void testServiceObserver() throws Exception {
         final AtomicReference<ServiceInfo> serviceInfoRef = new AtomicReference<ServiceInfo>();
-        ServiceInfo serviceInfo = presenceService.lookupServiceInfo("clusterC", "serviceC1",
+        ServiceInfo serviceInfo = presenceService.getServiceInfo("clusterC", "serviceC1",
                 new PresenceObserver<ServiceInfo>() {
                     @Override
                     public void updated(ServiceInfo updated, ServiceInfo previous) {
@@ -141,7 +141,7 @@ public class PresenceServiceTest {
     @Test
     public void testNodeObserver() throws Exception {
         final AtomicReference<NodeInfo> nodeInfoRef = new AtomicReference<NodeInfo>();
-        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterD", "serviceD1", nodeId,
+        NodeInfo nodeInfo = presenceService.getNodeInfo("clusterD", "serviceD1", nodeId,
                 new PresenceObserver<NodeInfo>() {
                     @Override
                     public void updated(NodeInfo updated, NodeInfo previous) {
@@ -192,7 +192,7 @@ public class PresenceServiceTest {
         ServiceInfo serviceInfo = presenceService.waitUntilAvailable("clusterA", "serviceA1", -1);
         assertTrue("service nodes = " + serviceInfo.getNodeIdList(), serviceInfo.getNodeIdList().size() > 0);
 
-        NodeInfo nodeInfo = presenceService.lookupNodeInfo("clusterA", "serviceA1", nodeId);
+        NodeInfo nodeInfo = presenceService.getNodeInfo("clusterA", "serviceA1", nodeId);
 
         assertTrue("nodeInfo should not be null", nodeInfo != null);
         assertTrue("clusterA".equals(nodeInfo.getClusterId()));

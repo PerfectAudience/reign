@@ -69,7 +69,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     private int maxEventHandlerThreads = 16;
     private int eventHandlingQueueMaxDepth = 128;
     private int threadTimeOutMillis = 60000;
-    private int sweeperInterval = 5000;
+    private volatile int sweeperInterval = 60000;
 
     public ObserverManager(ZkClient zkClient) {
         this.zkClient = zkClient;
@@ -199,6 +199,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         // do not schedule a check if we have already checked this one (to prevent infinite cycles from re-using
         // event handling methods for watched ZK events)
         if (event instanceof RecheckedWatchedEvent) {
+            logger.trace("Ignoring:  already scheduled re-check:  path={}; eventType={}; intervalMillis={}",
+                    event.getPath(), event.getType(), sweeperInterval);
             return;
         }
 

@@ -115,7 +115,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
     @Override
     public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage) {
         PresenceService presenceService = getContext().getService("presence");
-        ServiceInfo serviceInfo = presenceService.lookupServiceInfo(clusterId, serviceId);
+        ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
         if (serviceInfo == null) {
             return Collections.EMPTY_MAP;
         }
@@ -200,7 +200,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
     public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
             MessagingCallback callback) {
         PresenceService presenceService = getContext().getService("presence");
-        ServiceInfo serviceInfo = presenceService.lookupServiceInfo(clusterId, serviceId);
+        ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
         if (serviceInfo == null) {
             return;
         }
@@ -247,7 +247,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
     @Override
     public void sendMessageFireAndForget(String clusterId, String serviceId, RequestMessage requestMessage) {
         PresenceService presenceService = getContext().getService("presence");
-        ServiceInfo serviceInfo = presenceService.lookupServiceInfo(clusterId, serviceId);
+        ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
         if (serviceInfo == null) {
             return;
         }

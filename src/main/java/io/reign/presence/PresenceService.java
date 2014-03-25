@@ -200,7 +200,7 @@ public class PresenceService extends AbstractService {
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
 
         PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(clusterId, serviceId);
-        ServiceInfo result = lookupServiceInfo(clusterId, serviceId, notifyObserver);
+        ServiceInfo result = getServiceInfo(clusterId, serviceId, notifyObserver);
 
         if (result == null || result.getNodeIdList().size() < 1) {
             synchronized (notifyObserver) {
@@ -217,7 +217,7 @@ public class PresenceService extends AbstractService {
             }// synchronized
         }
 
-        result = lookupServiceInfo(clusterId, serviceId, notifyObserver);
+        result = getServiceInfo(clusterId, serviceId, notifyObserver);
 
         getContext().getObserverManager().remove(path, notifyObserver);
 
@@ -280,15 +280,15 @@ public class PresenceService extends AbstractService {
         return observer;
     }
 
-    public ServiceInfo lookupServiceInfo(String clusterId, String serviceId) {
-        return lookupServiceInfo(clusterId, serviceId, null, nodeAttributeSerializer);
+    public ServiceInfo getServiceInfo(String clusterId, String serviceId) {
+        return getServiceInfo(clusterId, serviceId, null, nodeAttributeSerializer);
     }
 
-    public ServiceInfo lookupServiceInfo(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer) {
-        return lookupServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer);
+    public ServiceInfo getServiceInfo(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer) {
+        return getServiceInfo(clusterId, serviceId, observer, nodeAttributeSerializer);
     }
 
-    ServiceInfo lookupServiceInfo(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer,
+    ServiceInfo getServiceInfo(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer,
             DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         /** add observer if given **/
         if (observer != null) {
@@ -347,7 +347,7 @@ public class PresenceService extends AbstractService {
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
 
         PresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
-        NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+        NodeInfo result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
 
         logger.info("Waiting until node is available:  path={}", path);
         if (result == null) {
@@ -364,23 +364,22 @@ public class PresenceService extends AbstractService {
             }
         }
 
-        result = lookupNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+        result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
 
         getContext().getObserverManager().remove(path, notifyObserver);
 
         return result;
     }
 
-    public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId) {
-        return lookupNodeInfo(clusterId, serviceId, nodeId, null, nodeAttributeSerializer);
+    public NodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId) {
+        return getNodeInfo(clusterId, serviceId, nodeId, null, nodeAttributeSerializer);
     }
 
-    public NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId,
-            PresenceObserver<NodeInfo> observer) {
-        return lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer);
+    public NodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer) {
+        return getNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer);
     }
 
-    NodeInfo lookupNodeInfo(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer,
+    NodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer,
             DataSerializer<Map<String, String>> nodeAttributeSerializer) {
         /** get node data from zk **/
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
@@ -442,12 +441,14 @@ public class PresenceService extends AbstractService {
         announce(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), visible, attributeMap);
     }
 
+    /**
+     * Used to track connected clients.
+     */
     public void announce(String clusterId, String serviceId, String nodeId, boolean visible) {
         announce(clusterId, serviceId, nodeId, visible, null);
     }
 
-    public void announce(String clusterId, String serviceId, String nodeId, boolean visible,
-            Map<String, String> attributeMap) {
+    void announce(String clusterId, String serviceId, String nodeId, boolean visible, Map<String, String> attributeMap) {
 
         // get announcement using path to node
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
@@ -612,7 +613,7 @@ public class PresenceService extends AbstractService {
 
                 } else if (tokens.length == 2) {
                     // list available nodes for a given service
-                    ServiceInfo serviceInfo = this.lookupServiceInfo(tokens[0], tokens[1]);
+                    ServiceInfo serviceInfo = this.getServiceInfo(tokens[0], tokens[1]);
 
                     responseMessage = new SimpleResponseMessage();
                     responseMessage.setBody(serviceInfo);
@@ -622,7 +623,7 @@ public class PresenceService extends AbstractService {
 
                 } else if (tokens.length == 3) {
                     // list available nodes for a given service
-                    NodeInfo nodeInfo = this.lookupNodeInfo(tokens[0], tokens[1], tokens[2]);
+                    NodeInfo nodeInfo = this.getNodeInfo(tokens[0], tokens[1], tokens[2]);
 
                     responseMessage = new SimpleResponseMessage();
                     responseMessage.setBody(nodeInfo);

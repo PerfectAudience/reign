@@ -132,7 +132,7 @@ public class PresenceServiceExample {
         // try to retrieve service info (which may not be immediately
         // available); include observer to be notified of changes in service
         // info
-        ServiceInfo serviceInfo = presenceService.lookupServiceInfo("examples", "service1",
+        ServiceInfo serviceInfo = presenceService.getServiceInfo("examples", "service1",
                 new PresenceObserver<ServiceInfo>() {
                     @Override
                     public void updated(ServiceInfo updated, ServiceInfo previous) {
@@ -149,7 +149,7 @@ public class PresenceServiceExample {
         // try to retrieve node info (which may not be immediately
         // available); include observer to be notified of changes in node
         // info
-        NodeInfo nodeInfo = presenceService.lookupNodeInfo("examples", "service2", "node1",
+        NodeInfo nodeInfo = presenceService.getNodeInfo("examples", "service2", "node1",
                 new PresenceObserver<NodeInfo>() {
                     @Override
                     public void updated(NodeInfo updated, NodeInfo previous) {
