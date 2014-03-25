@@ -19,6 +19,9 @@ package io.reign.util.spring;
 import io.reign.Reign;
 import io.reign.ReignMaker;
 
+import java.util.Collections;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +37,22 @@ public class SpringReignMaker extends ReignMaker {
 
     private volatile Reign reign;
 
+    private Map<String, Object> attributeMap = Collections.EMPTY_MAP;
+
     public SpringReignMaker() {
         super();
+    }
+
+    public Map<String, Object> getAttributeMap() {
+        return attributeMap;
+    }
+
+    public <T> T getAttribute(String attributeKey) {
+        return (T) attributeMap.get(attributeKey);
+    }
+
+    public void setAttributeMap(Map<String, Object> attributeMap) {
+        this.attributeMap = attributeMap;
     }
 
     public void setFrameworkBasePath(String frameworkBasePath) {
