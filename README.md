@@ -1,6 +1,6 @@
 Reign Framework
 ===============
-A suite of lightweight services for distributed systems coordination and messaging based on ZooKeeper, Curator, Netty, and Web Sockets.  
+A toolkit for building distributed applications.  The framework leverages open source projects such as ZooKeeper, Netty, CodaHale Metrics.  
 
 The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
@@ -12,6 +12,7 @@ Out of the box, the framework provides the following:
 * Service presence - monitor for nodes coming up and going down in services.
 * Messaging - nodes can message each other directly and/or broadcast a message to member nodes of a specific service.
 * Constructs for distributed coordination - read/write locks, exclusive locks, semaphores, and barriers (coming soon).
+* Reign integrates with Codahale Metrics to allow services in a distributed application to publish data to each other via ZooKeeper.
 * Reliable ZooKeeper client wrapper that handles common ZooKeeper connection/session errors and re-connects as necessary.
 * A standardized way of organizing information in ZooKeeper for ease of maintenance and consistency between deployments.
 * ZooKeeper-based Maps, Queues, Stacks, Lists to support common patterns such as queue/worker pool; sharing common state between nodes.
@@ -110,9 +111,9 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
             @Override
             public void updated(ServiceInfo updated, ServiceInfo previous) {
                 if (updated != null) {
-                    logger.info("***** Observer:  serviceInfo updated!");
+                    System.out.println("Service updated!");
                 } else {
-                    logger.info("***** Observer:  serviceInfo deleted!");
+                    System.out.println("Service deleted or removed!");
                 }
             }
         });
@@ -218,6 +219,31 @@ List nodes comprising "service2":
             rwLock.destroy();
         }
 
+### Publish Service Metrics
+Reign integrates Codahale Metrics to allow services to publish application metrics to each other.
+This information can be used for decisioning and/or monitoring within your distributed application.
+See [Codahale Metrics](http://metrics.codahale.com/) for specific usage details on how to gather metrics.
+
+        /** metrics service example **/
+        // get metrics service
+        MetricsService metricsService = reign.getService("metrics");
+
+		// get a MetricRegistry manager which will rotate data every 60 seconds
+        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(60, TimeUnit.SECONDS);       
+        
+        // export data from the service node every 10 seconds
+        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);
+        
+        // get some counters and increment
+        Counter counter1 = registryManager.get().counter(MetricRegistry.name("requests"));
+        Counter counter2 = registryManager.get().counter(MetricRegistry.name("errors"));        
+        counter1.inc();
+        counter2.inc(3);
+        
+        // get aggregated/combined metrics data for all nodes in a given service
+        MetricsData metricsData = metricsService.getMetrics("clusterA", "serviceA")
+        CounterData requestCounterData = metricsData.getCounter("requests");
+        System.out.println("Number of requests across the service is " + requestCounterData.getCount()); 
 
 ### Shutting down 
 
