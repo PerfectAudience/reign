@@ -95,8 +95,9 @@ public class PresenceService extends AbstractService {
 
         // schedule admin activity
         Runnable adminRunnable = new AdminRunnable();// Runnable
-        executorService.scheduleAtFixedRate(adminRunnable, this.heartbeatIntervalMillis / 2,
-                this.heartbeatIntervalMillis, TimeUnit.MILLISECONDS);
+        int adminRunnableInterval = Math.max(1000, this.heartbeatIntervalMillis / 2);
+        executorService.scheduleAtFixedRate(adminRunnable, adminRunnableInterval, adminRunnableInterval,
+                TimeUnit.MILLISECONDS);
 
     }
 
