@@ -434,6 +434,10 @@ public class PresenceService extends AbstractService {
         return result;
     }
 
+    public void announce(String clusterId, String serviceId) {
+        announce(clusterId, serviceId, false);
+    }
+
     public void announce(String clusterId, String serviceId, boolean visible) {
         announce(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), visible, null);
     }

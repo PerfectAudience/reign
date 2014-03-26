@@ -1,6 +1,6 @@
 Reign Framework
 ===============
-A suite of lightweight services for distributed systems coordination and messaging based on ZooKeeper, Curator, Netty, and Web Sockets.  
+A toolkit for building distributed applications.  The framework leverages open source projects such as ZooKeeper, Netty, CodaHale Metrics.  
 
 The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
@@ -12,6 +12,7 @@ Out of the box, the framework provides the following:
 * Service presence - monitor for nodes coming up and going down in services.
 * Messaging - nodes can message each other directly and/or broadcast a message to member nodes of a specific service.
 * Constructs for distributed coordination - read/write locks, exclusive locks, semaphores, and barriers (coming soon).
+* Reign integrates with Codahale Metrics to allow services in a distributed application to publish data to each other via ZooKeeper.
 * Reliable ZooKeeper client wrapper that handles common ZooKeeper connection/session errors and re-connects as necessary.
 * A standardized way of organizing information in ZooKeeper for ease of maintenance and consistency between deployments.
 * ZooKeeper-based Maps, Queues, Stacks, Lists to support common patterns such as queue/worker pool; sharing common state between nodes.
@@ -92,10 +93,11 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         // get the presence service
         PresenceService presenceService = reign.getService("presence");
 
-        // announce this node's available for a given service, immediately visible
+        // announce this node's membership in a given service, immediately visible
         presenceService.announce("examples", "service1", true);
 
-        // announce this node's available for another service, not immediately visible
+        // announce this node's membership in a given service, not immediately visible
+        presenceService.announce("examples", "service2");
         presenceService.announce("examples", "service2", false);
 
         // hide service1
@@ -103,6 +105,18 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
         // show service2
         presenceService.show("examples", "service2");
+        
+        // watch for changes in a service with observer callback
+        presenceService.observe("examples", "service1", new PresenceObserver<ServiceInfo>() {
+            @Override
+            public void updated(ServiceInfo updated, ServiceInfo previous) {
+                if (updated != null) {
+                    System.out.println("Service updated!");
+                } else {
+                    System.out.println("Service deleted or removed!");
+                }
+            }
+        });
 
 ### Using the Web UI
 On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
@@ -205,6 +219,32 @@ List nodes comprising "service2":
             rwLock.destroy();
         }
 
+### Publishing and accessing service metrics
+Reign integrates [Codahale Metrics](http://metrics.codahale.com/) to allow services to publish application metrics to each other.
+This information can be used for decisioning and/or monitoring within your distributed application.
+
+See [Codahale Metrics](http://metrics.codahale.com/) for specific details on different types of metrics (counters, histograms, etc.).
+
+        /** metrics service example **/
+        // get metrics service
+        MetricsService metricsService = reign.getService("metrics");
+
+		// get a MetricRegistry manager which will rotate data every 60 seconds
+        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(60, TimeUnit.SECONDS);       
+        
+        // export data from the service node every 10 seconds
+        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);
+        
+        // get some counters and increment
+        Counter counter1 = registryManager.get().counter(MetricRegistry.name("requests"));
+        Counter counter2 = registryManager.get().counter(MetricRegistry.name("errors"));        
+        counter1.inc();
+        counter2.inc(3);
+        
+        // get aggregated/combined metrics data for all nodes in a given service
+        MetricsData metricsData = metricsService.getMetrics("clusterA", "serviceA")
+        CounterData requestCounterData = metricsData.getCounter("requests");
+        System.out.println("Number of requests across the service is " + requestCounterData.getCount()); 
 
 ### Shutting down 
 
@@ -231,7 +271,8 @@ The default data layout in ZooKeeper is outlined below.  Custom layouts may be c
 * `/presence` - service discovery information
 * `/conf` - configuration data
 * `/coord` - data describing distributed locks, semaphores, etc.
-* `/data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues 
+* `/data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues
+* `/metrics` - service node metrics data (uses Codahale Metrics)
 
 
 Web Sockets Protocol
