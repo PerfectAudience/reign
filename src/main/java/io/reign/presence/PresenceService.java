@@ -57,9 +57,9 @@ public class PresenceService extends AbstractService {
 
     private static final Logger logger = LoggerFactory.getLogger(PresenceService.class);
 
-    public static final int DEFAULT_ZOMBIE_CHECK_INTERVAL_MILLIS = 300000;
+    public static final int DEFAULT_ZOMBIE_CHECK_INTERVAL_MILLIS = 60000;
 
-    public static final int DEFAULT_HEARTBEAT_INTERVAL_MILLIS = 30000;
+    public static final int DEFAULT_HEARTBEAT_INTERVAL_MILLIS = 15000;
 
     private int heartbeatIntervalMillis = DEFAULT_HEARTBEAT_INTERVAL_MILLIS;
 
@@ -703,7 +703,7 @@ public class PresenceService extends AbstractService {
 
             // set last updated with some randomizer to spread out
             // requests
-            announcement.setLastUpdated(currentTimestamp + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
+            announcement.setLastUpdated(currentTimestamp + (int) ((Math.random() * 5000f)));
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
                 logger.debug("Node does not exist:  path={}", path);
@@ -728,7 +728,7 @@ public class PresenceService extends AbstractService {
 
             // set last updated with some randomizer to spread out
             // requests
-            announcement.setLastUpdated(currentTimestamp + (int) ((Math.random() * heartbeatIntervalMillis / 2)));
+            announcement.setLastUpdated(currentTimestamp + (int) ((Math.random() * 5000f)));
 
             logger.debug("Announced:  path={}", pathUpdated);
         } catch (Exception e) {
@@ -798,7 +798,7 @@ public class PresenceService extends AbstractService {
                                         logger.info("Checking for service zombie child nodes:  path={}", servicePath);
                                         Stat stat = getZkClient().exists(serviceChildPath, false);
                                         long timeDiff = System.currentTimeMillis() - stat.getMtime();
-                                        if (timeDiff > heartbeatIntervalMillis * 4) {
+                                        if (timeDiff > heartbeatIntervalMillis * 2) {
                                             logger.warn(
                                                     "Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
                                                     serviceChildPath, timeDiff);
