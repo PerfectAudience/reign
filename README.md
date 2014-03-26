@@ -92,10 +92,11 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         // get the presence service
         PresenceService presenceService = reign.getService("presence");
 
-        // announce this node's available for a given service, immediately visible
+        // announce this node's membership in a given service, immediately visible
         presenceService.announce("examples", "service1", true);
 
-        // announce this node's available for another service, not immediately visible
+        // announce this node's membership in a given service, not immediately visible
+        presenceService.announce("examples", "service2");
         presenceService.announce("examples", "service2", false);
 
         // hide service1
@@ -103,6 +104,18 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
         // show service2
         presenceService.show("examples", "service2");
+        
+        // watch for changes in a service with observer callback
+        presenceService.observe("examples", "service1", new PresenceObserver<ServiceInfo>() {
+            @Override
+            public void updated(ServiceInfo updated, ServiceInfo previous) {
+                if (updated != null) {
+                    logger.info("***** Observer:  serviceInfo updated!");
+                } else {
+                    logger.info("***** Observer:  serviceInfo deleted!");
+                }
+            }
+        });
 
 ### Using the Web UI
 On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
@@ -231,7 +244,8 @@ The default data layout in ZooKeeper is outlined below.  Custom layouts may be c
 * `/presence` - service discovery information
 * `/conf` - configuration data
 * `/coord` - data describing distributed locks, semaphores, etc.
-* `/data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues 
+* `/data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues
+* `/metrics` - service node metrics data (uses Codahale Metrics)
 
 
 Web Sockets Protocol
