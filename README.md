@@ -219,7 +219,7 @@ List nodes comprising "service2":
             rwLock.destroy();
         }
 
-### Publish Service Metrics
+### Publishing and accessing service metrics
 Reign integrates [Codahale Metrics](http://metrics.codahale.com/) to allow services to publish application metrics to each other.
 This information can be used for decisioning and/or monitoring within your distributed application.
 
