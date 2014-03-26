@@ -177,7 +177,7 @@ class ZkReservationManager {
                     /** see if we acquired lock **/
                     if (acquiredPath == null) {
                         // wait to acquire if not yet acquired
-                        logger.info("Waiting to acquire:  ownerId={}; lockType={}; reservationPath={}; watchPath={}",
+                        logger.debug("Waiting to acquire:  ownerId={}; lockType={}; reservationPath={}; watchPath={}",
                                 new Object[] { ownerId, reservationType, lockReservationPath, reservationAheadPath });
                         if (lockReservationWatcher == null) {
                             lockReservationWatcher = new ZkLockWatcher(entityPath, lockReservationPath);
@@ -189,7 +189,7 @@ class ZkReservationManager {
                         // wait for notification
                         lockReservationWatcher.waitForEvent(waitTimeoutMs);
                     } else {
-                        logger.info("Acquired:  ownerId={}; reservationType={}; acquiredPath={}", new Object[] {
+                        logger.debug("Acquired:  ownerId={}; reservationType={}; acquiredPath={}", new Object[] {
                                 ownerId, reservationType, acquiredPath });
 
                         // set watch on lock node so that we are notified if it
@@ -332,13 +332,13 @@ class ZkReservationManager {
                     /** see if we acquired lock **/
                     if (acquiredPath == null) {
                         // wait to acquire if not yet acquired
-                        logger.info(
+                        logger.debug(
                                 "Waiting to acquire:  ownerId={}; lockType={}; lockReservationPath={}; watchPath={}",
                                 new Object[] { ownerId, reservationType, lockReservationPath, entityPath });
                         // wait for notification
                         lockReservationWatcher.waitForEvent(waitTimeoutMs);
                     } else {
-                        logger.info("Acquired:  ownerId={}; lockType={}; acquiredLockPath={}", new Object[] { ownerId,
+                        logger.debug("Acquired:  ownerId={}; lockType={}; acquiredLockPath={}", new Object[] { ownerId,
                                 reservationType, acquiredPath });
 
                         // set watch on lock node so that we are notified if it
@@ -407,11 +407,11 @@ class ZkReservationManager {
         }// if
 
         try {
-            logger.debug("Relinquishing:  path={}", reservationPath);
+            logger.trace("Relinquishing:  path={}", reservationPath);
 
             zkClient.delete(reservationPath, -1);
 
-            logger.info("Relinquished:  path={}", reservationPath);
+            logger.debug("Relinquished:  path={}", reservationPath);
             return true;
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
