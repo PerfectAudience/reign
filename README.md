@@ -1,6 +1,6 @@
 Reign Framework
 ===============
-A toolkit for building distributed applications.  The framework leverages open source projects such as ZooKeeper, Netty, CodaHale Metrics.  
+A toolkit for building distributed applications, leveraging open source projects such as ZooKeeper, Netty, CodaHale Metrics.
 
 The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
