@@ -122,6 +122,7 @@ public class PresenceServiceTest {
                     public void updated(ServiceInfo updated, ServiceInfo previous) {
                         serviceInfoRef.set(updated);
                         synchronized (serviceInfoRef) {
+                            logger.debug("NOTIFY all...");
                             serviceInfoRef.notifyAll();
                         }
                     }
@@ -130,9 +131,21 @@ public class PresenceServiceTest {
         assertTrue("serviceInfo=" + ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE),
                 serviceInfo == null);
 
-        presenceService.announce("clusterC", "serviceC1", true);
+        MasterTestSuite.getExecutorService().submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted:  " + e, e);
+                }
+                presenceService.announce("clusterC", "serviceC1", true);
+            }
+        });
+
         synchronized (serviceInfoRef) {
-            serviceInfoRef.wait();
+            logger.debug("WAITING to be notified...");
+            serviceInfoRef.wait(1000);
         }
 
         assertTrue(serviceInfoRef.get().getNodeIdList().size() == 1);
