@@ -133,25 +133,16 @@ public class PresenceServiceTest {
         assertTrue("serviceInfo=" + ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE),
                 serviceInfo == null);
 
-        MasterTestSuite.getExecutorService().submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    logger.warn("Interrupted:  " + e, e);
-                }
-                presenceService.announce("clusterC", "serviceC1", true);
-            }
-        });
-
+        presenceService.announce("clusterC", "serviceC1", true);
         synchronized (serviceInfoRef) {
             logger.debug("WAITING to be notified...");
-            serviceInfoRef.wait(2000);
+            serviceInfoRef.wait(5000);
         }
 
+        assertTrue(serviceInfoRef.get() != null);
         assertTrue("Expected 1, got " + serviceInfoRef.get().getNodeIdList().size(), serviceInfoRef.get()
                 .getNodeIdList().size() == 1);
+
     }
 
     @Test

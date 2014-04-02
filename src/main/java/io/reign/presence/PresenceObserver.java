@@ -78,12 +78,11 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
             Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
             NodeInfo previous = new NodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
             updated(null, (T) previous);
-            return;
-        }
-        if (serviceId != null) {
+
+        } else if (serviceId != null) {
             ServiceInfo previous = new ServiceInfo(clusterId, serviceId, previousChildList);
             updated(null, (T) previous);
-            return;
+
         }
     }
 
@@ -93,9 +92,14 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(data);
             NodeInfo updated = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);
             updated((T) updated, null);
-            return;
-        }
 
+        } else if (serviceId != null) {
+            if (childList != null && childList.size() > 0) {
+                ServiceInfo updated = new ServiceInfo(clusterId, serviceId, childList);
+                updated((T) updated, null);
+
+            }
+        }
     }
 
 }
