@@ -1,6 +1,6 @@
 Reign Framework
 ===============
-A toolkit for building distributed applications.  The framework leverages open source projects such as ZooKeeper, Netty, CodaHale Metrics.  
+A toolkit for building distributed applications, leveraging open source projects such as ZooKeeper, Netty, CodaHale Metrics.
 
 The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
@@ -287,15 +287,7 @@ By default, services in the framework can receive and respond to messages via We
 `presence:/my_cluster/foo_service` - this message would get information on the `foo_service`.  More information is available in the Web UI available on any node running the framework at port 33033 (default port).
 
 
-Upcoming
---------
 
-* SASL support for ZooKeeper
-* Distributed barriers
-* Ongoing UI Enhancements (suggestions welcome!)
-* Binary protocol
-* Async messaging API
-* Consistent hashing service/feature
 
 
 
