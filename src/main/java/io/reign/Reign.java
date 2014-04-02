@@ -414,24 +414,18 @@ public class Reign implements Watcher {
 
         logger.info("SHUTDOWN:  begin");
 
-        // /** cancel all futures **/
-        // logger.info("SHUTDOWN:  cancelling scheduled service tasks");
-        // for (Future<?> future : futureMap.values()) {
-        // future.cancel(false);
-        // }
-
-        // /** stop executor **/
-        // logger.info("SHUTDOWN:  shutting down executor");
-        // executorService.shutdown();
-
         /** clean up services **/
         logger.info("SHUTDOWN:  cleaning up services");
         for (ServiceWrapper serviceWrapper : serviceMap.values()) {
             serviceWrapper.getService().destroy();
         }
 
+        /** observer manager **/
+        logger.info("SHUTDOWN:  stopping observer manager");
+        observerManager.destroy();
+
         /** init path cache **/
-        logger.info("START:  stopping pathCache...");
+        logger.info("SHUTDOWN:  stopping pathCache...");
         pathCache.destroy();
 
         /** clean up zk client **/
@@ -476,8 +470,6 @@ public class Reign implements Watcher {
     private static class ServiceWrapper {
         private final Service service;
 
-        // private boolean running = false;
-
         public ServiceWrapper(Service service) {
             this.service = service;
         }
@@ -485,36 +477,6 @@ public class Reign implements Watcher {
         public Service getService() {
             return service;
         }
-
-        // public boolean isActiveService() {
-        // return service instanceof ActiveService;
-        // }
-
-        // public boolean isSubmittable() {
-        // return isActiveService() && !isRunning();
-        // }
-
-        // public synchronized boolean isAlwaysActive() {
-        // return ((ActiveService) this.service).getExecutionIntervalMillis() < 1;
-        // }
-
-        // public synchronized boolean isRunning() {
-        // return running;
-        // }
-
-        // public long getIntervalMillis() {
-        // return ((ActiveService) service).getExecutionIntervalMillis();
-        // }
-
-        // @Override
-        // public synchronized void run() {
-        // this.running = true;
-        //
-        // logger.debug("Calling {}.perform()", service.getClass().getName());
-        // ((ActiveService) this.service).perform();
-        //
-        // this.running = false;
-        // }
 
     }
 
