@@ -159,8 +159,10 @@ public class PresenceServiceTest {
                     }
                 });
 
-        assertTrue(nodeInfo == null);
+        assertTrue("nodeInfo=" + ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE),
+                nodeInfo == null);
 
+        // change something to invoke observer
         presenceService.announce("clusterD", "serviceD1", true, Structs.<String, String> map().kv("foo", "bar"));
         synchronized (nodeInfoRef) {
             nodeInfoRef.wait(5000);
@@ -168,10 +170,11 @@ public class PresenceServiceTest {
 
         assertTrue(nodeInfoRef.get().getAttribute("foo").equals("bar"));
 
+        // change something to invoke observer
         presenceService.announce("clusterD", "serviceD1", true,
                 Structs.<String, String> map().kv("foo", "bar").kv("lady", "liberty"));
         synchronized (nodeInfoRef) {
-            nodeInfoRef.wait();
+            nodeInfoRef.wait(5000);
         }
 
         assertTrue(nodeInfoRef.get().getAttribute("foo").equals("bar")
