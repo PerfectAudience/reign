@@ -95,11 +95,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
             updated((T) updated, null);
             return;
         }
-        if (serviceId != null) {
-            ServiceInfo updated = new ServiceInfo(clusterId, serviceId, childList);
-            updated((T) updated, null);
-            return;
-        }
+
     }
 
 }
