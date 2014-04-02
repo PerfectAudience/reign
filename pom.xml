@@ -14,19 +14,6 @@
 		<zookeeper.version>3.4.5</zookeeper.version>
 	</properties>
 
-        <distributionManagement>
-                <repository>
-                        <id>central</id>
-                        <name>Artifactory TM</name>
-                        <url>http://artifactory.tubemogul.com/libs-releases</url>
-                </repository>
-                <snapshotRepository>
-                        <id>snapshots</id>
-                        <name>Artifactory TM</name>
-                        <url>http://artifactory.tubemogul.com/libs-snapshots</url>
-                </snapshotRepository>
-        </distributionManagement>
-
 	<dependencies>
 
 		<!-- codahale metrics -->		
