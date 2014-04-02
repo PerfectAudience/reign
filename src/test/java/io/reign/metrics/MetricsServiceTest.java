@@ -41,6 +41,7 @@ public class MetricsServiceTest {
     @Test
     public void testObserver() throws Exception {
         MetricRegistryManager registryManager = getMetricRegistryManager();
+
         metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
 
         final AtomicInteger calledCount = new AtomicInteger(0);
@@ -51,6 +52,9 @@ public class MetricsServiceTest {
                 logger.debug("*** OBSERVER:  updated={}; previous={}", updated, previous);
                 calledCount.incrementAndGet();
                 latest.set(updated);
+                synchronized (calledCount) {
+                    calledCount.notifyAll();
+                }
             }
         });
 
@@ -58,8 +62,10 @@ public class MetricsServiceTest {
         assertTrue("calledCount should be 0, but is " + calledCount.get(), calledCount.get() == 0);
 
         // will have been updated
-        Thread.sleep((metricsService.getUpdateIntervalMillis() / 2) + 1000);
-        assertTrue(calledCount.get() == 1);
+        synchronized (calledCount) {
+            calledCount.wait(5000);
+        }
+        assertTrue("Expected 1, got " + calledCount.get(), calledCount.get() == 1);
 
         // sleep beyond observer manager re-check
         Thread.sleep(MasterTestSuite.getReign().getContext().getObserverManager().getSweeperInterval() + 1000);
