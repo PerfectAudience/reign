@@ -163,7 +163,7 @@ public class PresenceServiceTest {
 
         presenceService.announce("clusterD", "serviceD1", true, Structs.<String, String> map().kv("foo", "bar"));
         synchronized (nodeInfoRef) {
-            nodeInfoRef.wait();
+            nodeInfoRef.wait(5000);
         }
 
         assertTrue(nodeInfoRef.get().getAttribute("foo").equals("bar"));
