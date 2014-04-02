@@ -8,6 +8,8 @@ import io.reign.presence.PresenceServiceTestSuite;
 
 import java.io.File;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.curator.test.TestingServer;
 import org.junit.AfterClass;
@@ -30,6 +32,12 @@ public class MasterTestSuite {
     private static Reign reign;
 
     public static final int ZK_TEST_SERVER_PORT = 21810;
+
+    public static ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+    public static ExecutorService getExecutorService() {
+        return executorService;
+    }
 
     public static synchronized Reign getReign() {
         setUpClass();
@@ -76,6 +84,8 @@ public class MasterTestSuite {
 
             logger.debug("Stopping Test ZooKeeper server...");
             zkTestServer.stop();
+
+            executorService.shutdown();
         } catch (Exception e) {
             logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
         }
