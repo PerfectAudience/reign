@@ -77,15 +77,16 @@ public class MasterTestSuite {
     public static void tearDownClass() {
         try {
             // wait a bit for any async tasks to finish
-            Thread.sleep(3000);
-
-            // stop reign
-            reign.stop();
+            Thread.sleep(5000);
 
             logger.debug("Stopping Test ZooKeeper server...");
             zkTestServer.stop();
 
             executorService.shutdown();
+
+            // stop reign
+            reign.stop();
+
         } catch (Exception e) {
             logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
         }
