@@ -23,11 +23,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.KeeperException;
@@ -38,8 +35,6 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * Class for managing observers for services. Deals with multiple observers for a single path, etc.
@@ -61,15 +56,9 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     private final ZkClient zkClient;
 
-    private ExecutorService executorService;
+    private final ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(2);
 
-    private final ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1);
-
-    private int baseEventHandlerThreads = 2;
-    private int maxEventHandlerThreads = 16;
-    private int eventHandlingQueueMaxDepth = 128;
-    private int threadTimeOutMillis = 60000;
-    private volatile int sweeperInterval = 60000;
+    private volatile int sweeperInterval = 30000;
 
     public ObserverManager(ZkClient zkClient) {
         this.zkClient = zkClient;
@@ -83,55 +72,15 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         this.sweeperInterval = sweeperInterval;
     }
 
-    public int getBaseEventHandlerThreads() {
-        return baseEventHandlerThreads;
-    }
-
-    public void setBaseEventHandlerThreads(int baseEventHandlerThreads) {
-        this.baseEventHandlerThreads = baseEventHandlerThreads;
-    }
-
-    public int getMaxEventHandlerThreads() {
-        return maxEventHandlerThreads;
-    }
-
-    public void setMaxEventHandlerThreads(int maxEventHandlerThreads) {
-        this.maxEventHandlerThreads = maxEventHandlerThreads;
-    }
-
-    public int getThreadTimeOutMillis() {
-        return threadTimeOutMillis;
-    }
-
-    public void setThreadTimeOutMillis(int threadTimeOutMillis) {
-        this.threadTimeOutMillis = threadTimeOutMillis;
-    }
-
-    public int getEventHandlingQueueMaxDepth() {
-        return eventHandlingQueueMaxDepth;
-    }
-
-    public void setEventHandlingQueueMaxDepth(int eventHandlingQueueMaxDepth) {
-        this.eventHandlingQueueMaxDepth = eventHandlingQueueMaxDepth;
-    }
-
-    // public ZkClient getZkClient() {
-    // return zkClient;
-    // }
-    //
-    // public void setZkClient(ZkClient zkClient) {
-    // this.zkClient = zkClient;
-    //
-    // }
-
     public void init() {
         this.zkClient.register(this);
-        executorService = new ThreadPoolExecutor(baseEventHandlerThreads, maxEventHandlerThreads, threadTimeOutMillis,
-                TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(eventHandlingQueueMaxDepth),
-                new ThreadFactoryBuilder().setNameFormat("reign-observerManager-%d").build());
     }
 
-    void update(String path, T observer) {
+    public void destroy() {
+        scheduledExecutorService.shutdown();
+    }
+
+    void updateObserver(String path, T observer) {
         // set again to make changes visible to other threads
         Set<T> observerSet = getObserverSet(path, true);
         observerSet.add(observer);
@@ -258,54 +207,51 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     @Override
     public void nodeChildrenChanged(final WatchedEvent event) {
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                String path = event.getPath();
-                logger.debug("Notifying ALL observers:  nodeChildrenChanged:  path={}", path);
+
+        String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeChildrenChanged:  path={}", path);
+        try {
+            Set<T> observerSet = getObserverSet(path, false);
+            if (observerSet.size() > 0) {
+                List<String> updatedChildList = null;
                 try {
-                    Set<T> observerSet = getObserverSet(path, false);
-                    if (observerSet.size() > 0) {
-                        List<String> updatedChildList = null;
-                        try {
-                            updatedChildList = zkClient.getChildren(path, true);
-                        } catch (KeeperException e) {
-                            if (e.code() != KeeperException.Code.NONODE) {
-                                throw e;
-                            }
-                        }
-                        if (updatedChildList == null) {
-                            updatedChildList = Collections.EMPTY_LIST;
-                        }
-
-                        for (T observer : observerSet) {
-
-                            logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
-
-                            synchronized (observer) {
-                                List<String> previousChildList = observer.getChildList();
-                                boolean updatedValueDiffers = childListsDiffer(updatedChildList, previousChildList);
-
-                                observer.setChildList(updatedChildList);
-
-                                update(path, observer);
-
-                                if (updatedValueDiffers) {
-                                    observer.nodeChildrenChanged(updatedChildList, previousChildList);
-                                }
-                            }
-                        }// for
-
-                        scheduleCheck(event);
-
-                    }// if observerSet > 0
+                    updatedChildList = zkClient.getChildren(path, true);
                 } catch (KeeperException e) {
-                    logger.warn("Unable to notify observers:  path=" + path, e);
-                } catch (Exception e) {
-                    logger.warn("Unable to notify observers:  path=" + path, e);
+                    if (e.code() != KeeperException.Code.NONODE) {
+                        throw e;
+                    }
                 }
-            }
-        });
+                if (updatedChildList == null) {
+                    updatedChildList = Collections.EMPTY_LIST;
+                }
+
+                for (final T observer : observerSet) {
+
+                    logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
+
+                    synchronized (observer) {
+                        final List<String> previousChildList = observer.getChildList();
+                        boolean updatedValueDiffers = childListsDiffer(updatedChildList, previousChildList);
+
+                        observer.setChildList(updatedChildList);
+
+                        updateObserver(path, observer);
+
+                        if (updatedValueDiffers) {
+                            observer.nodeChildrenChanged(updatedChildList, previousChildList);
+                        }
+                    }
+                }// for
+
+                scheduleCheck(event);
+
+            }// if observerSet > 0
+        } catch (KeeperException e) {
+            logger.warn("Unable to notify observers:  path=" + path, e);
+        } catch (Exception e) {
+            logger.warn("Unable to notify observers:  path=" + path, e);
+        }
+
     }
 
     boolean childListsDiffer(List<String> updatedChildList, List<String> previousChildList) {
@@ -335,122 +281,113 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     @Override
     public void nodeCreated(final WatchedEvent event) {
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                String path = event.getPath();
-                logger.debug("Notifying ALL observers:  nodeCreated:  path={}", path);
-                try {
-                    Set<T> observerSet = getObserverSet(path, false);
-                    if (observerSet.size() > 0) {
-                        // get children just to get a child watch
-                        List<String> childList = zkClient.getChildren(path, true);
-                        byte[] data = zkClient.getData(path, true, new Stat());
 
-                        for (T observer : observerSet) {
-                            logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
-                            synchronized (observer) {
-                                byte[] previousData = observer.getData();
-                                List<String> previousChildList = observer.getChildList();
-                                observer.setData(data);
-                                observer.setChildList(childList);
+        String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeCreated:  path={}", path);
+        try {
+            Set<T> observerSet = getObserverSet(path, false);
+            if (observerSet.size() > 0) {
+                // get children just to get a child watch
+                List<String> childList = zkClient.getChildren(path, true);
+                byte[] data = zkClient.getData(path, true, new Stat());
 
-                                update(path, observer);
+                for (T observer : observerSet) {
+                    logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
+                    synchronized (observer) {
+                        byte[] previousData = observer.getData();
+                        List<String> previousChildList = observer.getChildList();
+                        observer.setData(data);
+                        observer.setChildList(childList);
 
-                                if (previousData == null && previousChildList == Collections.EMPTY_LIST) {
-                                    observer.nodeCreated(data, childList);
-                                }
-                            }
+                        updateObserver(path, observer);
+
+                        if (previousData == null && previousChildList == Collections.EMPTY_LIST) {
+                            observer.nodeCreated(data, childList);
                         }
-
-                        scheduleCheck(event);
                     }
-                } catch (KeeperException e) {
-                    logger.warn("Unable to notify observers:  path=" + path, e);
-                } catch (Exception e) {
-                    logger.warn("Unable to notify observers:  path=" + path, e);
                 }
+
+                scheduleCheck(event);
             }
-        });
+        } catch (KeeperException e) {
+            logger.warn("Unable to notify observers:  path=" + path, e);
+        } catch (Exception e) {
+            logger.warn("Unable to notify observers:  path=" + path, e);
+        }
+
     }
 
     @Override
     public void nodeDataChanged(final WatchedEvent event) {
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                String path = event.getPath();
-                logger.debug("Notifying ALL observers:  nodeDataChanged:  path={}", path);
-                try {
-                    Set<T> observerSet = getObserverSet(path, false);
-                    if (observerSet.size() > 0) {
-                        byte[] updatedData = zkClient.getData(path, true, new Stat());
-                        for (T observer : observerSet) {
-                            logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
-                            synchronized (observer) {
-                                if (!Arrays.equals(observer.getData(), updatedData)) {
-                                    byte[] previousData = observer.getData();
-                                    observer.setData(updatedData);
 
-                                    update(path, observer);
+        String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeDataChanged:  path={}", path);
+        try {
+            Set<T> observerSet = getObserverSet(path, false);
+            if (observerSet.size() > 0) {
+                byte[] updatedData = zkClient.getData(path, true, new Stat());
+                for (T observer : observerSet) {
+                    logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
+                    synchronized (observer) {
+                        if (!Arrays.equals(observer.getData(), updatedData)) {
+                            byte[] previousData = observer.getData();
+                            observer.setData(updatedData);
 
-                                    observer.nodeDataChanged(updatedData, previousData);
-                                }
-                            }
+                            updateObserver(path, observer);
+
+                            observer.nodeDataChanged(updatedData, previousData);
                         }
-
-                        scheduleCheck(event);
                     }
-                } catch (KeeperException e) {
-                    logger.warn("Unable to notify observers:  path=" + path, e);
-                } catch (Exception e) {
-                    logger.warn("Unable to notify observers:  path=" + path, e);
                 }
+
+                scheduleCheck(event);
             }
-        });
+        } catch (KeeperException e) {
+            logger.warn("Unable to notify observers:  path=" + path, e);
+        } catch (Exception e) {
+            logger.warn("Unable to notify observers:  path=" + path, e);
+        }
+
     }
 
     @Override
     public void nodeDeleted(final WatchedEvent event) {
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                String path = event.getPath();
-                logger.debug("Notifying ALL observers:  nodeDeleted:  path={}", path);
 
-                Set<T> observerSet = getObserverSet(path, false);
-                if (observerSet.size() > 0) {
-                    // set up watch for when path comes back if there are observers
-                    try {
-                        zkClient.exists(path, true);
-                    } catch (Exception e) {
-                        logger.warn("Unable to set watch:  path=" + path, e);
-                    }
+        String path = event.getPath();
+        logger.debug("Notifying ALL observers:  nodeDeleted:  path={}", path);
 
-                    for (T observer : observerSet) {
-
-                        logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
-
-                        synchronized (observer) {
-                            byte[] previousData = observer.getData();
-                            observer.setData(null);
-
-                            List<String> previousChildList = observer.getChildList();
-                            observer.setChildList(Collections.EMPTY_LIST);
-
-                            update(path, observer);
-
-                            if (previousChildList != observer.getChildList() || previousData != observer.getData()) {
-                                observer.nodeDeleted(previousData, previousChildList);
-                            }
-                        }
-                    }
-
-                    scheduleCheck(event);
-
-                }// if observerSet>0
+        Set<T> observerSet = getObserverSet(path, false);
+        if (observerSet.size() > 0) {
+            // set up watch for when path comes back if there are observers
+            try {
+                zkClient.exists(path, true);
+            } catch (Exception e) {
+                logger.warn("Unable to set watch:  path=" + path, e);
             }
-        });
+
+            for (T observer : observerSet) {
+
+                logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
+
+                synchronized (observer) {
+                    byte[] previousData = observer.getData();
+                    observer.setData(null);
+
+                    List<String> previousChildList = observer.getChildList();
+                    observer.setChildList(Collections.EMPTY_LIST);
+
+                    updateObserver(path, observer);
+
+                    if (previousChildList != observer.getChildList() || previousData != observer.getData()) {
+                        observer.nodeDeleted(previousData, previousChildList);
+                    }
+                }
+            }
+
+            scheduleCheck(event);
+
+        }// if observerSet>0
+
     }
 
     public void removeAll(String path) {
@@ -467,33 +404,27 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     }
 
     public void signalStateReset(final Object o) {
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                logger.warn("Notifying ALL observers:  signalStateReset");
-                for (String path : observerMap.keySet()) {
-                    Set<T> observerSet = getObserverSet(path, false);
-                    for (T observer : observerSet) {
-                        observer.stateReset(o);
-                    }
-                }
+
+        logger.warn("Notifying ALL observers:  signalStateReset");
+        for (String path : observerMap.keySet()) {
+            Set<T> observerSet = getObserverSet(path, false);
+            for (T observer : observerSet) {
+                observer.stateReset(o);
             }
-        });
+        }
+
     }
 
     public void signalStateUnknown(final Object o) {
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                logger.warn("Notifying ALL observers:  signalStateUnknown");
-                for (String path : observerMap.keySet()) {
-                    Set<T> observerSet = getObserverSet(path, false);
-                    for (T observer : observerSet) {
-                        observer.stateUnknown(o);
-                    }
-                }
+
+        logger.warn("Notifying ALL observers:  signalStateUnknown");
+        for (String path : observerMap.keySet()) {
+            Set<T> observerSet = getObserverSet(path, false);
+            for (T observer : observerSet) {
+                observer.stateUnknown(o);
             }
-        });
+        }
+
     }
 
     public boolean isBeingObserved(String path) {
