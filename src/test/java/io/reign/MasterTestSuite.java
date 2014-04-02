@@ -79,13 +79,14 @@ public class MasterTestSuite {
             // wait a bit for any async tasks to finish
             Thread.sleep(5000);
 
-            logger.debug("Stopping Test ZooKeeper server...");
-            zkTestServer.stop();
-
+            // shut down utility executor
             executorService.shutdown();
 
             // stop reign
             reign.stop();
+
+            logger.debug("Stopping Test ZooKeeper server...");
+            zkTestServer.stop();
 
         } catch (Exception e) {
             logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
