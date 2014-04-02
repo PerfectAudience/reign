@@ -120,6 +120,8 @@ public class PresenceServiceTest {
                 new PresenceObserver<ServiceInfo>() {
                     @Override
                     public void updated(ServiceInfo updated, ServiceInfo previous) {
+                        logger.debug("UPDATED:  {}",
+                                ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
                         serviceInfoRef.set(updated);
                         synchronized (serviceInfoRef) {
                             logger.debug("NOTIFY all...");
@@ -145,10 +147,11 @@ public class PresenceServiceTest {
 
         synchronized (serviceInfoRef) {
             logger.debug("WAITING to be notified...");
-            serviceInfoRef.wait(1000);
+            serviceInfoRef.wait(2000);
         }
 
-        assertTrue(serviceInfoRef.get().getNodeIdList().size() == 1);
+        assertTrue("Expected 1, got " + serviceInfoRef.get().getNodeIdList().size(), serviceInfoRef.get()
+                .getNodeIdList().size() == 1);
     }
 
     @Test
