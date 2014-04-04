@@ -66,6 +66,9 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 public class WebSocketServerHandler extends ExecutionHandler {
     private static final Logger logger = LoggerFactory.getLogger(WebSocketServerHandler.class);
 
+    private static final ConcurrentMap<String, byte[]> WEB_RESOURCE_CACHE = new ConcurrentLinkedHashMap.Builder<String, byte[]>()
+            .maximumWeightedCapacity(32).initialCapacity(16).concurrencyLevel(1).build();
+
     private WebSocketServerHandshaker handshaker;
 
     private ReignContext context;
@@ -300,6 +303,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
         // anything but a request for the websocket will be treated like a regular HTTP Web request
         String uri = req.getUri();
+        logger.debug("Received request:  uri={}", req.getUri());
         if (uri != null && !WebSocketMessagingProvider.WEBSOCKET_PATH.equals(uri)) {
             // web request
             handleWebResourceRequest(ctx, req, uri);
@@ -473,9 +477,6 @@ public class WebSocketServerHandler extends ExecutionHandler {
         e.getChannel().close();
     }
 
-    private final ConcurrentMap<String, byte[]> webResourceCache = new ConcurrentLinkedHashMap.Builder<String, byte[]>()
-            .maximumWeightedCapacity(32).initialCapacity(8).concurrencyLevel(1).build();
-
     private ChannelBuffer loadWebResource(String path, String contentType, String host) {
         if (path == null || contentType == null) {
             return null;
@@ -486,25 +487,36 @@ public class WebSocketServerHandler extends ExecutionHandler {
         }
 
         // try to find resource in cache, otherwise try to retrieve as stream from classpath
-        String resource = "site" + path;
-        byte[] bytes = webResourceCache.get(resource);
+        String resource = "/site" + path;
+        byte[] bytes = WEB_RESOURCE_CACHE.get(resource);
         if (bytes == null) {
-            InputStream in = this.getClass().getClassLoader().getResourceAsStream(resource);
-            if (logger.isDebugEnabled()) {
-                logger.debug("Looking for web resource:  path={}; found={}", resource, in != null);
-            }
-            if (in != null) {
-                try {
-                    bytes = IOUtils.toByteArray(IOUtils.toBufferedInputStream(in));
-                    if (bytes != null) {
-                        // cache
-                        webResourceCache.put(resource, bytes);
+            InputStream in = null;
+            try {
+                in = Reign.class.getResourceAsStream(resource);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Looking for web resource:  path={}; found={}", resource, in != null);
+                }
+                if (in != null) {
+                    try {
+                        bytes = IOUtils.toByteArray(IOUtils.toBufferedInputStream(in));
+                        if (bytes != null) {
+                            // cache
+                            WEB_RESOURCE_CACHE.put(resource, bytes);
+                        }
+                    } catch (IOException e) {
+                        logger.error("" + e, e);
                     }
-                } catch (IOException e) {
-                    logger.error("" + e, e);
+                }
+            } finally {
+                if (in != null) {
+                    try {
+                        in.close();
+                    } catch (IOException e) {
+                        logger.error("" + e, e);
+                    }
                 }
             }
-        }
+        }// if
 
         // if found return buffer to serve
         if (bytes != null) {
