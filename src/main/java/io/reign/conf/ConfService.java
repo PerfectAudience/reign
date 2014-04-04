@@ -472,6 +472,15 @@ public class ConfService extends AbstractService {
                 responseMessage.setComment("Invalid request (do not understand '" + meta + "'):  " + requestBody);
             }
 
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NONODE) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("" + e, e);
+                }
+                responseMessage.setStatus(ResponseStatus.OK, "No configuration found.");
+            } else {
+                responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
+            }
         } catch (Exception e) {
             logger.error("handleMessage():  " + e, e);
             responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
