@@ -42,7 +42,7 @@ public class MetricsServiceTest {
     public void testObserver() throws Exception {
         MetricRegistryManager registryManager = getMetricRegistryManager();
 
-        metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
+        metricsService.register("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
 
         final AtomicInteger calledCount = new AtomicInteger(0);
         final AtomicReference<MetricsData> latest = new AtomicReference<MetricsData>();
@@ -86,7 +86,7 @@ public class MetricsServiceTest {
     @Test
     public void testExportSelfMetrics() throws Exception {
         MetricRegistryManager registryManager = getMetricRegistryManager();
-        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
+        metricsService.register("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
 
         MetricsData metricsData = metricsService.getMetrics("clusterA", "serviceA");
         while (metricsData == null) {
@@ -137,10 +137,10 @@ public class MetricsServiceTest {
     @Test
     public void testExportServiceMetrics() throws Exception {
         MetricRegistryManager registryManager1 = getMetricRegistryManager();
-        metricsService.scheduleExport("clusterA", "serviceB", "node1", registryManager1, 1, TimeUnit.SECONDS);
+        metricsService.register("clusterA", "serviceB", "node1", registryManager1, 1, TimeUnit.SECONDS);
 
         MetricRegistryManager registryManager2 = getMetricRegistryManager();
-        metricsService.scheduleExport("clusterA", "serviceB", "node2", registryManager2, 1, TimeUnit.SECONDS);
+        metricsService.register("clusterA", "serviceB", "node2", registryManager2, 1, TimeUnit.SECONDS);
 
         // get service metrics, but wait for both service nodes to be there before checking values
         MetricsData metricsData = null;
