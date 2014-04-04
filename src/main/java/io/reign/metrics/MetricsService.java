@@ -83,16 +83,35 @@ public class MetricsService extends AbstractService {
         getObserverManager().put(path, observer);
     }
 
-    public void scheduleExport(final String clusterId, final String serviceId,
-            final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
-        scheduleExport(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), registryManager,
-                updateInterval, updateIntervalTimeUnit);
+    public MetricRegistryManager getRegistered(String clusterId, String serviceId) {
+        String key = exportPathMapKey(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
+        synchronized (this) {
+            ExportMeta exportMeta = exportPathMap.get(key);
+            if (exportMeta != null) {
+                return exportMeta.registryManager;
+            } else {
+                return null;
+            }
+        }
     }
 
-    void scheduleExport(final String clusterId, final String serviceId, final String nodeId,
+    /**
+     * Registers metrics for export to ZK.
+     */
+    public void register(final String clusterId, final String serviceId, final MetricRegistryManager registryManager,
+            long updateInterval, TimeUnit updateIntervalTimeUnit) {
+        register(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), registryManager, updateInterval,
+                updateIntervalTimeUnit);
+    }
+
+    String exportPathMapKey(String clusterId, String serviceId, String nodeId) {
+        return clusterId + "/" + serviceId + "/" + nodeId;
+    }
+
+    void register(final String clusterId, final String serviceId, final String nodeId,
             final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
 
-        final String key = clusterId + "/" + serviceId + "/" + nodeId;
+        final String key = exportPathMapKey(clusterId, serviceId, nodeId);
         synchronized (this) {
             if (!exportPathMap.containsKey(key)) {
                 exportPathMap.put(key, new ExportMeta(null, registryManager));
