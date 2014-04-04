@@ -41,6 +41,7 @@ import org.jboss.netty.channel.WriteCompletionEvent;
 import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponse;
+import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.jboss.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import org.jboss.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import org.jboss.netty.handler.codec.http.websocketx.ContinuationWebSocketFrame;
@@ -343,8 +344,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
             res.setContent(content);
             sendHttpResponse(ctx, req, res);
         } else {
-            sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1,
-                    org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND));
+            sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.NOT_FOUND));
         }
     }
 
@@ -415,11 +415,6 @@ public class WebSocketServerHandler extends ExecutionHandler {
                         finalCtx.getChannel().close();
                     }// if
 
-                    // Send the uppercase string back.
-                    // if (logger.isDebugEnabled()) {
-                    // logger.debug(String.format("Channel %s received %s", finalCtx.getChannel().getId(), request));
-                    // }
-                    // finalCtx.getChannel().write(new TextWebSocketFrame(requestText.toUpperCase()));
                 }
             });
 
@@ -494,12 +489,14 @@ public class WebSocketServerHandler extends ExecutionHandler {
             try {
                 in = Reign.class.getResourceAsStream(resource);
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Looking for web resource:  path={}; found={}", resource, in != null);
+                    logger.debug("Looking for web resource:  path={}; inputStreamFound={}", resource, in != null);
                 }
                 if (in != null) {
                     try {
                         bytes = IOUtils.toByteArray(IOUtils.toBufferedInputStream(in));
                         if (bytes != null) {
+                            logger.debug("Caching web resource data:  path={}; bytes.length={}", resource,
+                                    bytes != null ? bytes.length : null);
                             // cache
                             WEB_RESOURCE_CACHE.put(resource, bytes);
                         }
