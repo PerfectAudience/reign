@@ -13,8 +13,6 @@ public interface Message {
 
     public Object getBody();
 
-    // public void setGuid(Object guid);
-
     public Message setBody(Object body);
 
 }
