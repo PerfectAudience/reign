@@ -22,6 +22,7 @@ import io.reign.ZkClient;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.ACL;
@@ -42,6 +43,33 @@ public class ZkClientUtil {
             final byte[] leafData, final List<ACL> aclList, final CreateMode createMode, int leafDataVersion)
             throws KeeperException {
         return updatePath(zkClient, pathScheme, path, leafData, aclList, createMode, leafDataVersion, null);
+    }
+
+    public void syncPath(final ZkClient zkClient, String dataPath, final Object monitorObject) {
+        logger.trace("Syncing ZK client:  dataPath={}", dataPath);
+        zkClient.sync(dataPath, new VoidCallback() {
+            @Override
+            public void processResult(int arg0, String arg1, Object arg2) {
+                if (monitorObject != null) {
+                    synchronized (monitorObject) {
+                        monitorObject.notifyAll();
+                    }
+                }
+            }
+        }, null);
+
+        // wait for sync to complete
+        if (monitorObject != null) {
+            synchronized (monitorObject) {
+                try {
+                    logger.trace("Waiting for ZK client sync complete:  dataPath={}", dataPath);
+                    monitorObject.wait();
+                    logger.trace("ZK client sync completed:  dataPath={}", dataPath);
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted while waiting for ZK sync():  " + e, e);
+                }
+            }
+        }
     }
 
     /**
