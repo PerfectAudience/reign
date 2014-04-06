@@ -26,6 +26,7 @@ import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.ResponseStatus;
 import io.reign.mesg.SimpleResponseMessage;
 import io.reign.util.ZkClientUtil;
 
@@ -645,7 +646,9 @@ public class PresenceService extends AbstractService {
 
         } catch (Exception e) {
             logger.error("" + e, e);
-            return SimpleResponseMessage.DEFAULT_ERROR_RESPONSE;
+            ResponseMessage responseMessage = new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED);
+            responseMessage.setComment("" + e);
+            return responseMessage;
         }
 
     }
