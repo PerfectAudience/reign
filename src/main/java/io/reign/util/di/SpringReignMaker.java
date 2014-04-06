@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-package io.reign.util.spring;
+package io.reign.util.di;
 
 import io.reign.Reign;
 import io.reign.ReignMaker;
