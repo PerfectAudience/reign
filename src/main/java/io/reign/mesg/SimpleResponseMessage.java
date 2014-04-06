@@ -16,11 +16,6 @@ public class SimpleResponseMessage extends AbstractMessage implements ResponseMe
 
     private static final Logger logger = LoggerFactory.getLogger(SimpleResponseMessage.class);
 
-    public static final ResponseMessage DEFAULT_ERROR_RESPONSE = new SimpleResponseMessage(
-            ResponseStatus.ERROR_UNEXPECTED);
-
-    public static final ResponseMessage DEFAULT_OK_RESPONSE = new SimpleResponseMessage(ResponseStatus.OK);
-
     private ResponseStatus status = ResponseStatus.OK;
 
     private String comment = null;

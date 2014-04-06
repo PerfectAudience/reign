@@ -166,7 +166,8 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
                 @Override
                 public void error(Object object) {
-                    callback.response(clusterId, serviceId, nodeId, SimpleResponseMessage.DEFAULT_ERROR_RESPONSE);
+                    callback.response(clusterId, serviceId, nodeId, new SimpleResponseMessage(
+                            ResponseStatus.ERROR_UNEXPECTED, requestMessage.getId()));
                 }
             };
             this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol.toTextRequest(requestMessage),
@@ -187,7 +188,8 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
                 @Override
                 public void error(Object object) {
-                    callback.response(clusterId, serviceId, nodeId, SimpleResponseMessage.DEFAULT_ERROR_RESPONSE);
+                    callback.response(clusterId, serviceId, nodeId, new SimpleResponseMessage(
+                            ResponseStatus.ERROR_UNEXPECTED, requestMessage.getId()));
                 }
             };
             this.messagingProvider.sendMessage(hostOrIpAddress, port, messageProtocol.toBinaryRequest(requestMessage),
@@ -383,7 +385,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
         } catch (Exception e) {
             logger.error("" + e, e);
-            return SimpleResponseMessage.DEFAULT_ERROR_RESPONSE;
+            return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, requestMessage.getId());
         }
 
     }
