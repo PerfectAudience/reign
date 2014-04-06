@@ -340,7 +340,7 @@ public class MetricsService extends AbstractService {
                     }
 
                     // get lock for a service
-                    DistributedLock lock = coordinationService.getLock("reign", "metrics-aggregator-" + clusterId + "-"
+                    DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
                             + serviceId);
                     try {
                         if (lock.tryLock()) {
@@ -534,11 +534,11 @@ public class MetricsService extends AbstractService {
                         }// if try lock
                     } catch (KeeperException e) {
                         if (e.code() != KeeperException.Code.NONODE) {
-                            logger.warn("Error trying to clean up data directory for service:  clusterId=" + clusterId
+                            logger.warn("Error trying to aggregate data directory for service:  clusterId=" + clusterId
                                     + "; serviceId=" + serviceId + ":  " + e, e);
                         }
                     } catch (Exception e) {
-                        logger.warn("Error trying to clean up data directory for service:  clusterId=" + clusterId
+                        logger.warn("Error trying to aggregate data directory for service:  clusterId=" + clusterId
                                 + "; serviceId=" + serviceId + ":  " + e, e);
                     } finally {
                         lock.unlock();
@@ -583,7 +583,7 @@ public class MetricsService extends AbstractService {
                     }
 
                     // get lock for a service
-                    DistributedLock lock = coordinationService.getLock("reign", "metrics-cleaner-" + clusterId + "-"
+                    DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
                             + serviceId);
                     String dataPath = null;
                     try {
