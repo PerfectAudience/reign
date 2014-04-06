@@ -1,5 +1,6 @@
 package io.reign;
 
+import java.util.Collections;
 import java.util.List;
 
 /*
@@ -22,7 +23,7 @@ public abstract class AbstractObserver implements Observer {
 
     private String path;
     private byte[] data;
-    private List<String> childList;
+    private List<String> childList = Collections.EMPTY_LIST;
 
     @Override
     public String getPath() {
