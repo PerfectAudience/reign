@@ -433,7 +433,9 @@ public class ConfService extends AbstractService {
                 // TODO: use UTF-8 universally in the future?
                 // read in api body as properties for easier processing
                 Properties updateProperties = new Properties();
-                updateProperties.load(new ByteArrayInputStream(confBody.getBytes("ISO-8859-1")));
+                if (confBody != null) {
+                    updateProperties.load(new ByteArrayInputStream(confBody.getBytes("ISO-8859-1")));
+                }
                 boolean isUpdate = "update".equals(meta);
                 for (Object keyObject : updateProperties.keySet()) {
                     String key = (String) keyObject;
