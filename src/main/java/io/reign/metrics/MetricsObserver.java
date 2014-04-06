@@ -44,14 +44,13 @@ public abstract class MetricsObserver extends AbstractObserver {
         updated(null, previous);
     }
 
-    // @Override
-    // public void nodeCreated(byte[] data, List<String> childList) {
-    // MetricsData updated = null;
-    // if (data != null) {
-    // updated = toMetricsData(data);
-    // }
-    // updated(updated, null);
-    // }
+    @Override
+    public void nodeCreated(byte[] data, List<String> childList) {
+        if (data != null) {
+            MetricsData updated = toMetricsData(data);
+            updated(updated, null);
+        }
+    }
 
     MetricsData toMetricsData(byte[] bytes) {
         if (bytes == null)
