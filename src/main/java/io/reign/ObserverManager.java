@@ -16,6 +16,8 @@
 
 package io.reign;
 
+import io.reign.util.ZkClientUtil;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,8 +32,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher.Event.EventType;
-import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,23 +53,27 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     private static final long DEFAULT_MAX_TIMEOUT_MILLIS = 120000;
 
     private final ConcurrentMap<String, Set<T>> observerMap = new ConcurrentHashMap<String, Set<T>>(16, 0.9f, 2);
+    private final ConcurrentMap<String, Long> observerScheduledCheckTimestampMap = new ConcurrentHashMap<String, Long>(
+            16, 0.9f, 2);
 
     private final ZkClient zkClient;
 
+    private final ZkClientUtil zkClientUtil = new ZkClientUtil();
+
     private final ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(2);
 
-    private volatile int sweeperInterval = 30000;
+    private volatile int sweeperIntervalMillis = 30000;
 
     public ObserverManager(ZkClient zkClient) {
         this.zkClient = zkClient;
     }
 
-    public int getSweeperInterval() {
-        return sweeperInterval;
+    public int getSweeperIntervalMillis() {
+        return sweeperIntervalMillis;
     }
 
-    public void setSweeperInterval(int sweeperInterval) {
-        this.sweeperInterval = sweeperInterval;
+    public void setSweeperIntervalMillis(int sweeperIntervalMillis) {
+        this.sweeperIntervalMillis = sweeperIntervalMillis;
     }
 
     public void init() {
@@ -130,70 +134,89 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     }
 
-    public static interface RecheckedWatchedEvent {
-
-    }
-
-    public static class MarkedWatchedEvent extends WatchedEvent implements RecheckedWatchedEvent {
-        MarkedWatchedEvent(WatchedEvent event) {
-            super(event.getType(), event.getState(), event.getPath());
-        }
-
-        MarkedWatchedEvent(EventType eventType, KeeperState keeperState, String path) {
-            super(eventType, keeperState, path);
-        }
-    }
+    // public static interface RecheckedWatchedEvent {
+    //
+    // }
+    //
+    // public static class MarkedWatchedEvent extends WatchedEvent implements RecheckedWatchedEvent {
+    // MarkedWatchedEvent(WatchedEvent event) {
+    // super(event.getType(), event.getState(), event.getPath());
+    // }
+    //
+    // MarkedWatchedEvent(EventType eventType, KeeperState keeperState, String path) {
+    // super(eventType, keeperState, path);
+    // }
+    // }
 
     void scheduleCheck(final WatchedEvent event) {
-        // do not schedule a check if we have already checked this one (to prevent infinite cycles from re-using
-        // event handling methods for watched ZK events)
-        if (event instanceof RecheckedWatchedEvent) {
-            logger.trace("Ignoring:  already scheduled re-check:  path={}; eventType={}; intervalMillis={}",
-                    event.getPath(), event.getType(), sweeperInterval);
-            return;
+        final String path = event.getPath();
+
+        // do not schedule a check if we have scheduled a check recently
+        synchronized (observerScheduledCheckTimestampMap) {
+            Long scheduledCheckTimestamp = observerScheduledCheckTimestampMap.get(path);
+            if (scheduledCheckTimestamp != null) {
+                long timeToCheck = scheduledCheckTimestamp - System.currentTimeMillis();
+                if (timeToCheck > this.sweeperIntervalMillis / 2) {
+                    logger.trace("Ignoring:  re-check already scheduled:  path={}; eventType={}; timeToCheckMillis={}",
+                            event.getPath(), event.getType(), timeToCheck);
+                    return;
+                }
+            }
+
+            // update scheduled timestamp
+            observerScheduledCheckTimestampMap.put(path, System.currentTimeMillis() + sweeperIntervalMillis);
         }
 
-        logger.debug("Scheduling re-check after watch triggered:  path={}; eventType={}; intervalMillis={}",
-                event.getPath(), event.getType(), sweeperInterval);
+        logger.debug("Scheduling re-check after watch triggered:  path={}; eventType={}; timeToCheckMillis={}",
+                event.getPath(), event.getType(), sweeperIntervalMillis);
 
         this.scheduledExecutorService.schedule(new Runnable() {
 
             @Override
             public void run() {
-                String path = event.getPath();
                 try {
-                    Stat stat = zkClient.exists(path, true);
+                    zkClientUtil.syncPath(zkClient, path, this);
 
-                    switch (event.getType()) {
-                    case NodeChildrenChanged:
-                        if (stat != null) {
-                            nodeChildrenChanged(new MarkedWatchedEvent(event));
+                    Stat zkStat = zkClient.exists(path, true);
+                    byte[] zkData = zkClient.getData(path, true, new Stat());
+                    List<String> zkChildList = zkClient.getChildren(path, true);
+
+                    Set<T> observerSet = getObserverSet(path, false);
+                    for (T observer : observerSet) {
+                        List<String> observerChildList = observer.getChildList();
+                        byte[] observerData = observer.getData();
+                        if (zkStat != null) {
+                            // check children
+                            if (childListsDiffer(observerChildList, zkChildList)) {
+                                observer.setChildList(zkChildList);
+                                updateObserver(path, observer);
+                                logger.warn("RECHECK:  NODE CHILDREN CHANGED:  updated={}; previous={}", zkChildList,
+                                        observerChildList);
+                                observer.nodeChildrenChanged(zkChildList, observerChildList);
+                            }
+
+                            // check data
+                            if (!Arrays.equals(observerData, zkData)) {
+                                observer.setData(zkData);
+                                updateObserver(path, observer);
+                                logger.warn("RECHECK:  NODE DATA CHANGED:  updated={}; previous={}", zkData,
+                                        observerData);
+                                observer.nodeDataChanged(zkData, observerData);
+                            }
+                        } else {
+                            // node deleted
+                            observer.setData(null);
+                            observer.setChildList(null);
+                            observer.nodeDeleted(observerData, observerChildList);
                         }
-                        break;
-                    case NodeCreated:
-                        if (stat == null) {
-                            nodeDeleted(new MarkedWatchedEvent(event));
-                        }
-                        break;
-                    case NodeDataChanged:
-                        if (stat != null) {
-                            nodeDataChanged(new MarkedWatchedEvent(event));
-                        }
-                        break;
-                    case NodeDeleted:
-                        if (stat != null) {
-                            nodeCreated(new MarkedWatchedEvent(event));
-                        }
-                        break;
-                    default:
                     }
-
                 } catch (Exception e) {
                     logger.warn("Unable to check event:  path=" + path, e);
                 }
             }
 
-        }, this.sweeperInterval, TimeUnit.MILLISECONDS);
+        }, this.sweeperIntervalMillis, TimeUnit.MILLISECONDS);
+
     }
 
     @Override
@@ -254,7 +277,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     }
 
-    boolean childListsDiffer(List<String> updatedChildList, List<String> previousChildList) {
+    static boolean childListsDiffer(List<String> updatedChildList, List<String> previousChildList) {
         if (previousChildList == null) {
             previousChildList = Collections.EMPTY_LIST;
         }
@@ -263,9 +286,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         }
 
         boolean updatedValueDiffers = previousChildList.size() != updatedChildList.size();
-        if (updatedValueDiffers) {
-            return true;
-        } else {
+        if (!updatedValueDiffers) {
             // if sizes are the same, compare contents independent of order
             Set<String> childListSet = new HashSet<String>(previousChildList.size() + 1, 1.0f);
             childListSet.addAll(previousChildList);
@@ -273,7 +294,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             Set<String> updatedChildListSet = new HashSet<String>(updatedChildList.size() + 1, 1.0f);
             updatedChildListSet.addAll(updatedChildList);
 
-            updatedValueDiffers = childListSet.equals(updatedChildListSet);
+            updatedValueDiffers = !childListSet.equals(updatedChildListSet);
         }
 
         return updatedValueDiffers;
