@@ -41,6 +41,7 @@ public class MetricsServiceTest {
     @Test
     public void testObserver() throws Exception {
         MetricRegistryManager registryManager = getMetricRegistryManager();
+        Counter observerTestCounter = registryManager.get().counter("observerTestCounter");
 
         metricsService.register("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
 
@@ -49,8 +50,13 @@ public class MetricsServiceTest {
         metricsService.observe("clusterA", "serviceC", new MetricsObserver() {
             @Override
             public void updated(MetricsData updated, MetricsData previous) {
-                logger.debug("*** OBSERVER:  updated={}; previous={}", updated, previous);
                 calledCount.incrementAndGet();
+
+                logger.debug(
+                        "*** OBSERVER:  calledCount={}; updated.observerTestCounter={}; previous.observerTestCounter={}",
+                        calledCount.get(), updated != null ? updated.getCounter("observerTestCounter").getCount()
+                                : null, previous != null ? previous.getCounter("observerTestCounter").getCount() : null);
+
                 latest.set(updated);
                 synchronized (calledCount) {
                     calledCount.notifyAll();
@@ -61,25 +67,24 @@ public class MetricsServiceTest {
         // has not been updated yet
         assertTrue("calledCount should be 0, but is " + calledCount.get(), calledCount.get() == 0);
 
-        // will have been updated
+        // wait for update
         synchronized (calledCount) {
-            calledCount.wait(5000);
+            calledCount.wait(metricsService.getUpdateIntervalMillis() * 2);
         }
         assertTrue("Expected 1, got " + calledCount.get(), calledCount.get() == 1);
 
-        // sleep beyond observer manager re-check
-        Thread.sleep(MasterTestSuite.getReign().getContext().getObserverManager().getSweeperInterval() + 1000);
-
         // force a change so observer will be called again
-        Counter counter1 = registryManager.get().counter("counter1");
-        long counter1PreviousValue = counter1.getCount();
-        counter1.inc();
-        Thread.sleep(metricsService.getUpdateIntervalMillis());
+        long previousValue = observerTestCounter.getCount();
+        observerTestCounter.inc();
+
+        // wait for update
+        synchronized (calledCount) {
+            calledCount.wait((metricsService.getUpdateIntervalMillis() * 2) + 1000);
+        }
         assertTrue("calledCount should be >1, but is " + calledCount.get(), calledCount.get() > 1);
-        assertTrue(
-                "latest.counter1 should be " + (counter1PreviousValue + 1) + ", but is "
-                        + latest.get().getCounter("counter1").getCount(), latest.get().getCounter("counter1")
-                        .getCount() == (counter1PreviousValue + 1));
+        assertTrue("latest.observerTestCounter should be " + (previousValue + 1) + ", but is "
+                + latest.get().getCounter("observerTestCounter").getCount(),
+                latest.get().getCounter("observerTestCounter").getCount() == (previousValue + 1));
 
     }
 
