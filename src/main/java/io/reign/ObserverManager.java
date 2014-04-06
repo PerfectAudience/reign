@@ -134,20 +134,6 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
     }
 
-    // public static interface RecheckedWatchedEvent {
-    //
-    // }
-    //
-    // public static class MarkedWatchedEvent extends WatchedEvent implements RecheckedWatchedEvent {
-    // MarkedWatchedEvent(WatchedEvent event) {
-    // super(event.getType(), event.getState(), event.getPath());
-    // }
-    //
-    // MarkedWatchedEvent(EventType eventType, KeeperState keeperState, String path) {
-    // super(eventType, keeperState, path);
-    // }
-    // }
-
     void scheduleCheck(final WatchedEvent event) {
         final String path = event.getPath();
 
@@ -175,8 +161,10 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             @Override
             public void run() {
                 try {
+                    // sync data to get most recent
                     zkClientUtil.syncPath(zkClient, path, this);
 
+                    // fetch info about node
                     Stat zkStat = zkClient.exists(path, true);
                     byte[] zkData = zkClient.getData(path, true, new Stat());
                     List<String> zkChildList = zkClient.getChildren(path, true);
@@ -206,7 +194,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                         } else {
                             // node deleted
                             observer.setData(null);
-                            observer.setChildList(null);
+                            observer.setChildList(Collections.EMPTY_LIST);
                             observer.nodeDeleted(observerData, observerChildList);
                         }
                     }
