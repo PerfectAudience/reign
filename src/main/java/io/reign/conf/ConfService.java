@@ -488,6 +488,8 @@ public class ConfService extends AbstractService {
             responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
         }
 
+        responseMessage.setId(requestMessage.getId());
+
         return responseMessage;
     }
 

@@ -217,7 +217,7 @@ body {
 
 	<!-- javascript ================================================== -->
 	<!-- Placed at the end of the document so the pages load faster -->
-	<script type="text/javascript" src="js/jquery-1.10.1.min.js"></script>
+	<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
 	<script type="text/javascript" src="js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="js/jquery.gracefulWebSocket.js"></script>
 
@@ -228,7 +228,6 @@ body {
 
 	<script type="text/javascript">
 		var socket;
-		var socketOpened = false;
 		var requestIdSequence = 0;
 
 		if (!window.WebSocket) {
@@ -244,27 +243,48 @@ body {
 			if (idDelimiterIndex < 0) {
 				message = message + " > " + requestIdSequence;
 			}
-			if (!socket || socket.readyState != WebSocket.OPEN) {
-				connectWebSocket();
-				renderRequest('responseText', message);
-				// alert("The socket is not open:  reconnecting:  "+$('#connectHost').val()); 
-				setTimeout(function() {
-					if (socket && socket.readyState == WebSocket.OPEN) {
-						socket.send(message);
-					}
-				}, 200);
+			if( !socket ) {
+				connectWebSocket();	
+				
+				// add additional event handling
+				var currentOnOpen = socket.onopen;
+				socket.onopen = function(event) {
+					currentOnOpen(event);
+					renderRequest('responseText', message);
+					socket.send(message);
+				};
+				return;
+			}
+			if ( socket.readyState==WebSocket.CLOSED || socket.readyState==WebSocket.CLOSING) {							
+				renderErrorMessage('responseText',
+						'Web Socket connection error:&nbsp; '
+								+ $('#connectHost').val());				
 			} else {
 				renderRequest('responseText', message);
 				socket.send(message);
 			}
-		} // function
+		} // send
 
-		function connectWebSocket() {
-			if (socket && socket.readyState != socket.CLOSED)
-				return;
+		function connectWebSocket() {			
+			// close socket if already open
+			if (socket && socket.readyState!=socket.CLOSED && socket.readyState!=socket.CLOSING ) {
+				socket.close();
+				socket = null;
+		    }
+			
+			// open web socket if possible in browser
 			if (window.WebSocket) {
-				socket = new WebSocket($('#connectHost').val());
-				socket.onmessage = function(event) {
+				var socketUri = $('#connectHost').val();
+				var newSocket = null;
+				try {
+					newSocket = new WebSocket(socketUri);
+				} catch( err ) {
+					renderErrorMessage('responseText',
+							'Web Socket connection error:&nbsp; '
+									+ err.message);
+					return;
+				}
+				newSocket.onmessage = function(event) {
 					var statusIndex = -1;
 					var id = 0;
 					if (event.data) {
@@ -276,34 +296,26 @@ body {
 						renderResponse('responseText', event.data);
 					}
 				};
-				socket.onopen = function(event) {
-					socketOpened = true;
+				newSocket.onopen = function(event) {
 					renderControlMessage('responseText', 'Web Socket opened:  '
-							+ $('#connectHost').val());
-					//send("presence:/reign/client");
+							+ socketUri);
 				};
-				socket.onclose = function(event) {
-					if (socketOpened) {
-						renderControlMessage('responseText',
-								'Web Socket closed:&nbsp; '
-										+ $('#connectHost').val());
-					}
-					socket = null;
-					socketOpened = false;
+				newSocket.onclose = function(event) {
+					renderControlMessage('responseText',
+							'Web Socket closed:&nbsp; '
+									+ socketUri);
 				};
-				socket.onerror = function(event) {
-					if (socket) {
-						renderErrorMessage('responseText',
-								'Web Socket connection error:&nbsp; '
-										+ $('#connectHost').val());
-					}
-					socket = null;
-					socketOpened = false;
+				newSocket.onerror = function(event) {
+					renderErrorMessage('responseText',
+							'Web Socket connection error:&nbsp; '
+									+ socketUri);
 				};
+				socket = newSocket;
 			} else {
 				alert("Your browser does not support Web Socket.");
 			}
-		} // function
+			
+		} // connectWebSocket
 
 		function renderResponse(divElementId, html) {
 			var currentValue = requestIdSequence;
@@ -315,8 +327,7 @@ body {
 			var currentValue = requestIdSequence;
 			$('#' + divElementId)
 					.prepend(
-							$(
-									'<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'
+							$('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'
 											+ html + '</div></pre></div></div>')
 									.hide().fadeIn('fast'));
 			cleanTerminal();
@@ -326,8 +337,7 @@ body {
 			var currentValue = requestIdSequence;
 			$('#' + divElementId)
 					.prepend(
-							$(
-									'<div id="termResult'+currentValue+'I"><div><pre id="termResultContent'+currentValue+'I"><div class="text-warning strong">'
+							$('<div id="termResult'+currentValue+'I"><div><pre id="termResultContent'+currentValue+'I"><div class="text-warning strong">'
 											+ html + '</div></pre></div></div>')
 									.hide().fadeIn('fast'));
 			cleanTerminal();
@@ -337,8 +347,7 @@ body {
 			var currentValue = requestIdSequence;
 			$('#' + divElementId)
 					.prepend(
-							$(
-									'<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-info">&#8227;&nbsp;'
+							$('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-info">&#8227;&nbsp;'
 											+ html + '</div></pre></div></div>')
 									.hide().fadeIn('fast'));
 			cleanTerminal();
@@ -348,8 +357,7 @@ body {
 			var currentValue = requestIdSequence;
 			$('#' + divElementId)
 					.prepend(
-							$(
-									'<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-error">&#8227;&nbsp;'
+							$('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-error">&#8227;&nbsp;'
 											+ html + '</div></pre></div></div>')
 									.hide().fadeIn('fast'));
 			cleanTerminal();
@@ -387,9 +395,12 @@ body {
 			}
 		}
 
-		function checkKey(e) {			
-			if (e && e.keyCode == 13
-					&& ($('#sendInput').val().match("^presence:") || $('#sendInput').val().match("\n$"))) {
+		function checkKey(e) {	
+			if (e && e.keyCode == 13 && $('#connectHost').is(":focus")) {
+				connectWebSocket();
+			}
+			if (e && e.keyCode == 13 && $('#sendInput').is(":focus")
+					&& (!$('#sendInput').val().match("^.+?#.*") || $('#sendInput').val().match("\n$"))) {
 				var extraNewLine = $('#sendInput').val().match("\n$");
 				var mesg = $('#sendInput').val();
 				if( extraNewLine ) {

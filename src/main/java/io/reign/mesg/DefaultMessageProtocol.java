@@ -96,7 +96,9 @@ public class DefaultMessageProtocol implements MessageProtocol {
             });
         } catch (Exception e) {
             logger.error("" + e, e);
-            return SimpleResponseMessage.DEFAULT_ERROR_RESPONSE;
+            ResponseMessage responseMessage = new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED);
+            responseMessage.setComment("" + e);
+            return responseMessage;
         }
     }
 
