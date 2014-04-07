@@ -259,21 +259,21 @@ public class ReignMaker {
 
     ZkClient defaultZkClient(PathCache pathCache) {
         if (zkConnectString == null || zkSessionTimeout <= 0) {
-            throw new IllegalStateException("zkConnectString and zkSessionTimeout not configured!");
+            throw new ReignException("zkConnectString and zkSessionTimeout not configured!");
         }
 
         ZkClient zkClient = null;
         try {
             zkClient = new ResilientZkClientWithCache(zkConnectString, zkSessionTimeout, pathCache);
         } catch (IOException e) {
-            throw new IllegalStateException("Fatal error:  could not initialize Zookeeper client!");
+            throw new ReignException("Fatal error:  could not initialize Zookeeper client!", e);
         }
         return zkClient;
     }
 
     PathCache defaultPathCache() {
         if (pathCacheMaxSize < 1 || pathCacheMaxConcurrencyLevel < 1) {
-            throw new IllegalStateException(
+            throw new ReignException(
                     "zkClient, pathCacheMaxSize, and pathCacheMaxConcurrencyLevel must be configured to create default path cache!");
         }
 
