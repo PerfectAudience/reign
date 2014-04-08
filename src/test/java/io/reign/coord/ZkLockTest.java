@@ -217,18 +217,7 @@ public class ZkLockTest {
             t4.wait();
         }
 
-        DistributedLock lock = coordinationService.getLock("clusterA", "test-lock-1");
-        lock.lock();
-        try {
-            lock.lock();
-            try {
-                assertTrue("Unexpected value:  " + sb, "123".equals(sb.toString()));
-            } finally {
-                lock.unlock();
-            }
-        } finally {
-            lock.unlock();
-            lock.destroy();
-        }
+        assertTrue("Unexpected value:  " + sb, "123".equals(sb.toString()));
+
     }
 }

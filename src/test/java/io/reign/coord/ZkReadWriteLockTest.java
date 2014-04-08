@@ -38,10 +38,6 @@ public class ZkReadWriteLockTest {
                 lock.lock();
                 try {
                     currentIndex.incrementAndGet();
-                    // synchronized (this) {
-                    // this.notifyAll();
-                    // }
-                    // Thread.sleep(1000);
                     sb.append("1");
                 } catch (Exception e) {
                 } finally {
@@ -58,10 +54,6 @@ public class ZkReadWriteLockTest {
                 lock.lock();
                 try {
                     currentIndex.incrementAndGet();
-                    // synchronized (this) {
-                    // this.notifyAll();
-                    // }
-                    // Thread.sleep(1000);
                     sb.append("2");
                 } catch (Exception e) {
                 } finally {
@@ -78,10 +70,6 @@ public class ZkReadWriteLockTest {
                 lock.lock();
                 try {
                     currentIndex.incrementAndGet();
-                    // synchronized (this) {
-                    // this.notifyAll();
-                    // }
-                    // Thread.sleep(1000);
                     sb.append("3");
                 } catch (Exception e) {
                 } finally {
@@ -98,10 +86,6 @@ public class ZkReadWriteLockTest {
                 lock.lock();
                 try {
                     index.set(currentIndex.incrementAndGet());
-                    // synchronized (this) {
-                    // this.notifyAll();
-                    // }
-                    // Thread.sleep(1000);
                     sb.append("4");
                 } catch (Exception e) {
                 } finally {
@@ -111,27 +95,11 @@ public class ZkReadWriteLockTest {
             }
         };
 
-        // long start = System.currentTimeMillis();
         t1.start();
-        // synchronized (t1) {
-        // t1.wait();
-        // }
         t2.start();
-        // synchronized (t2) {
-        // t2.wait();
-        // }
         t3.start();
-        // synchronized (t3) {
-        // t3.wait();
-        // }
         t4.start();
-        // synchronized (t4) {
-        // t4.wait();
-        // }
-        // long end = System.currentTimeMillis();
 
-        // assertTrue("No contention for read locks so should not have waited sequentially:  elapsedMillis="
-        // + (end - start), end - start < 3000);
         long start = System.currentTimeMillis();
         while (sb.length() < 4 && System.currentTimeMillis() - start < 10000) {
             Thread.sleep(500);
@@ -157,11 +125,11 @@ public class ZkReadWriteLockTest {
                 Lock lock = rwLock.readLock();
                 lock.lock();
                 try {
+                    sb.append("1");
                     synchronized (this) {
                         this.notifyAll();
                     }
                     Thread.sleep(1000);
-                    sb.append("1");
                 } catch (Exception e) {
                 } finally {
                     lock.unlock();
@@ -176,11 +144,11 @@ public class ZkReadWriteLockTest {
                 Lock lock = rwLock.readLock();
                 lock.lock();
                 try {
+                    sb.append("2");
                     synchronized (this) {
                         this.notifyAll();
                     }
                     Thread.sleep(1000);
-                    sb.append("2");
                 } catch (Exception e) {
                 } finally {
                     lock.unlock();
@@ -195,11 +163,11 @@ public class ZkReadWriteLockTest {
                 Lock lock = rwLock.readLock();
                 lock.lock();
                 try {
+                    sb.append("3");
                     synchronized (this) {
                         this.notifyAll();
                     }
                     Thread.sleep(1000);
-                    sb.append("3");
                 } catch (Exception e) {
                 } finally {
                     lock.unlock();
@@ -251,20 +219,8 @@ public class ZkReadWriteLockTest {
         assertTrue("No contention for read locks so should not have waited sequentially:  elapsedMillis="
                 + (end - start), end - start < 3000);
 
-        DistributedReadWriteLock rwLock = coordinationService.getReadWriteLock("clusterA", "test-lock-1");
-        Lock lock = rwLock.writeLock();
-        lock.lock();
-        try {
-            lock.lock();
-            try {
-                assertTrue("Unexpected value:  " + sb, sb.toString().length() == 4);
-            } finally {
-                lock.unlock();
-            }
-        } finally {
-            lock.unlock();
-            rwLock.destroy();
-        }
+        assertTrue("Unexpected value:  " + sb, sb.toString().length() == 4);
+
     }
 
     @Test
@@ -366,19 +322,7 @@ public class ZkReadWriteLockTest {
             t4.wait();
         }
 
-        DistributedReadWriteLock rwLock = coordinationService.getReadWriteLock("clusterA", "test-lock-1");
-        Lock lock = rwLock.writeLock();
-        lock.lock();
-        try {
-            lock.lock();
-            try {
-                assertTrue("Unexpected value:  " + sb, "123".equals(sb.toString()));
-            } finally {
-                lock.unlock();
-            }
-        } finally {
-            lock.unlock();
-            rwLock.destroy();
-        }
+        assertTrue("Unexpected value:  " + sb, "123".equals(sb.toString()));
+
     }
 }
