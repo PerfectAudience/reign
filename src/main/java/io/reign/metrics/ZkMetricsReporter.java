@@ -161,9 +161,10 @@ public class ZkMetricsReporter {
 
         sb.append("\"interval_length_unit\":\"");
         sb.append(serializeUnit(registryRef.getRotationTimeUnit()));
+        sb.append("\"");
 
         if (counters.size() > 0) {
-            sb.append("\",\n");
+            sb.append(",\n");
             int i = 0;
             sb.append("\"counters\":{\n");
             for (Map.Entry<String, Counter> entry : counters.entrySet()) {
