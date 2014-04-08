@@ -236,20 +236,27 @@ public class MetricsService extends AbstractService {
     }
 
     MetricsData getMetricsFromDataNode(String clusterId, String serviceId, String dataNode) {
+        PathScheme pathScheme = getContext().getPathScheme();
+        String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                pathScheme.joinTokens(clusterId, serviceId, dataNode));
+        byte[] bytes = null;
         try {
-            PathScheme pathScheme = getContext().getPathScheme();
-            String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                    pathScheme.joinTokens(clusterId, serviceId, dataNode));
-            byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
+            bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
             return metricsData;
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
                 return null;
             }
-            throw new ReignException(e);
+            logger.warn("Error retrieving data node:  clusterId=" + clusterId + "; serviceId=" + serviceId
+                    + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)) + ":  " + e, e);
+            throw new ReignException("Error retrieving data node:  clusterId=" + clusterId + "; serviceId=" + serviceId
+                    + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)), e);
         } catch (Exception e) {
-            throw new ReignException(e);
+            logger.warn("Error retrieving data node:  clusterId=" + clusterId + "; serviceId=" + serviceId
+                    + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)) + ":  " + e, e);
+            throw new ReignException("Error retrieving data node:  clusterId=" + clusterId + "; serviceId=" + serviceId
+                    + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)), e);
         }
     }
 
@@ -364,9 +371,12 @@ public class MetricsService extends AbstractService {
                             for (String dataNode : dataNodes) {
                                 logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
                                         serviceId, dataNode);
-                                String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                                String dataPath = null;
+                                MetricsData metricsData;
+
+                                dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                         pathScheme.joinTokens(clusterId, serviceId, dataNode));
-                                MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+                                metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
 
                                 // skip data node if not within interval
                                 long millisToExpiry = millisToExpiry(metricsData);
