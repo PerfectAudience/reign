@@ -59,7 +59,7 @@ public class PresenceServiceTest {
                 "serviceInfo==null = " + (serviceInfo == null) + "; nodeList="
                         + (serviceInfo != null ? serviceInfo.getNodeIdList() : null), serviceInfo != null
                         && serviceInfo.getNodeIdList().size() > 0);
-        assertTrue(end - start > 2500);
+        assertTrue(end - start >= 3000);
 
         // restore to previous state at beginning of test
         presenceService.hide("clusterA", "serviceA1");
@@ -85,7 +85,7 @@ public class PresenceServiceTest {
         long end = System.currentTimeMillis();
 
         assertTrue("nodeInfo==null = " + (nodeInfo == null), nodeInfo != null);
-        assertTrue(end - start > 2500);
+        assertTrue(end - start >= 3000);
 
         // restore to previous state at beginning of test
         presenceService.hide("clusterA", "serviceA1");

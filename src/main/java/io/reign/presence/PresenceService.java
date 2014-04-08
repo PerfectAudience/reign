@@ -202,24 +202,27 @@ public class PresenceService extends AbstractService {
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
 
         PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(clusterId, serviceId);
-        ServiceInfo result = getServiceInfo(clusterId, serviceId, notifyObserver);
 
-        if (result == null || result.getNodeIdList().size() < 1) {
-            synchronized (notifyObserver) {
-                logger.info("Waiting until service is available:  path={}", path);
-                try {
-                    if (timeoutMillis < 0) {
-                        notifyObserver.wait();
-                    } else {
-                        notifyObserver.wait(timeoutMillis);
+        ServiceInfo result = null;
+        synchronized (notifyObserver) {
+            try {
+                if (timeoutMillis < 0) {
+                    result = getServiceInfo(clusterId, serviceId, notifyObserver);
+                    while (true && (result == null || result.getNodeIdList().size() < 1)) {
+                        logger.info("Waiting until service is available:  path={}", path);
+                        notifyObserver.wait(5000);
+
+                        result = getServiceInfo(clusterId, serviceId, notifyObserver);
                     }
-                } catch (InterruptedException e) {
-                    logger.warn("Interrupted in waitUntilAvailable():  " + e, e);
-                } // try
-            }// synchronized
-        }
-
-        result = getServiceInfo(clusterId, serviceId, notifyObserver);
+                } else {
+                    logger.info("Waiting until service is available:  path={}", path);
+                    notifyObserver.wait(timeoutMillis);
+                    result = getServiceInfo(clusterId, serviceId, notifyObserver);
+                }
+            } catch (InterruptedException e) {
+                logger.warn("Interrupted in waitUntilAvailable():  " + e, e);
+            } // try
+        }// synchronized
 
         getContext().getObserverManager().remove(path, notifyObserver);
 
@@ -349,24 +352,27 @@ public class PresenceService extends AbstractService {
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
 
         PresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
-        NodeInfo result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+        NodeInfo result = null;
 
-        logger.info("Waiting until node is available:  path={}", path);
-        if (result == null) {
-            synchronized (notifyObserver) {
-                try {
-                    if (timeoutMillis < 0) {
-                        notifyObserver.wait();
-                    } else {
-                        notifyObserver.wait(timeoutMillis);
+        synchronized (notifyObserver) {
+            try {
+                if (timeoutMillis < 0) {
+                    result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+                    while (true && result == null) {
+                        logger.info("Waiting until node is available:  path={}", path);
+                        notifyObserver.wait(5000);
+
+                        result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
                     }
-                } catch (InterruptedException e) {
-                    logger.warn("Interrupted while waiting for NodeInfo:  " + e, e);
+                } else {
+                    logger.info("Waiting until node is available:  path={}", path);
+                    notifyObserver.wait(timeoutMillis);
+                    result = getNodeInfo(clusterId, serviceId, nodeId);
                 }
-            }
-        }
-
-        result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+            } catch (InterruptedException e) {
+                logger.warn("Interrupted while waiting for NodeInfo:  " + e, e);
+            }// try
+        }// synchronized
 
         getContext().getObserverManager().remove(path, notifyObserver);
 
