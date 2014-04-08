@@ -6,7 +6,7 @@ import io.reign.MasterTestSuite;
 import org.junit.Before;
 import org.junit.Test;
 
-public class DistributedReentrantLockTest {
+public class ZkReentrantLockTest {
 
     private CoordinationService coordinationService;
 
@@ -18,7 +18,7 @@ public class DistributedReentrantLockTest {
     }
 
     @Test
-    public void testDistributedReentrantLock() throws Exception {
+    public void testBasic() throws Exception {
 
         // use StringBuffer because it is synchronized and thread-safe
         final StringBuffer sb = new StringBuffer();
@@ -83,6 +83,9 @@ public class DistributedReentrantLockTest {
                 try {
                     if (lock.tryLock()) {
                         sb.append("4");
+                        synchronized (this) {
+                            this.notifyAll();
+                        }
                     }
                 } catch (Exception e) {
                 } finally {

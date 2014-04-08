@@ -6,7 +6,7 @@ import io.reign.MasterTestSuite;
 import org.junit.Before;
 import org.junit.Test;
 
-public class DistributedLockTest {
+public class ZkLockTest {
 
     private CoordinationService coordinationService;
 
@@ -188,6 +188,9 @@ public class DistributedLockTest {
                 try {
                     if (lock.tryLock()) {
                         sb.append("4");
+                        synchronized (this) {
+                            this.notifyAll();
+                        }
                     }
                 } catch (Exception e) {
                 } finally {
@@ -214,19 +217,17 @@ public class DistributedLockTest {
             t4.wait();
         }
 
-        DistributedReentrantLock lock = coordinationService.getReentrantLock("clusterA", "test-lock-1");
+        DistributedLock lock = coordinationService.getLock("clusterA", "test-lock-1");
         lock.lock();
         try {
             lock.lock();
             try {
-                assertTrue("Unexpected value:  " + lock.getHoldCount(), lock.getHoldCount() == 2);
                 assertTrue("Unexpected value:  " + sb, "123".equals(sb.toString()));
             } finally {
                 lock.unlock();
             }
         } finally {
             lock.unlock();
-            assertTrue("Unexpected value:  " + lock.getHoldCount(), lock.getHoldCount() == 0);
             lock.destroy();
         }
     }
