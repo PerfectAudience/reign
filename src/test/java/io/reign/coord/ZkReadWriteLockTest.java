@@ -3,6 +3,7 @@ package io.reign.coord;
 import static org.junit.Assert.assertTrue;
 import io.reign.MasterTestSuite;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 
@@ -278,6 +279,9 @@ public class ZkReadWriteLockTest {
                     }
                     Thread.sleep(1000);
                     sb.append("3");
+                    synchronized (this) {
+                        this.notifyAll();
+                    }
                 } catch (Exception e) {
                 } finally {
                     lock.unlock();
@@ -285,6 +289,7 @@ public class ZkReadWriteLockTest {
                 }
             }
         };
+        final AtomicBoolean t4DidNotAcquire = new AtomicBoolean(false);
         Thread t4 = new Thread() {
             @Override
             public void run() {
@@ -296,6 +301,8 @@ public class ZkReadWriteLockTest {
                         synchronized (this) {
                             this.notifyAll();
                         }
+                    } else {
+                        t4DidNotAcquire.set(true);
                     }
                 } catch (Exception e) {
                 } finally {
@@ -318,10 +325,11 @@ public class ZkReadWriteLockTest {
             t3.wait();
         }
         t4.start();
-        synchronized (t4) {
-            t4.wait();
+        synchronized (t3) {
+            t3.wait();
         }
 
+        assertTrue(t4DidNotAcquire.get());
         assertTrue("Unexpected value:  " + sb, "123".equals(sb.toString()));
 
     }

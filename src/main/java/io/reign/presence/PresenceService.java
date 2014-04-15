@@ -776,7 +776,6 @@ public class PresenceService extends AbstractService {
                 // get exclusive leader lock to perform maintenance duties
                 CoordinationService coordinationService = getContext().getService("coord");
 
-                logger.info("Checking for zombie nodes...");
                 try {
 
                     // iterate through clusters
@@ -804,20 +803,30 @@ public class PresenceService extends AbstractService {
 
                                     // get children of each service
                                     List<String> serviceChildren = getZkClient().getChildren(servicePath, false);
+                                    if (serviceChildren == null) {
+                                        serviceChildren = Collections.EMPTY_LIST;
+                                    }
+
+                                    logger.info(
+                                            "Checking for service zombie child nodes:  path={}; childrenToCheck={}",
+                                            servicePath, serviceChildren.size());
 
                                     // check stat and make sure mtime of each child is
                                     // within 4x heartbeatIntervalMillis; if not, delete
                                     for (String child : serviceChildren) {
                                         String serviceChildPath = getPathScheme().joinPaths(servicePath, child);
-                                        logger.info("Checking for service zombie child nodes:  path={}", servicePath);
+                                        logger.debug("Checking for service zombie child nodes:  path={}",
+                                                serviceChildPath);
                                         Stat stat = getZkClient().exists(serviceChildPath, false);
-                                        long timeDiff = System.currentTimeMillis() - stat.getMtime();
-                                        if (timeDiff > heartbeatIntervalMillis * 4) {
-                                            logger.warn(
-                                                    "Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
-                                                    serviceChildPath, timeDiff);
-                                            getZkClient().delete(serviceChildPath, -1);
-                                        }
+                                        if (stat != null) {
+                                            long timeDiff = System.currentTimeMillis() - stat.getMtime();
+                                            if (timeDiff > heartbeatIntervalMillis * 4) {
+                                                logger.warn(
+                                                        "Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
+                                                        serviceChildPath, timeDiff);
+                                                getZkClient().delete(serviceChildPath, -1);
+                                            }
+                                        }// if stat!=null
                                     }// for service children
 
                                 }// if tryLock
@@ -829,7 +838,7 @@ public class PresenceService extends AbstractService {
 
                         }// for service
 
-                    }// for
+                    }// for cluster
 
                     // update last check timestamp
                     lastZombieCheckTimestamp = System.currentTimeMillis();

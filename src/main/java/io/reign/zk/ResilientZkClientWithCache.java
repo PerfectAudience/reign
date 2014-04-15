@@ -242,7 +242,7 @@ public class ResilientZkClientWithCache extends AbstractZkEventHandler implement
         }
     }
 
-    void handleNodeUpdate(WatchedEvent event) {
+    synchronized void handleNodeUpdate(WatchedEvent event) {
         String path = event.getPath();
 
         logger.info("Updating cache entry:  path={}; eventType={}", path, event.getType());
@@ -284,7 +284,6 @@ public class ResilientZkClientWithCache extends AbstractZkEventHandler implement
             }
 
             /** update cache **/
-            // watches have already been set above so no need to call pathCache.put() wrapper method in this class
             pathCache.put(path, stat, bytes, children);
 
         } catch (KeeperException e) {
