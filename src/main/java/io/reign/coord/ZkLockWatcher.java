@@ -69,7 +69,7 @@ public class ZkLockWatcher implements Watcher {
     }
 
     public void waitForEvent(long waitTimeoutMs) throws InterruptedException {
-        if (waitTimeoutMs < 1) {
+        if (waitTimeoutMs == 0) {
             return;
         }
 
