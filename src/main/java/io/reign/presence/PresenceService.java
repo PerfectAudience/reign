@@ -818,13 +818,15 @@ public class PresenceService extends AbstractService {
                                         logger.debug("Checking for service zombie child nodes:  path={}",
                                                 serviceChildPath);
                                         Stat stat = getZkClient().exists(serviceChildPath, false);
-                                        long timeDiff = System.currentTimeMillis() - stat.getMtime();
-                                        if (timeDiff > heartbeatIntervalMillis * 4) {
-                                            logger.warn(
-                                                    "Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
-                                                    serviceChildPath, timeDiff);
-                                            getZkClient().delete(serviceChildPath, -1);
-                                        }
+                                        if (stat != null) {
+                                            long timeDiff = System.currentTimeMillis() - stat.getMtime();
+                                            if (timeDiff > heartbeatIntervalMillis * 4) {
+                                                logger.warn(
+                                                        "Found zombie node:  deleting:  path={}; millisSinceLastHeartbeat={}",
+                                                        serviceChildPath, timeDiff);
+                                                getZkClient().delete(serviceChildPath, -1);
+                                            }
+                                        }// if stat!=null
                                     }// for service children
 
                                 }// if tryLock
