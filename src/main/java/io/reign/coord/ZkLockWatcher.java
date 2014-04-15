@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.coord;
 
@@ -56,6 +56,11 @@ public class ZkLockWatcher implements Watcher {
     }
 
     public void destroy() {
+        // notify all waiters: shouldn't be any at this point
+        synchronized (this) {
+            this.notifyAll();
+        }
+
         if (logger.isDebugEnabled()) {
             logger.debug("Destroyed:  instancesOutstanding={}; lockName={}; lockReservation={}", new Object[] {
                     instancesOutstanding.get(), lockPath, lockReservationPath });
@@ -64,15 +69,14 @@ public class ZkLockWatcher implements Watcher {
     }
 
     public void waitForEvent(long waitTimeoutMs) throws InterruptedException {
-        // if (this.watchedReservations() > 0) {
+        if (waitTimeoutMs < 1) {
+            return;
+        }
+
         synchronized (this) {
             if (waitTimeoutMs == -1) {
                 long startTimestamp = System.currentTimeMillis();
 
-                // TODO: change this back to above once we fix issue
-                // with lost ZK connections not currently notifying
-                // LockWatcher(s)
-                // this.wait(120000);
                 this.wait();
 
                 if (System.currentTimeMillis() - startTimestamp > 120000) {
@@ -84,15 +88,14 @@ public class ZkLockWatcher implements Watcher {
                 this.wait(waitTimeoutMs);
             }
         }
-        // }// if
     }
 
     @Override
     public void process(WatchedEvent event) {
         // log if DEBUG
         if (logger.isDebugEnabled()) {
-            logger.debug("***** Received ZooKeeper Event:  {}", ReflectionToStringBuilder.toString(event,
-                    ToStringStyle.DEFAULT_STYLE));
+            logger.debug("***** Received ZooKeeper Event:  {}",
+                    ReflectionToStringBuilder.toString(event, ToStringStyle.DEFAULT_STYLE));
 
         }
 
