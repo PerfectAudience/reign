@@ -3,6 +3,8 @@ package io.reign.coord;
 import static org.junit.Assert.assertTrue;
 import io.reign.MasterTestSuite;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -18,7 +20,7 @@ public class ZkReentrantLockTest {
     }
 
     @Test
-    public void testBasic() throws Exception {
+    public void testDistributedReentrantLock() throws Exception {
 
         // use StringBuffer because it is synchronized and thread-safe
         final StringBuffer sb = new StringBuffer();
@@ -69,6 +71,9 @@ public class ZkReentrantLockTest {
                     }
                     Thread.sleep(1000);
                     sb.append("3");
+                    synchronized (this) {
+                        this.notifyAll();
+                    }
                 } catch (Exception e) {
                 } finally {
                     lock.unlock();
@@ -76,6 +81,7 @@ public class ZkReentrantLockTest {
                 }
             }
         };
+        final AtomicBoolean t4DidNotAcquire = new AtomicBoolean(false);
         Thread t4 = new Thread() {
             @Override
             public void run() {
@@ -86,6 +92,8 @@ public class ZkReentrantLockTest {
                         synchronized (this) {
                             this.notifyAll();
                         }
+                    } else {
+                        t4DidNotAcquire.set(true);
                     }
                 } catch (Exception e) {
                 } finally {
@@ -108,9 +116,11 @@ public class ZkReentrantLockTest {
             t3.wait();
         }
         t4.start();
-        synchronized (t4) {
-            t4.wait();
+        synchronized (t3) {
+            t3.wait();
         }
+
+        assertTrue(t4DidNotAcquire.get());
 
         DistributedReentrantLock lock = coordinationService.getReentrantLock("clusterA", "test-lock-1");
         lock.lock();
@@ -122,10 +132,13 @@ public class ZkReentrantLockTest {
             } finally {
                 lock.unlock();
             }
+
+            assertTrue("Unexpected value:  " + lock.getHoldCount(), lock.getHoldCount() == 1);
         } finally {
             lock.unlock();
             assertTrue("Unexpected value:  " + lock.getHoldCount(), lock.getHoldCount() == 0);
             lock.destroy();
         }
+
     }
 }
