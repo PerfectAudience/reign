@@ -134,7 +134,8 @@ public class DefaultMessagingService extends AbstractService implements Messagin
         return responseMap;
     }
 
-    void sendMessageAsync(final String clusterId, final String serviceId, final NodeId nodeId,
+    @Override
+    public void sendMessageAsync(final String clusterId, final String serviceId, final NodeId nodeId,
             final RequestMessage requestMessage, final MessagingCallback callback) {
 
         // prefer ip, then use hostname if not available
@@ -218,7 +219,29 @@ public class DefaultMessagingService extends AbstractService implements Messagin
         }
     }
 
-    void sendMessageFireAndForget(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage) {
+    @Override
+    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, EventMessage eventMessage) {
+
+        // prefer ip, then use hostname if not available
+        String hostOrIpAddress = nodeId.getIpAddress();
+        if (hostOrIpAddress == null) {
+            hostOrIpAddress = nodeId.getHost();
+        }
+
+        // get port
+        Integer port = nodeId.getMessagingPort();
+
+        if (hostOrIpAddress == null || port == null) {
+            throw new IllegalStateException("Host or port is not available:  host=" + hostOrIpAddress + "; port="
+                    + port);
+        }
+
+        this.messagingProvider.sendMessage(hostOrIpAddress, port, this.messageProtocol.toTextEvent(eventMessage),
+                NULL_MESSAGING_PROVIDER_CALLBACK);
+    }
+
+    @Override
+    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage) {
 
         // prefer ip, then use hostname if not available
         String hostOrIpAddress = nodeId.getIpAddress();
@@ -247,7 +270,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
     }
 
     @Override
-    public void sendMessageFireAndForget(String clusterId, String serviceId, RequestMessage requestMessage) {
+    public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage) {
         PresenceService presenceService = getContext().getService("presence");
         ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
         if (serviceInfo == null) {
@@ -259,8 +282,8 @@ public class DefaultMessagingService extends AbstractService implements Messagin
                 logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
                         new Object[] { clusterId, serviceId, nodeIdString, requestMessage });
             }
-            sendMessageFireAndForget(clusterId, serviceId,
-                    getContext().getNodeIdFromZk(new ZkNodeId(nodeIdString, null)), requestMessage);
+            sendMessageFF(clusterId, serviceId, getContext().getNodeIdFromZk(new ZkNodeId(nodeIdString, null)),
+                    requestMessage);
 
         }
     }
@@ -366,14 +389,14 @@ public class DefaultMessagingService extends AbstractService implements Messagin
             /** take appropriate action **/
             if (nodeIdString == null) {
                 if ("ff".equals(meta)) {
-                    this.sendMessageFireAndForget(clusterId, serviceId, messageToSend);
+                    this.sendMessageFF(clusterId, serviceId, messageToSend);
                 } else {
                     return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  '" + meta
                             + "'");
                 }
             } else {
                 if ("ff".equals(meta)) {
-                    this.sendMessageFireAndForget(clusterId, serviceId,
+                    this.sendMessageFF(clusterId, serviceId,
                             getContext().getNodeIdFromZk(new ZkNodeId(nodeIdString, null)), messageToSend);
                 } else {
                     return new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED, "Unrecognized meta:  '" + meta

@@ -54,20 +54,12 @@ public interface Observer {
 
     public byte[] getData();
 
-    // public byte[] getPreviousData();
-
     public List<String> getChildList();
-
-    // public List<String> getPreviousChildList();
 
     public void setPath(String path);
 
     public void setData(byte[] data);
 
-    // public void setPreviousData(byte[] data);
-
     public void setChildList(List<String> childList);
-
-    // public void setPreviousChildList(List<String> childList);
 
 }

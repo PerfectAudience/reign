@@ -32,16 +32,17 @@ public interface MessagingService extends Service {
 
     public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage);
 
-    // public void sendMessageAsync(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage,
-    // MessagingCallback callback);
+    public void sendMessageAsync(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage,
+            MessagingCallback callback);
 
     public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
             MessagingCallback callback);
 
-    // public void sendMessageFireAndForget(String clusterId, String serviceId, NodeId nodeId,
-    // RequestMessage requestMessage);
+    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, EventMessage eventMessage);
 
-    public void sendMessageFireAndForget(String clusterId, String serviceId, RequestMessage requestMessage);
+    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage);
+
+    public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage);
 
     public Integer getPort();
 

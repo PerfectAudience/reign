@@ -40,17 +40,12 @@ public class DefaultPathScheme implements PathScheme {
     }
 
     @Override
-    public boolean isFrameworkClusterId(String clusterId) {
-        return clusterId != null && clusterId.equals(this.frameworkClusterId);
-    }
-
-    @Override
     public String getFrameworkClusterId() {
         return this.frameworkClusterId;
     }
 
     @Override
-    public String getBasePath() {
+    public String getFrameworkBasePath() {
         return basePath;
     }
 
@@ -117,7 +112,13 @@ public class DefaultPathScheme implements PathScheme {
 
     @Override
     public String[] tokenizePath(String path) {
-        path = path.replaceFirst("^/", "");
+        path = path.trim();
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
         return PATTERN_PATH_TOKENIZER.split(path);
     }
 

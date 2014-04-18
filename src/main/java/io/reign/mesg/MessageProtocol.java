@@ -64,4 +64,8 @@ public interface MessageProtocol {
      */
     public byte[] toBinaryRequest(RequestMessage requestMessage);
 
+    public String toTextEvent(EventMessage eventMessage);
+
+    public byte[] toBinaryEvent(EventMessage eventMessage);
+
 }

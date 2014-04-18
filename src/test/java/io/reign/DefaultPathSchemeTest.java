@@ -63,7 +63,6 @@ public class DefaultPathSchemeTest {
 
     @Test
     public void testJoin() throws Exception {
-
         String value;
 
         value = pathScheme.joinPaths("/this/that", "and/how");
@@ -85,19 +84,25 @@ public class DefaultPathSchemeTest {
         }
     }
 
-    // @Test
-    // public void testToPathToken() throws Exception {
-    // String value;
-    // value = pathScheme.toPathToken(new DefaultCanonicalId("1234", "1.2.3.4", "localhost", 9876));
-    //
-    // // System.out.println(value);
-    //
-    // CanonicalId id = pathScheme.parseCanonicalId(value);
-    //
-    // assertTrue("1234".equals(id.getProcessId()));
-    // assertTrue("1.2.3.4".equals(id.getIpAddress()));
-    // assertTrue("localhost".equals(id.getHost()));
-    // assertTrue(9876 == id.getMessagingPort());
-    // }
+    @Test
+    public void testTokenizePath() throws Exception {
+        String[] pathTokens = pathScheme.tokenizePath("this/and/that");
+        assertTrue(pathTokens.length == 3);
+        assertTrue(pathTokens[0].equals("this"));
+        assertTrue(pathTokens[1].equals("and"));
+        assertTrue(pathTokens[2].equals("that"));
+
+        pathTokens = pathScheme.tokenizePath("/this/and/that");
+        assertTrue(pathTokens.length == 3);
+        assertTrue(pathTokens[0].equals("this"));
+        assertTrue(pathTokens[1].equals("and"));
+        assertTrue(pathTokens[2].equals("that"));
+
+        pathTokens = pathScheme.tokenizePath("/this/and/that/");
+        assertTrue(pathTokens.length == 3);
+        assertTrue(pathTokens[0].equals("this"));
+        assertTrue(pathTokens[1].equals("and"));
+        assertTrue(pathTokens[2].equals("that"));
+    }
 
 }

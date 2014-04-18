@@ -168,10 +168,11 @@ public class WebSocketClient {
             callback.response((String) null);
         }
 
-        final ChannelFuture channelFuture = channel.write(new TextWebSocketFrame(text
-                + DefaultMessageProtocol.MESSAGE_ID_DELIMITER + requestId));
+        ChannelFuture tmpChannelFuture = null;
+        tmpChannelFuture = channel.write(new TextWebSocketFrame(text + " "
+                + DefaultMessageProtocol.MESSAGE_ID_DELIMITER + " " + requestId));
 
-        channelFuture.addListener(new ChannelFutureListener() {
+        tmpChannelFuture.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture channelFuture) {
                 synchronized (channelFuture) {
@@ -184,6 +185,7 @@ public class WebSocketClient {
             }
         });
 
+        final ChannelFuture channelFuture = tmpChannelFuture;
         requestMonitoringExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -235,60 +237,6 @@ public class WebSocketClient {
             }
         });
 
-        // if (callback instanceof NullMessagingCallback) {
-        // return null;
-        // }
-
-        // channelFuture.addListener(new ChannelFutureListener() {
-        // @Override
-        // public void operationComplete(ChannelFuture channelFuture) {
-        // synchronized (channelFuture) {
-        // if (logger.isTraceEnabled()) {
-        // logger.trace("notify() called:  channelFuture.hashCode()={}", channelFuture.hashCode());
-        // }
-        // // channelFuture.notify();
-        //
-        // Object response = handler.pollResponse(requestId);
-        // int waitMillis = 2;
-        // while (response == null && waitMillis < 4096) {
-        // try {
-        // channelFuture.wait(waitMillis);
-        // response = handler.pollResponse(requestId);
-        // waitMillis = waitMillis * 2;
-        // } catch (InterruptedException e) {
-        // logger.warn("Interrupted while waiting for response:  " + e, e);
-        // }
-        // }
-        // callback.response((String) response);
-        // }
-        // }
-        // });
-        // channelFuture.awaitUninterruptibly();
-
-        // Object response = null;
-        // synchronized (channelFuture) {
-        // try {
-        // int waitMillis = 2;
-        // while ((response = handler.pollResponse(requestId)) == null && waitMillis < 4096) {
-        // if (logger.isTraceEnabled()) {
-        // logger.trace("Calling wait({}):  requestId={}; channelFuture.hashCode()={}", new Object[] {
-        // waitMillis, requestId, channelFuture.hashCode() });
-        // }
-        // channelFuture.wait(waitMillis);
-        //
-        // }
-        //
-        // } catch (InterruptedException e) {
-        // logger.warn("Interrupted while waiting for response:  " + e, e);
-        // }
-        // }
-        //
-        // if (logger.isTraceEnabled()) {
-        // logger.trace("Got response:  requestId={}; channelFuture.hashCode()={}; response={}", new Object[] {
-        // requestId, text, response });
-        // }
-        //
-        // callback.response((String) response);
     }
 
     public void write(byte[] bytes, final MessagingProviderCallback callback) {
