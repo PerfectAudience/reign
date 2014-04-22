@@ -113,10 +113,10 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         presenceService.announce("my-app", "backend-api-service");
         presenceService.announce("my-app", "backend-api-service", false);
 
-        // hide service1
+        // hide this node as member of service
         presenceService.hide("my-app", "backend-api-service");
 
-        // show service2
+        // show this node as member of service
         presenceService.show("my-app", "backend-api-service");
         
         // get information about nodes available in a given service
@@ -280,10 +280,10 @@ The default data layout in ZooKeeper is outlined below.  Custom layouts may be c
 ###Base paths:
 
 * `/reign` - the root directory
-* `/reign/_TREE_` - user-created service data, configuration, locks, etc.
+* `/reign/_PATH_/_CLUSTER_ID_` - user-created service data, configuration, locks, etc.
 
 
-###`_TREE_` is defined as follows:
+###`_PATH_` is defined as follows:
 
 * `/presence` - service discovery information
 * `/conf` - configuration data
@@ -291,6 +291,7 @@ The default data layout in ZooKeeper is outlined below.  Custom layouts may be c
 * `/data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues
 * `/metrics` - service node metrics data (uses Codahale Metrics)
 
+### `_CLUSTER_ID_` is a namespace for services, configuration, locks, etc. 
 
 Web Sockets Protocol
 --------------------
