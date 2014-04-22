@@ -117,7 +117,9 @@ body {
 				<h4>List nodes in service:</h4>
 				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]</code>
 				<h4>Get info about a service node:</h4>
-				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]</code>
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]</code>				
+				<h4>Observe changes in service:</h4>
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe</code>				
 				<hr />
 
 				<h2>Configuration Service</h2>
@@ -145,7 +147,7 @@ body {
 				</code>
 
 				<p>If path does not end in an extension, just do a listing. If
-					path has extension, return contents using correct serializer.</p>
+					path has extension, return contents using correct deserializer.</p>
 
 				<h4>Set or replace with new config</h4>
 				<code>
@@ -160,10 +162,9 @@ body {
 				</code>
 
 				<p>
-					A "-" means remove this property.<br /> A "+" in front of the key
-					means only set this property if it does not already exist.<br /> No
-					prefix in front of a key means set this property to the given
-					value.<br />
+					"-" means remove this property.<br /> 
+					"+" in front of the key means only set this property if it does not already exist.<br />
+					No prefix in front of a key means set this property to the given value.<br />
 				</p>
 
 
