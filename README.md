@@ -1,6 +1,6 @@
 Reign Framework
 ===============
-A toolkit for building distributed applications, leveraging open source projects such as ZooKeeper, Netty, CodaHale Metrics.
+A toolkit for building distributed applications, leveraging open source projects such as [Apache ZooKeeper](http://zookeeper.apache.org/), [Netty](http://netty.io/), [Codahale Metrics](http://metrics.codahale.com/).
 
 The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
@@ -279,27 +279,27 @@ The default data layout in ZooKeeper is outlined below.  Custom layouts may be c
 
 ###Base paths:
 
-* `/reign` - the root directory
-* `/reign/_PATH_/_CLUSTER_ID_` - user-created service data, configuration, locks, etc.
+* `/reign` - the root directory, configurable
+* `/reign/_DATA_TYPE_/_CLUSTER_ID_` - user-created service data, configuration, locks, etc.
 
 
-###`_PATH_` is defined as follows:
+####`_DATA_TYPE_` can be one of the following:
 
-* `/presence` - service discovery information
-* `/conf` - configuration data
-* `/coord` - data describing distributed locks, semaphores, etc.
-* `/data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues
-* `/metrics` - service node metrics data (uses Codahale Metrics)
+* `presence` - service discovery information
+* `conf` - configuration data
+* `coord` - data describing distributed locks, semaphores, etc.
+* `data` - data supporting distributed interprocess-safe maps, lists, stacks, and queues
+* `metrics` - service node metrics data (uses [Codahale Metrics](http://metrics.codahale.com/))
 
-### `_CLUSTER_ID_` is a namespace for services, configuration, locks, etc. 
+#### `_CLUSTER_ID_` is a namespace for presence data, configuration, locks, etc. 
 
 Web Sockets Protocol
 --------------------
 
 By default, services in the framework can receive and respond to messages via Web Sockets.
 
-####Message Format
-`[TARGET_SERVICE]:[RESOURCE]#[META_COMMAND]`
+####General Message Format
+`[TARGET_SERVICE]:[RESOURCE]?[QUERY_STRING]#[META_COMMAND]`
 
 ####Example Messages
 `presence:/my_cluster/foo_service` - this message would get information on the `foo_service`.  More information is available in the Web UI available on any node running the framework at port 33033 (default port).
