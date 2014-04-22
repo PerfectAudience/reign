@@ -162,17 +162,19 @@ public class WebSocketClient {
 
         final int requestId = messageIdSequence.incrementAndGet();
 
-        if (!(callback instanceof NullMessagingProviderCallback)) {
+        boolean fireAndForget = callback instanceof NullMessagingProviderCallback;
+        if (!fireAndForget) {
             handler.registerCallback(channel, requestId, callback);
-        } else {
-            callback.response((String) null);
         }
 
-        ChannelFuture tmpChannelFuture = null;
-        tmpChannelFuture = channel.write(new TextWebSocketFrame(text + " "
-                + DefaultMessageProtocol.MESSAGE_ID_DELIMITER + " " + requestId));
+        final ChannelFuture channelFuture = channel.write(new TextWebSocketFrame(text
+                + (!fireAndForget ? " " + DefaultMessageProtocol.MESSAGE_ID_DELIMITER + " " + requestId : "")));
 
-        tmpChannelFuture.addListener(new ChannelFutureListener() {
+        if (fireAndForget) {
+            return;
+        }
+
+        channelFuture.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture channelFuture) {
                 synchronized (channelFuture) {
@@ -185,54 +187,56 @@ public class WebSocketClient {
             }
         });
 
-        final ChannelFuture channelFuture = tmpChannelFuture;
         requestMonitoringExecutor.submit(new Runnable() {
             @Override
             public void run() {
-                synchronized (channelFuture) {
-                    try {
-                        channelFuture.await(500);
-                    } catch (InterruptedException e) {
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("Interrupted:  handler.hashCode={}; channelFuture.hashCode()={}",
-                                    handler.hashCode(), channelFuture.hashCode());
-                        }
-                    }
-                }
-                if (!channelFuture.isSuccess()) {
-                    handler.removeCallback(channel, requestId);
-                    callback.error(null);
-                    boolean cancelled = channelFuture.cancel();
-                    logger.warn("Attempted cancel because no response:  channelFuture.hashCode()={}; cancelled={}",
-                            channelFuture.hashCode(), cancelled);
-                } else {
-                    int waitMillis = 1;
-                    synchronized (callback) {
-                        while (waitMillis < 65) {
-                            try {
-                                callback.wait(waitMillis = waitMillis * 2);
-                                if (handler.getCallback(channel, requestId) == null) {
-                                    if (logger.isTraceEnabled()) {
-                                        logger.trace("Completed:  handler.hashCode={}; requestId={}; timeMillis={}",
-                                                handler.hashCode(), requestId, waitMillis);
-                                    }
-                                    return;
-                                }
-                            } catch (InterruptedException e) {
-                                if (logger.isTraceEnabled()) {
-                                    logger.trace("Interrupted:  handler.hashCode={}; requestId={}", handler.hashCode(),
-                                            requestId);
-                                }
+                try {
+                    synchronized (channelFuture) {
+                        try {
+                            channelFuture.await(500);
+                        } catch (InterruptedException e) {
+                            if (logger.isTraceEnabled()) {
+                                logger.trace("Interrupted:  handler.hashCode={}; channelFuture.hashCode()={}",
+                                        handler.hashCode(), channelFuture.hashCode());
                             }
                         }
                     }
-                    handler.removeCallback(channel, requestId);
-                    callback.response((String) null);
-                    if (logger.isTraceEnabled()) {
-                        logger.trace(
-                                "Removed callback for successful request with no response:  handler.hashCode={}; requestId={}",
-                                handler.hashCode(), requestId);
+                    if (!channelFuture.isSuccess()) {
+                        callback.error(null);
+                        boolean cancelled = channelFuture.cancel();
+                        logger.warn("Attempted cancel because no response:  channelFuture.hashCode()={}; cancelled={}",
+                                channelFuture.hashCode(), cancelled);
+                    } else {
+                        int waitMillis = 1;
+                        synchronized (callback) {
+                            while (waitMillis < 65) {
+                                try {
+                                    callback.wait(waitMillis = waitMillis * 2);
+                                    if (handler.getCallback(channel, requestId) == null) {
+                                        if (logger.isTraceEnabled()) {
+                                            logger.trace(
+                                                    "Completed:  handler.hashCode={}; requestId={}; timeMillis={}",
+                                                    handler.hashCode(), requestId, waitMillis);
+                                        }
+                                        return;
+                                    }
+                                } catch (InterruptedException e) {
+                                    if (logger.isTraceEnabled()) {
+                                        logger.trace("Interrupted:  handler.hashCode={}; requestId={}",
+                                                handler.hashCode(), requestId);
+                                    }
+                                }
+                            }
+                        }
+                        callback.response((String) null);
+                        if (logger.isTraceEnabled()) {
+                            logger.trace(
+                                    "Removed callback for successful request with no response:  handler.hashCode={}; requestId={}",
+                                    handler.hashCode(), requestId);
+                        }
                     }
+                } finally {
+                    handler.removeCallback(channel, requestId);
                 }
             }
         });
