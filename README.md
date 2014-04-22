@@ -77,16 +77,28 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         destroy-method="destroy">
         <property name="zkConnectString" value="localhost:2181"/>
         <property name="zkSessionTimeout" value="30000"/>
+        
+        <!-- convenient way of passing misc. related variables -->
+        <property name="attributeMap">
+            <map>
+                <entry key="clusterId" value="my-app"/>
+                <entry key="serviceId" value="backend-api-service"/>
+            </map>
+        </property>	        
     </bean>
         
 ##### Usage in Java code...
     // get and start Reign object
-    ReignMaker springReignMaker = ...injected dependency...;
+    SpringReignMaker springReignMaker = ...injected dependency...;
     Reign reign = springReignMaker.get();
     
     // may not have to do this if bean init-method is specified as "initStart"
     // in Spring configuration
     reign.start();
+    
+    // get misc. related variables
+    String clusterId = springReignMaker.getAttribute("clusterId");
+    String serviceId = springReignMaker.getAttribute("serviceId");
 
 ### Announcing availability of a service on a node
 
