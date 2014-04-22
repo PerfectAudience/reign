@@ -9,7 +9,7 @@ Features
 --------
 
 Out of the box, the framework provides the following:
-* Service presence - monitor for nodes coming up and going down in services.
+* Service presence - monitor for nodes coming up and going down in services:  can be used to create smart clients that can detect when service nodes are up and down and shift requests elsewhere, etc.
 * Messaging - nodes can message each other directly and/or broadcast a message to member nodes of a specific service.
 * Constructs for distributed coordination - read/write locks, exclusive locks, semaphores, and barriers (coming soon).
 * Reign integrates with Codahale Metrics to allow services in a distributed application to publish data to each other via ZooKeeper.
@@ -95,24 +95,24 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         PresenceService presenceService = reign.getService("presence");
 
         // announce this node's membership in a given service, immediately visible
-        presenceService.announce("examples", "service1", true);
+        presenceService.announce("my-app", "backend-api-service", true);
 
         // announce this node's membership in a given service, not immediately visible
-        presenceService.announce("examples", "service2");
-        presenceService.announce("examples", "service2", false);
+        presenceService.announce("my-app", "backend-api-service");
+        presenceService.announce("my-app", "backend-api-service", false);
 
         // hide service1
-        presenceService.hide("examples", "service1");
+        presenceService.hide("my-app", "backend-api-service");
 
         // show service2
-        presenceService.show("examples", "service2");
+        presenceService.show("my-app", "backend-api-service");
         
         // get information about nodes available in a given service
-        ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
+        ServiceInfo serviceInfo = presenceService.getServiceInfo("my-app", "backend-api-service");
         List<String> nodeList = serviceInfo.getNodeList();
         
         // watch for changes in a service with observer callback
-        presenceService.observe("examples", "service1", new PresenceObserver<ServiceInfo>() {
+        presenceService.observe("my-app", "backend-api-service", new PresenceObserver<ServiceInfo>() {
             @Override
             public void updated(ServiceInfo updated, ServiceInfo previous) {
                 if (updated != null) {
@@ -127,7 +127,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
 [http://localhost:33033](http://localhost:33033).  
   
-Take a look at an [UI screenshot](docs/ui-screenshot-1.png).
+Take a look at a [UI screenshot](docs/ui-screenshot-1.png).
   
 Run one of the examples and in the terminal, you should be able to send the following messages and see the corresponding responses (more information is available on the "Terminal Guide" tab):
 
