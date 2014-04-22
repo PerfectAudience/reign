@@ -9,13 +9,16 @@
 
 <!-- Le styles -->
 <link href="css/bootstrap.min.css" rel="stylesheet">
+<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+<link href="css/terminal.css" rel="stylesheet">
+
 <style>
 body {
 	padding-top: 60px;
 	/* 60px to make the container go all the way to the bottom of the topbar */
 }
 </style>
-<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+
 
 <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
 <!--[if lt IE 9]>
@@ -83,7 +86,7 @@ body {
 				</form>
 
 				<hr />
-				<div id="responseText" class="pre-scrollable"></div>
+				<div id="responseText" class="fill"></div>
 			</div>
 
 
@@ -384,7 +387,7 @@ body {
 
 		function cleanTerminal() {
 			// remove earlier items
-			var cleanerStartIndex = requestIdSequence - 10;
+			var cleanerStartIndex = requestIdSequence - 20;
 			var found = $('#termResult' + cleanerStartIndex).length > 0
 					|| $('#termResult' + cleanerStartIndex + 'C').length > 0
 					|| $('#termResult' + cleanerStartIndex + 'I').length > 0;
