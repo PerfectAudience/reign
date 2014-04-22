@@ -7,7 +7,7 @@ package io.reign.mesg;
  */
 public interface EventMessage {
 
-    public String getType();
+    public String getEvent();
 
     public String getClusterId();
 
@@ -17,7 +17,7 @@ public interface EventMessage {
 
     public Object getBody();
 
-    public EventMessage setType(String type);
+    public EventMessage setEvent(String event);
 
     public EventMessage setClusterId(String clusterId);
 

@@ -703,7 +703,7 @@ public class PresenceService extends AbstractService {
                     body.put("previous", previous);
 
                     SimpleEventMessage eventMessage = new SimpleEventMessage();
-                    eventMessage.setType("presence").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
+                    eventMessage.setEvent("presence").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
                             .setBody(body);
 
                     MessagingService messagingService = getContext().getService("mesg");

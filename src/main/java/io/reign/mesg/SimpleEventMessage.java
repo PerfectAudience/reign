@@ -1,21 +1,24 @@
 package io.reign.mesg;
 
+import org.codehaus.jackson.annotate.JsonPropertyOrder;
+
 /**
  * 
  * @author ypai
  * 
  */
+@JsonPropertyOrder({ "event", "clusterId", "serviceId", "nodeId", "body" })
 public class SimpleEventMessage implements EventMessage {
 
-    private String type = null;
+    private String event = null;
     private String clusterId = null;
     private String serviceId = null;
     private String nodeId = null;
     private Object body = null;
 
     @Override
-    public String getType() {
-        return type;
+    public String getEvent() {
+        return event;
     }
 
     @Override
@@ -39,8 +42,8 @@ public class SimpleEventMessage implements EventMessage {
     }
 
     @Override
-    public EventMessage setType(String type) {
-        this.type = type;
+    public EventMessage setEvent(String event) {
+        this.event = event;
         return this;
     }
 
