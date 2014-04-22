@@ -62,4 +62,8 @@ public interface Observer {
 
     public void setChildList(List<String> childList);
 
+    public void setOwnerId(String ownerNodeId);
+
+    public String getOwnerId();
+
 }

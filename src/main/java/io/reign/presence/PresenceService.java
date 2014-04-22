@@ -533,6 +533,8 @@ public class PresenceService extends AbstractService {
         try {
             getZkClient().delete(path, -1);
             announcementMap.remove(nodePath);
+
+            getContext().getObserverManager().removeAllByOwnerId(nodePath);
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
                 logger.debug("Node does not exist:  path={}", path);
@@ -546,7 +548,7 @@ public class PresenceService extends AbstractService {
     }
 
     public void dead(String clusterId, String serviceId) {
-        dead(clusterId, serviceId, getContext().getNodeId().toString());
+        dead(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
     }
 
     void show(String clusterId, String serviceId, String nodeId) {
@@ -691,24 +693,33 @@ public class PresenceService extends AbstractService {
 
     <T> PresenceObserver<T> getClientObserver(final NodeId clientNodeId, final String clusterId,
             final String serviceId, final String nodeId) {
-        return new PresenceObserver<T>() {
+        PresenceObserver<T> observer = new PresenceObserver<T>() {
             @Override
             public void updated(T updated, T previous) {
 
-                Map<String, Object> body = new HashMap<String, Object>(3, 1.0f);
-                body.put("updated", updated);
-                body.put("previous", previous);
+                try {
+                    Map<String, T> body = new HashMap<String, T>(3, 1.0f);
+                    body.put("updated", updated);
+                    body.put("previous", previous);
 
-                SimpleEventMessage eventMessage = new SimpleEventMessage();
-                eventMessage.setType("presence").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
-                        .setBody(body);
+                    SimpleEventMessage eventMessage = new SimpleEventMessage();
+                    eventMessage.setType("presence").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
+                            .setBody(body);
 
-                MessagingService messagingService = getContext().getService("mesg");
-                messagingService.sendMessageFF(getContext().getPathScheme().getFrameworkClusterId(),
-                        Reign.CLIENT_SERVICE_ID, clientNodeId, eventMessage);
+                    MessagingService messagingService = getContext().getService("mesg");
+                    messagingService.sendMessageFF(getContext().getPathScheme().getFrameworkClusterId(),
+                            Reign.CLIENT_SERVICE_ID, clientNodeId, eventMessage);
+                } catch (Exception e) {
+                    logger.warn("Trouble notifying client observer:  " + e, e);
+                }
 
             }
         };
+
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, clientNodeId.toString());
+        observer.setOwnerId(nodePath);
+
+        return observer;
     }
 
     public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {
