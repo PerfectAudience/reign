@@ -24,6 +24,17 @@ public abstract class AbstractObserver implements Observer {
     private String path;
     private byte[] data;
     private List<String> childList = Collections.EMPTY_LIST;
+    private String ownerId;
+
+    @Override
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    @Override
+    public String getOwnerId() {
+        return ownerId;
+    }
 
     @Override
     public String getPath() {

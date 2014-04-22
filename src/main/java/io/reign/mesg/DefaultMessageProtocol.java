@@ -2,6 +2,8 @@ package io.reign.mesg;
 
 import io.reign.util.JacksonUtil;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.slf4j.Logger;
@@ -16,7 +18,7 @@ public class DefaultMessageProtocol implements MessageProtocol {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultMessageProtocol.class);
 
-    // private static final Pattern PATTERN_TEXT_REQUEST_SPLITTER = Pattern.compile("\\:");
+    private final AtomicInteger messageIdSequence = new AtomicInteger(0);
 
     public static final String MESSAGE_ID_DELIMITER = ">";
 
@@ -114,6 +116,21 @@ public class DefaultMessageProtocol implements MessageProtocol {
 
     @Override
     public byte[] toBinaryRequest(RequestMessage requestMessage) {
+        throw new UnsupportedOperationException("Not yet supported.");
+    }
+
+    @Override
+    public String toTextEvent(EventMessage eventMessage) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(eventMessage);
+        } catch (Exception e) {
+            logger.error("Error trying to encode event message:  " + e, e);
+        }
+        return null;
+    }
+
+    @Override
+    public byte[] toBinaryEvent(EventMessage eventMessage) {
         throw new UnsupportedOperationException("Not yet supported.");
     }
 }

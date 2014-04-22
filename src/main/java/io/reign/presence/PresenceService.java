@@ -19,18 +19,24 @@ package io.reign.presence;
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
+import io.reign.NodeId;
 import io.reign.PathType;
+import io.reign.Reign;
 import io.reign.ReignException;
 import io.reign.ZkNodeId;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
+import io.reign.mesg.MessagingService;
+import io.reign.mesg.ParsedRequestMessage;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 import io.reign.mesg.ResponseStatus;
+import io.reign.mesg.SimpleEventMessage;
 import io.reign.mesg.SimpleResponseMessage;
 import io.reign.util.ZkClientUtil;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -174,6 +180,14 @@ public class PresenceService extends AbstractService {
         return children;
     }
 
+    public void observe(String clusterId, PresenceObserver<List<String>> observer) {
+        String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId);
+
+        observer.setClusterId(clusterId);
+
+        getObserverManager().put(path, observer);
+    }
+
     public void observe(String clusterId, String serviceId, PresenceObserver<ServiceInfo> observer) {
         String servicePath = getPathScheme().joinTokens(clusterId, serviceId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, servicePath);
@@ -185,7 +199,6 @@ public class PresenceService extends AbstractService {
     }
 
     public void observe(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer) {
-        // NodeInfo result = lookupNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer, true);
         String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
         String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
 
@@ -520,6 +533,8 @@ public class PresenceService extends AbstractService {
         try {
             getZkClient().delete(path, -1);
             announcementMap.remove(nodePath);
+
+            getContext().getObserverManager().removeAllByOwnerId(nodePath);
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
                 logger.debug("Node does not exist:  path={}", path);
@@ -533,7 +548,7 @@ public class PresenceService extends AbstractService {
     }
 
     public void dead(String clusterId, String serviceId) {
-        dead(clusterId, serviceId, getContext().getNodeId().toString());
+        dead(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
     }
 
     void show(String clusterId, String serviceId, String nodeId) {
@@ -583,13 +598,13 @@ public class PresenceService extends AbstractService {
     public ResponseMessage handleMessage(RequestMessage requestMessage) {
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
-                        requestMessage.getBody());
+                logger.trace("Received message:  nodeId={}; request='{}:{}'", requestMessage.getSenderId(),
+                        requestMessage.getTargetService(), requestMessage.getBody());
             }
 
             /** preprocess request **/
-            String requestResource = (String) requestMessage.getBody();
-            String resource = requestResource;
+            ParsedRequestMessage parsedRequestMessage = new ParsedRequestMessage(requestMessage);
+            String resource = parsedRequestMessage.getResource();
 
             // strip beginning and ending slashes "/"
             if (resource.startsWith("/")) {
@@ -603,46 +618,63 @@ public class PresenceService extends AbstractService {
             ResponseMessage responseMessage = null;
 
             // if base path, just return available clusters
-            if (resource.length() == 0) {
-                // list available clusters
-                List<String> clusterList = this.getClusters();
-                responseMessage = new SimpleResponseMessage();
-                responseMessage.setBody(clusterList);
+            if (parsedRequestMessage.getMeta() == null) {
+                if (resource.length() == 0) {
+                    // list available clusters
+                    List<String> clusterList = this.getClusters();
+                    responseMessage = new SimpleResponseMessage();
+                    responseMessage.setBody(clusterList);
 
-            } else {
+                } else {
+                    String[] tokens = getPathScheme().tokenizePath(resource);
+                    // logger.debug("tokens.length={}", tokens.length);
+
+                    if (tokens.length == 1) {
+                        // list available services
+                        List<String> serviceList = this.getServices(resource);
+
+                        responseMessage = new SimpleResponseMessage();
+                        responseMessage.setBody(serviceList);
+                        if (serviceList == null) {
+                            responseMessage.setComment("Not found:  " + resource);
+                        }
+
+                    } else if (tokens.length == 2) {
+                        // list available nodes for a given service
+                        ServiceInfo serviceInfo = this.getServiceInfo(tokens[0], tokens[1]);
+
+                        responseMessage = new SimpleResponseMessage();
+                        responseMessage.setBody(serviceInfo);
+                        if (serviceInfo == null) {
+                            responseMessage.setComment("Not found:  " + resource);
+                        }
+
+                    } else if (tokens.length == 3) {
+                        // list available nodes for a given service
+                        NodeInfo nodeInfo = this.getNodeInfo(tokens[0], tokens[1], tokens[2]);
+
+                        responseMessage = new SimpleResponseMessage();
+                        responseMessage.setBody(nodeInfo);
+                        if (nodeInfo == null) {
+                            responseMessage.setComment("Not found:  " + resource);
+                        }
+
+                    }
+                }
+            }// if parsedRequestMessage.getMeta() == null
+
+            if ("observe".equals(parsedRequestMessage.getMeta())) {
+                responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
                 String[] tokens = getPathScheme().tokenizePath(resource);
-                // logger.debug("tokens.length={}", tokens.length);
-
                 if (tokens.length == 1) {
-                    // list available services
-                    List<String> serviceList = this.getServices(resource);
-
-                    responseMessage = new SimpleResponseMessage();
-                    responseMessage.setBody(serviceList);
-                    if (serviceList == null) {
-                        responseMessage.setComment("Not found:  " + requestResource);
-                    }
-
+                    this.observe(tokens[0], this.<List<String>> getClientObserver(parsedRequestMessage.getSenderId(),
+                            tokens[0], null, null));
                 } else if (tokens.length == 2) {
-                    // list available nodes for a given service
-                    ServiceInfo serviceInfo = this.getServiceInfo(tokens[0], tokens[1]);
-
-                    responseMessage = new SimpleResponseMessage();
-                    responseMessage.setBody(serviceInfo);
-                    if (serviceInfo == null) {
-                        responseMessage.setComment("Not found:  " + requestResource);
-                    }
-
+                    this.observe(tokens[0], tokens[1], this.<ServiceInfo> getClientObserver(
+                            parsedRequestMessage.getSenderId(), tokens[0], tokens[1], null));
                 } else if (tokens.length == 3) {
-                    // list available nodes for a given service
-                    NodeInfo nodeInfo = this.getNodeInfo(tokens[0], tokens[1], tokens[2]);
-
-                    responseMessage = new SimpleResponseMessage();
-                    responseMessage.setBody(nodeInfo);
-                    if (nodeInfo == null) {
-                        responseMessage.setComment("Not found:  " + requestResource);
-                    }
-
+                    this.observe(tokens[0], tokens[1], tokens[2], this.<NodeInfo> getClientObserver(
+                            parsedRequestMessage.getSenderId(), tokens[0], tokens[1], tokens[2]));
                 }
             }
 
@@ -657,6 +689,37 @@ public class PresenceService extends AbstractService {
             return responseMessage;
         }
 
+    }
+
+    <T> PresenceObserver<T> getClientObserver(final NodeId clientNodeId, final String clusterId,
+            final String serviceId, final String nodeId) {
+        PresenceObserver<T> observer = new PresenceObserver<T>() {
+            @Override
+            public void updated(T updated, T previous) {
+
+                try {
+                    Map<String, T> body = new HashMap<String, T>(3, 1.0f);
+                    body.put("updated", updated);
+                    body.put("previous", previous);
+
+                    SimpleEventMessage eventMessage = new SimpleEventMessage();
+                    eventMessage.setEvent("presence").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
+                            .setBody(body);
+
+                    MessagingService messagingService = getContext().getService("mesg");
+                    messagingService.sendMessageFF(getContext().getPathScheme().getFrameworkClusterId(),
+                            Reign.CLIENT_SERVICE_ID, clientNodeId, eventMessage);
+                } catch (Exception e) {
+                    logger.warn("Trouble notifying client observer:  " + e, e);
+                }
+
+            }
+        };
+
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, clientNodeId.toString());
+        observer.setOwnerId(nodePath);
+
+        return observer;
     }
 
     public DataSerializer<Map<String, String>> getNodeAttributeSerializer() {

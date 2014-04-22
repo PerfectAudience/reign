@@ -53,6 +53,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     private static final long DEFAULT_MAX_TIMEOUT_MILLIS = 120000;
 
     private final ConcurrentMap<String, Set<T>> observerMap = new ConcurrentHashMap<String, Set<T>>(16, 0.9f, 2);
+    private final ConcurrentMap<String, Set<T>> ownerObserverMap = new ConcurrentHashMap<String, Set<T>>(16, 0.9f, 2);
     private final ConcurrentMap<String, Long> observerScheduledCheckTimestampMap = new ConcurrentHashMap<String, Long>(
             16, 0.9f, 2);
 
@@ -91,6 +92,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
     }
 
     public void put(String path, T observer) {
+        String ownerId = observer.getOwnerId();
         Set<T> observerSet = getObserverSet(path, true);
         try {
             // decorate observer with data about the path so we can handle notifications correctly
@@ -102,6 +104,12 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             observer.setChildList(childList);
             observerSet.add(observer);
 
+            // register with owner (so we can remove all later if a client disconnects, etc.)
+            if (ownerId != null) {
+                Set<T> ownerObserverSet = getOwnerObserverSet(ownerId, true);
+                ownerObserverSet.add(observer);
+            }
+
             logger.info("Added observer:  observer.hashCode()={}; path={}; pathObserverCount={}", new Object[] {
                     observer.hashCode(), path, observerSet.size() });
         } catch (KeeperException e) {
@@ -112,6 +120,12 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                     observer.setData(null);
                     observer.setChildList(Collections.EMPTY_LIST);
                     observerSet.add(observer);
+
+                    // register with owner (so we can remove all later if a client disconnects, etc.)
+                    if (ownerId != null) {
+                        Set<T> ownerObserverSet = getOwnerObserverSet(ownerId, true);
+                        ownerObserverSet.add(observer);
+                    }
 
                     zkClient.exists(path, true);
 
@@ -404,6 +418,21 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         observerMap.remove(path);
     }
 
+    /**
+     * Remove all observers associated with given node.
+     * 
+     * @param ownerNodeId
+     */
+    public void removeAllByOwnerId(String ownerId) {
+        logger.debug("Removing ALL observers by owner:  ownerId={}", ownerId);
+        Set<T> ownerObserverSet = getOwnerObserverSet(ownerId, true);
+        for (Observer observer : ownerObserverSet) {
+            String path = observer.getPath();
+            logger.debug("Removing observer by owner:  ownerId={}; path={}", ownerId, path);
+            this.remove(path, observer);
+        }
+    }
+
     public void remove(String path, Observer observer) {
         Set<T> observerSet = getObserverSet(path, false);
         boolean success = observerSet.remove(observer);
@@ -447,8 +476,26 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
         if (observerSet == null) {
             if (createIfNecessary) {
-                Set<T> newObserverSet = Collections.newSetFromMap(new ConcurrentHashMap<T, Boolean>(4, 0.9f, 2));
+                Set<T> newObserverSet = Collections.newSetFromMap(new ConcurrentHashMap<T, Boolean>(4, 0.9f, 1));
                 observerSet = observerMap.putIfAbsent(path, newObserverSet);
+                if (observerSet == null) {
+                    observerSet = newObserverSet;
+                }
+            } else {
+                observerSet = Collections.EMPTY_SET;
+            }
+        }
+
+        return observerSet;
+    }
+
+    Set<T> getOwnerObserverSet(String ownerId, boolean createIfNecessary) {
+        Set<T> observerSet = ownerObserverMap.get(ownerId);
+
+        if (observerSet == null) {
+            if (createIfNecessary) {
+                Set<T> newObserverSet = Collections.newSetFromMap(new ConcurrentHashMap<T, Boolean>(4, 0.9f, 1));
+                observerSet = ownerObserverMap.putIfAbsent(ownerId, newObserverSet);
                 if (observerSet == null) {
                     observerSet = newObserverSet;
                 }

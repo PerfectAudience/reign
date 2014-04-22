@@ -46,7 +46,7 @@ public class Reign implements Watcher {
     private static final Logger logger = LoggerFactory.getLogger(Reign.class);
 
     public static final String DEFAULT_FRAMEWORK_CLUSTER_ID = "reign";
-    public static final String DEFAULT_FRAMEWORK_CLIENT_ID = "client";
+    public static final String CLIENT_SERVICE_ID = "client";
 
     public static final String DEFAULT_FRAMEWORK_BASE_PATH = "/reign";
 

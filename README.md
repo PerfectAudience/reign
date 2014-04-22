@@ -14,6 +14,7 @@ Out of the box, the framework provides the following:
 * Constructs for distributed coordination - read/write locks, exclusive locks, semaphores, and barriers (coming soon).
 * Reign integrates with Codahale Metrics to allow services in a distributed application to publish data to each other via ZooKeeper.
 * Reliable ZooKeeper client wrapper that handles common ZooKeeper connection/session errors and re-connects as necessary.
+* Support for management and storage of application configuration in ZooKeeper:  ideal for feature toggles, etc.
 * A standardized way of organizing information in ZooKeeper for ease of maintenance and consistency between deployments.
 * ZooKeeper-based Maps, Queues, Stacks, Lists to support common patterns such as queue/worker pool; sharing common state between nodes.
 
@@ -106,6 +107,10 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
         // show service2
         presenceService.show("examples", "service2");
         
+        // get information about nodes available in a given service
+        ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
+        List<String> nodeList = serviceInfo.getNodeList();
+        
         // watch for changes in a service with observer callback
         presenceService.observe("examples", "service1", new PresenceObserver<ServiceInfo>() {
             @Override
@@ -122,7 +127,7 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 On any node running the framework, the Web UI is available at port 33033 (assuming the default port was not changed).  For example, if you are running the framework locally, point your browser to 
 [http://localhost:33033](http://localhost:33033).  
   
-Take a look at a [UI screenshot](docs/ui-screenshot-1.png).
+Take a look at an [UI screenshot](docs/ui-screenshot-1.png).
   
 Run one of the examples and in the terminal, you should be able to send the following messages and see the corresponding responses (more information is available on the "Terminal Guide" tab):
 
@@ -287,6 +292,23 @@ By default, services in the framework can receive and respond to messages via We
 `presence:/my_cluster/foo_service` - this message would get information on the `foo_service`.  More information is available in the Web UI available on any node running the framework at port 33033 (default port).
 
 
+Upcoming in 0.2.x
+-----------------
+
+* Web Socket API support for coordination service 
+* Web Socket API support for metrics service
+* Dashboard UI that allows navigation and viewing of service and node level metrics
+
+
+Upcoming in 0.3.x
+-----------------
+
+* Consistent hash service
+* Migration of UI to AngularJS?
+* Clarification of data service API
+* Clarification of request/response protocol
+* Clarification/cleaning up of String nodeId vs. node ID as a data structure
+* Formalization of client concept
 
 
 

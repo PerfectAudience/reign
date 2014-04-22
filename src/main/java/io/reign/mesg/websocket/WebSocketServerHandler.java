@@ -11,6 +11,7 @@ import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.reign.DefaultNodeId;
 import io.reign.NodeId;
+import io.reign.PathScheme;
 import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
@@ -360,24 +361,28 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
         // register client with framework
         PresenceService presenceService = context.getService("presence");
+        PathScheme pathScheme = context.getPathScheme();
 
-        SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
+        NodeId nodeId = getNodeId(ctx);
+        String nodeIdString = nodeId.toString();
 
-        NodeId canonicalId = new DefaultNodeId(null, IdUtil.getClientIpAddress(socketAddress),
-                IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress));
-        String canonicalIdString = canonicalId.toString();
-
-        presenceService.announce(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID, Reign.DEFAULT_FRAMEWORK_CLIENT_ID,
-                canonicalIdString, true);
+        presenceService.announce(pathScheme.getFrameworkClusterId(), Reign.CLIENT_SERVICE_ID, nodeIdString, true);
 
         // register connection
-        connectionManager
-                .addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil.getClientPort(socketAddress),
-                        new WebSocketClient(Reign.DEFAULT_FRAMEWORK_CLUSTER_ID, Reign.DEFAULT_FRAMEWORK_CLIENT_ID,
-                                canonicalIdString, ctx.getChannel(), this.requestMonitoringExecutor));
+        SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
+        connectionManager.addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil
+                .getClientPort(socketAddress), new WebSocketClient(pathScheme.getFrameworkClusterId(),
+                Reign.CLIENT_SERVICE_ID, nodeIdString, ctx.getChannel(), this.requestMonitoringExecutor));
     }
 
-    private void handleWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
+    private NodeId getNodeId(ChannelHandlerContext ctx) {
+        SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
+        NodeId nodeId = new DefaultNodeId(null, IdUtil.getClientIpAddress(socketAddress),
+                IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress));
+        return nodeId;
+    }
+
+    private void handleWebSocketFrame(final ChannelHandlerContext ctx, WebSocketFrame frame) {
 
         // Check for closing frame
         if (frame instanceof CloseWebSocketFrame) {
@@ -395,21 +400,23 @@ public class WebSocketServerHandler extends ExecutionHandler {
                 public void run() {
                     String requestText = ((TextWebSocketFrame) finalFrame).getText();
                     RequestMessage requestMessage = getMessageProtocol().fromTextRequest(requestText);
+                    requestMessage.setSenderId(getNodeId(ctx));
                     if (requestMessage != null) {
                         Service targetService = getServiceDirectory().getService(requestMessage.getTargetService());
-                        if (targetService != null) {
-                            ResponseMessage responseMessage = targetService.handleMessage(requestMessage);
-                            if (responseMessage != null) {
-                                finalCtx.getChannel().write(
-                                        new TextWebSocketFrame(getMessageProtocol().toTextResponse(responseMessage)));
-                            } else {
-                                logger.warn("No response for request:  request='{}'", requestText);
-                            }
+
+                        // default to null service
+                        if (targetService == null) {
+                            targetService = getServiceDirectory().getService("null");
+                        }
+
+                        ResponseMessage responseMessage = targetService.handleMessage(requestMessage);
+                        if (responseMessage != null) {
+                            finalCtx.getChannel().write(
+                                    new TextWebSocketFrame(getMessageProtocol().toTextResponse(responseMessage)));
                         } else {
-                            logger.warn(
-                                    "Message targets unknown service:  request='{}'; requestMessage.targetService='{}'",
-                                    requestText, requestMessage.getTargetService());
-                        }// if
+                            logger.warn("No response for request:  request='{}'", requestText);
+                        }
+
                     } else {
                         logger.warn("Received poorly formed message:  request='{}'", requestText);
                         finalCtx.getChannel().close();

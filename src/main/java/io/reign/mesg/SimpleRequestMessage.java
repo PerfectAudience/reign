@@ -1,5 +1,6 @@
 package io.reign.mesg;
 
+import io.reign.NodeId;
 import io.reign.util.JacksonUtil;
 
 import org.slf4j.Logger;
@@ -16,6 +17,8 @@ public class SimpleRequestMessage extends AbstractMessage implements RequestMess
 
     private String targetService;
 
+    private NodeId senderId;
+
     public SimpleRequestMessage() {
 
     }
@@ -23,6 +26,17 @@ public class SimpleRequestMessage extends AbstractMessage implements RequestMess
     public SimpleRequestMessage(String targetService, Object body) {
         setTargetService(targetService);
         setBody(body);
+    }
+
+    @Override
+    public NodeId getSenderId() {
+        return senderId;
+    }
+
+    @Override
+    public RequestMessage setSenderId(NodeId senderId) {
+        this.senderId = senderId;
+        return this;
     }
 
     @Override
@@ -45,4 +59,5 @@ public class SimpleRequestMessage extends AbstractMessage implements RequestMess
             return super.toString();
         }
     }
+
 }

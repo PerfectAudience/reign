@@ -56,7 +56,6 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     private final ExecutorService requestMonitoringExecutor = new ThreadPoolExecutor(16, 16, 60, TimeUnit.SECONDS,
             new LinkedBlockingQueue<Runnable>(100), new RejectedExecutionHandler() {
-
                 @Override
                 public void rejectedExecution(Runnable runnable, ThreadPoolExecutor executor) {
                     // just run in current thread
@@ -67,31 +66,21 @@ public class WebSocketMessagingProvider implements MessagingProvider {
 
     @Override
     public void sendMessage(String hostOrIpAddress, int port, String message, MessagingProviderCallback callback) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
+        String endpointUri = endpointUri(hostOrIpAddress, port);
         WebSocketClient client = connectionManager.getConnection(endpointUri);
         client.write(message, callback);
     }
 
     @Override
     public void sendMessage(String hostOrIpAddress, int port, byte[] message, MessagingProviderCallback callback) {
-        String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
+        String endpointUri = endpointUri(hostOrIpAddress, port);
         WebSocketClient client = connectionManager.getConnection(endpointUri);
         client.write(message, callback);
     }
 
-    // @Override
-    // public String sendMessageForget(String hostOrIpAddress, int port, String message) {
-    // String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
-    // WebSocketClient client = connectionManager.getConnection(endpointUri);
-    // return client.write(message, false);
-    // }
-    //
-    // @Override
-    // public byte[] sendMessageForget(String hostOrIpAddress, int port, byte[] message) {
-    // String endpointUri = "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
-    // WebSocketClient client = connectionManager.getConnection(endpointUri);
-    // return client.write(message, false);
-    // }
+    String endpointUri(String hostOrIpAddress, int port) {
+        return "ws://" + hostOrIpAddress + ":" + port + WEBSOCKET_PATH;
+    }
 
     @Override
     public MessageProtocol getMessageProtocol() {

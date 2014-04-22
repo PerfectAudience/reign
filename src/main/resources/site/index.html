@@ -59,7 +59,6 @@ body {
 
 		<div class="tab-content">
 
-
 			<div class="tab-pane" id="terminal">
 				<h1 class="text-info">Terminal</h1>
 				Use the terminal to query a Reign node directly.
@@ -237,11 +236,20 @@ body {
 		function send(message) {
 			if (!window.WebSocket) {
 				return;
-			}
-			requestIdSequence++;
+			}			
+			var requestId = 0;
 			var idDelimiterIndex = message.indexOf(">");
 			if (idDelimiterIndex < 0) {
+				requestId = ++requestIdSequence;
 				message = message + " > " + requestIdSequence;
+			} else {
+				var newlineIndex = message.indexOf("\n", idDelimiterIndex);
+				if( newlineIndex < 0 ) {
+					requestId = message.substring(idDelimiterIndex+1);
+			    } else {
+			    	requestId = message.substring(idDelimiterIndex+1, newlineIndex);
+			    }
+				requestId = requestId.trim();
 			}
 			if( !socket || socket.readyState==socket.CLOSED ) {
 				connectWebSocket();	
@@ -260,7 +268,7 @@ body {
 						'Web Socket connection error:&nbsp; '
 								+ $('#connectHost').val());				
 			} else {
-				renderRequest('responseText', message);
+				renderRequest('responseText', message, requestId);
 				socket.send(message);
 			}
 		} // send
@@ -318,13 +326,23 @@ body {
 		} // connectWebSocket
 
 		function renderResponse(divElementId, html) {
+			var response = eval( '(' + html + ')' );
 			var currentValue = requestIdSequence;
+			if( response.id ) {
+				currentValue = response.id;
+			}
 			$('#termResultContent' + currentValue).append(
 					$('<div>' + html + '</div>').hide().fadeIn('fast'));
 		}
 
-		function renderRequest(divElementId, html) {
+		function renderRequest(divElementId, html, requestId) {
 			var currentValue = requestIdSequence;
+			if( requestId ) {
+				currentValue = requestId;
+			}
+			if( $('#termResult'+currentValue).length>0 ) {
+				$('#termResult'+currentValue).remove();
+			}		
 			$('#' + divElementId)
 					.prepend(
 							$('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'

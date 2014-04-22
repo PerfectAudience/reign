@@ -58,6 +58,8 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
             ServiceInfo updated = new ServiceInfo(clusterId, serviceId, updatedChildList);
             ServiceInfo previous = new ServiceInfo(clusterId, serviceId, previousChildList);
             updated((T) updated, (T) previous);
+        } else if (clusterId != null) {
+            updated((T) updatedChildList, (T) previousChildList);
         }
     }
 
@@ -97,7 +99,6 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
             if (childList != null && childList.size() > 0) {
                 ServiceInfo updated = new ServiceInfo(clusterId, serviceId, childList);
                 updated((T) updated, null);
-
             }
         }
     }

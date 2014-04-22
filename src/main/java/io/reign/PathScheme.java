@@ -23,7 +23,7 @@ package io.reign;
  */
 public interface PathScheme {
 
-    public String getBasePath();
+    public String getFrameworkBasePath();
 
     public String getAbsolutePath(PathType pathType);
 
@@ -40,8 +40,6 @@ public interface PathScheme {
     public boolean isValidToken(String pathToken);
 
     public boolean isValidPath(String path);
-
-    public boolean isFrameworkClusterId(String clusterId);
 
     public String getFrameworkClusterId();
 

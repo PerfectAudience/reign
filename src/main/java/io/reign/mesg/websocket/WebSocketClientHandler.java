@@ -57,6 +57,9 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
             .listener(new EvictionListener<Integer, MessagingProviderCallback>() {
                 @Override
                 public void onEviction(Integer requestId, MessagingProviderCallback callback) {
+                    logger.error(
+                            "Callback holding map is full:  calling callback.error() and evicting callback from map:  requestId={}",
+                            requestId);
                     callback.error(null);
                 }
             }).build();
@@ -82,12 +85,12 @@ public class WebSocketClientHandler extends SimpleChannelUpstreamHandler {
 
     public MessagingProviderCallback getCallback(Channel channel, int requestId) {
         MessagingProviderCallback callback = responseHolder.get(requestId);
-        // if (logger.isTraceEnabled()) {
-        // logger.trace(
-        // "Retrieving callback:  hashCode={}; requestId={}; responseHolder.size()={}; responseHolder.keySet()={}; remoteAddress={}",
-        // this.hashCode(), requestId, responseHolder.size(), responseHolder.keySet(), channel
-        // .getRemoteAddress().toString());
-        // }
+        if (logger.isTraceEnabled()) {
+            logger.trace(
+                    "Retrieving callback:  hashCode={}; channelId={}; requestId={}; responseHolder.size()={}; responseHolder.keySet()={}; remoteAddress={}",
+                    this.hashCode(), channel.getId(), requestId, responseHolder.size(), responseHolder.keySet(),
+                    channel.getRemoteAddress().toString());
+        }
         return callback;
     }
 
