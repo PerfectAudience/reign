@@ -298,10 +298,10 @@ Web Sockets Protocol
 
 By default, services in the framework can receive and respond to messages via Web Sockets.
 
-###Message Format
+####Message Format
 `[TARGET_SERVICE]:[RESOURCE]#[META_COMMAND]`
 
-###Example Messages
+####Example Messages
 `presence:/my_cluster/foo_service` - this message would get information on the `foo_service`.  More information is available in the Web UI available on any node running the framework at port 33033 (default port).
 
 
