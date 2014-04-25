@@ -389,7 +389,7 @@ public class MetricsService extends AbstractService {
                             // get metrics data for service
                             String dataPath = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
                                     tokens[1]);
-                            byte[] bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+                            byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
                             MetricsData metricsData = null;
                             if (bytes != null) {
                                 metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
@@ -404,7 +404,7 @@ public class MetricsService extends AbstractService {
                         // get metrics data for single data node
                         String dataPath = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
                                 tokens[1], tokens[2]);
-                        byte[] bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+                        byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
                         MetricsData metricsData = null;
                         if (bytes != null) {
                             metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
@@ -461,8 +461,7 @@ public class MetricsService extends AbstractService {
             }
         };
 
-        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, clientNodeId.toString());
-        observer.setOwnerId(nodePath);
+        observer.setOwnerId(clientNodeId.toString());
 
         return observer;
     }

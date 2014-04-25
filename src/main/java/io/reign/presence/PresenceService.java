@@ -534,7 +534,7 @@ public class PresenceService extends AbstractService {
             getZkClient().delete(path, -1);
             announcementMap.remove(nodePath);
 
-            getContext().getObserverManager().removeAllByOwnerId(nodePath);
+            getContext().getObserverManager().removeAllByOwnerId(nodeId);
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
                 logger.debug("Node does not exist:  path={}", path);
@@ -719,8 +719,7 @@ public class PresenceService extends AbstractService {
             }
         };
 
-        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, clientNodeId.toString());
-        observer.setOwnerId(nodePath);
+        observer.setOwnerId(clientNodeId.toString());
 
         return observer;
     }

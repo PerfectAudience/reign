@@ -110,8 +110,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                 ownerObserverSet.add(observer);
             }
 
-            logger.info("Added observer:  observer.hashCode()={}; path={}; pathObserverCount={}", new Object[] {
-                    observer.hashCode(), path, observerSet.size() });
+            logger.info("Added observer:  observer.hashCode()={}; observer.ownerId={}; path={}; pathObserverCount={}",
+                    new Object[] { observer.hashCode(), observer.getOwnerId(), path, observerSet.size() });
         } catch (KeeperException e) {
             if (e.code() == Code.NONODE) {
                 // set up watch on that node
