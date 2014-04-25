@@ -43,7 +43,7 @@ public class MetricsServiceTest {
         MetricRegistryManager registryManager = getMetricRegistryManager();
         Counter observerTestCounter = registryManager.get().counter("observerTestCounter");
 
-        metricsService.register("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
 
         final AtomicInteger calledCount = new AtomicInteger(0);
         final AtomicReference<MetricsData> latest = new AtomicReference<MetricsData>();
@@ -91,11 +91,11 @@ public class MetricsServiceTest {
     @Test
     public void testExportSelfMetrics() throws Exception {
         MetricRegistryManager registryManager = getMetricRegistryManager();
-        metricsService.register("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
 
-        MetricsData metricsData = metricsService.getMetrics("clusterA", "serviceA");
+        MetricsData metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
         while (metricsData == null) {
-            metricsData = metricsService.getMetrics("clusterA", "serviceA");
+            metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
         }
 
         // counters
@@ -142,10 +142,10 @@ public class MetricsServiceTest {
     @Test
     public void testExportServiceMetrics() throws Exception {
         MetricRegistryManager registryManager1 = getMetricRegistryManager();
-        metricsService.register("clusterA", "serviceB", "node1", registryManager1, 1, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceB", "node1", registryManager1, 1, TimeUnit.SECONDS);
 
         MetricRegistryManager registryManager2 = getMetricRegistryManager();
-        metricsService.register("clusterA", "serviceB", "node2", registryManager2, 1, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterA", "serviceB", "node2", registryManager2, 1, TimeUnit.SECONDS);
 
         // get service metrics, but wait for both service nodes to be there before checking values
         MetricsData metricsData = null;

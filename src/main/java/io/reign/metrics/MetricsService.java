@@ -17,18 +17,28 @@
 package io.reign.metrics;
 
 import io.reign.AbstractService;
+import io.reign.NodeId;
 import io.reign.PathScheme;
 import io.reign.PathType;
+import io.reign.Reign;
 import io.reign.ReignException;
 import io.reign.ZkClient;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
+import io.reign.mesg.MessagingService;
+import io.reign.mesg.ParsedRequestMessage;
+import io.reign.mesg.RequestMessage;
+import io.reign.mesg.ResponseMessage;
+import io.reign.mesg.ResponseStatus;
+import io.reign.mesg.SimpleEventMessage;
+import io.reign.mesg.SimpleResponseMessage;
 import io.reign.presence.PresenceService;
 import io.reign.util.JacksonUtil;
 import io.reign.util.ZkClientUtil;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +65,7 @@ public class MetricsService extends AbstractService {
 
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-    public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 10000;
+    public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 5000;
 
     /** interval btw. aggregations at service level */
     private volatile int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
@@ -98,17 +108,17 @@ public class MetricsService extends AbstractService {
     /**
      * Registers metrics for export to ZK.
      */
-    public void register(final String clusterId, final String serviceId, final MetricRegistryManager registryManager,
-            long updateInterval, TimeUnit updateIntervalTimeUnit) {
-        register(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), registryManager, updateInterval,
-                updateIntervalTimeUnit);
+    public void scheduleExport(final String clusterId, final String serviceId,
+            final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
+        scheduleExport(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), registryManager,
+                updateInterval, updateIntervalTimeUnit);
     }
 
     String exportPathMapKey(String clusterId, String serviceId, String nodeId) {
         return clusterId + "/" + serviceId + "/" + nodeId;
     }
 
-    void register(final String clusterId, final String serviceId, final String nodeId,
+    void scheduleExport(final String clusterId, final String serviceId, final String nodeId,
             final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
 
         final String key = exportPathMapKey(clusterId, serviceId, nodeId);
@@ -197,7 +207,7 @@ public class MetricsService extends AbstractService {
     /**
      * Get metrics data for this service node (self).
      */
-    public MetricsData getMetrics(String clusterId, String serviceId) {
+    public MetricsData getMyMetrics(String clusterId, String serviceId) {
         String key = clusterId + "/" + serviceId + "/" + getContext().getZkNodeId().getPathToken();
         ExportMeta exportMeta = exportPathMap.get(key);
         if (exportMeta == null) {
@@ -306,6 +316,155 @@ public class MetricsService extends AbstractService {
     @Override
     public void destroy() {
         executorService.shutdown();
+    }
+
+    @Override
+    public ResponseMessage handleMessage(RequestMessage requestMessage) {
+        ResponseMessage responseMessage = new SimpleResponseMessage();
+
+        try {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Received message:  nodeId={}; request='{}:{}'", requestMessage.getSenderId(),
+                        requestMessage.getTargetService(), requestMessage.getBody());
+            }
+
+            /** preprocess request **/
+            ParsedRequestMessage parsedRequestMessage = new ParsedRequestMessage(requestMessage);
+            String resource = parsedRequestMessage.getResource();
+
+            // strip beginning and ending slashes "/"
+            if (resource.startsWith("/")) {
+                resource = resource.substring(1);
+            }
+            if (resource.endsWith("/")) {
+                resource = resource.substring(0, resource.length() - 1);
+            }
+
+            /** get response **/
+            // if base path, just return available clusters
+            if ("observe".equals(parsedRequestMessage.getMeta())) {
+                responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
+                String[] tokens = getPathScheme().tokenizePath(resource);
+                if (tokens.length == 2) {
+                    this.observe(tokens[0], tokens[1],
+                            this.getClientObserver(parsedRequestMessage.getSenderId(), tokens[0], tokens[1], null));
+                } else if (tokens.length == 3) {
+                    this.observe(tokens[0], tokens[1],
+                            this.getClientObserver(parsedRequestMessage.getSenderId(), tokens[0], tokens[1], tokens[2]));
+                } else {
+                    responseMessage.setComment("Observing not supported:  " + resource);
+                }
+            } else {
+                if (resource.length() == 0) {
+                    // list available clusters
+                    String path = getContext().getPathScheme().getAbsolutePath(PathType.METRICS);
+                    List<String> clusterList = getContext().getZkClient().getChildren(path, false);
+                    responseMessage.setBody(clusterList);
+
+                } else {
+                    String[] tokens = getPathScheme().tokenizePath(resource);
+                    // logger.debug("tokens.length={}", tokens.length);
+
+                    if (tokens.length == 1) {
+                        // list available services
+                        String path = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0]);
+                        List<String> serviceList = getContext().getZkClient().getChildren(path, false);
+                        responseMessage.setBody(serviceList);
+                        if (serviceList == null) {
+                            responseMessage.setComment("Not found:  " + resource);
+                        }
+
+                    } else if (tokens.length == 2) {
+                        if ("list".equals(parsedRequestMessage.getMeta())) {
+                            // list available nodes for a given service
+                            String path = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
+                                    tokens[1]);
+                            List<String> nodeList = getContext().getZkClient().getChildren(path, false);
+
+                            responseMessage.setBody(nodeList);
+                            if (nodeList == null) {
+                                responseMessage.setComment("Not found:  " + resource);
+                            }
+                        } else {
+                            // get metrics data for service
+                            String dataPath = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
+                                    tokens[1]);
+                            byte[] bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+                            MetricsData metricsData = null;
+                            if (bytes != null) {
+                                metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+                            }
+                            responseMessage.setBody(metricsData);
+                            if (metricsData == null) {
+                                responseMessage.setComment("Not found:  " + resource);
+                            }
+                        }
+
+                    } else if (tokens.length == 3) {
+                        // get metrics data for single data node
+                        String dataPath = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
+                                tokens[1], tokens[2]);
+                        byte[] bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+                        MetricsData metricsData = null;
+                        if (bytes != null) {
+                            metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+                        }
+                        responseMessage.setBody(metricsData);
+                        if (metricsData == null) {
+                            responseMessage.setComment("Not found:  " + resource);
+                        }
+
+                    }
+                }
+            } // if observe
+
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NONODE) {
+                responseMessage.setBody(Collections.EMPTY_LIST);
+            } else {
+                responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
+            }
+        } catch (Exception e) {
+            logger.error("" + e, e);
+            responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
+
+        }
+
+        responseMessage.setId(requestMessage.getId());
+
+        return responseMessage;
+
+    }
+
+    MetricsObserver getClientObserver(final NodeId clientNodeId, final String clusterId, final String serviceId,
+            final String nodeId) {
+        MetricsObserver observer = new MetricsObserver() {
+            @Override
+            public void updated(MetricsData updated, MetricsData previous) {
+
+                try {
+                    Map<String, MetricsData> body = new HashMap<String, MetricsData>(3, 1.0f);
+                    body.put("updated", updated);
+                    body.put("previous", previous);
+
+                    SimpleEventMessage eventMessage = new SimpleEventMessage();
+                    eventMessage.setEvent("presence").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
+                            .setBody(body);
+
+                    MessagingService messagingService = getContext().getService("mesg");
+                    messagingService.sendMessageFF(getContext().getPathScheme().getFrameworkClusterId(),
+                            Reign.CLIENT_SERVICE_ID, clientNodeId, eventMessage);
+                } catch (Exception e) {
+                    logger.warn("Trouble notifying client observer:  " + e, e);
+                }
+
+            }
+        };
+
+        String nodePath = getPathScheme().joinTokens(clusterId, serviceId, clientNodeId.toString());
+        observer.setOwnerId(nodePath);
+
+        return observer;
     }
 
     long millisToExpiry(MetricsData metricsData) {

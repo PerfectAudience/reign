@@ -650,7 +650,7 @@ public class PresenceService extends AbstractService {
                         }
 
                     } else if (tokens.length == 3) {
-                        // list available nodes for a given service
+                        // get node info
                         NodeInfo nodeInfo = this.getNodeInfo(tokens[0], tokens[1], tokens[2]);
 
                         responseMessage = new SimpleResponseMessage();
@@ -675,6 +675,8 @@ public class PresenceService extends AbstractService {
                 } else if (tokens.length == 3) {
                     this.observe(tokens[0], tokens[1], tokens[2], this.<NodeInfo> getClientObserver(
                             parsedRequestMessage.getSenderId(), tokens[0], tokens[1], tokens[2]));
+                } else {
+                    responseMessage.setComment("Observing not supported:  " + resource);
                 }
             }
 
@@ -684,7 +686,8 @@ public class PresenceService extends AbstractService {
 
         } catch (Exception e) {
             logger.error("" + e, e);
-            ResponseMessage responseMessage = new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED);
+            ResponseMessage responseMessage = new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED,
+                    requestMessage.getId());
             responseMessage.setComment("" + e);
             return responseMessage;
         }

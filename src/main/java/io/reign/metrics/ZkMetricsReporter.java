@@ -179,7 +179,9 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            sb.append(",\n");
+            if (gauges.size() > 0) {
+                sb.append(",\n");
+            }
         }
 
         if (gauges.size() > 0) {
@@ -197,7 +199,9 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            sb.append(",\n");
+            if (histograms.size() > 0) {
+                sb.append(",\n");
+            }
         }
 
         if (histograms.size() > 0) {
@@ -215,7 +219,9 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            sb.append(",\n");
+            if (meters.size() > 0) {
+                sb.append(",\n");
+            }
         }
 
         if (meters.size() > 0) {
@@ -233,7 +239,9 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            sb.append(",\n");
+            if (timers.size() > 0) {
+                sb.append(",\n");
+            }
         }
 
         if (timers.size() > 0) {
