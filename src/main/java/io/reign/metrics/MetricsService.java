@@ -448,7 +448,7 @@ public class MetricsService extends AbstractService {
                     body.put("previous", previous);
 
                     SimpleEventMessage eventMessage = new SimpleEventMessage();
-                    eventMessage.setEvent("presence").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
+                    eventMessage.setEvent("metrics").setClusterId(clusterId).setServiceId(serviceId).setNodeId(nodeId)
                             .setBody(body);
 
                     MessagingService messagingService = getContext().getService("mesg");
