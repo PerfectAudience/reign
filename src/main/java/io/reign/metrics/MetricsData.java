@@ -16,6 +16,7 @@
 
 package io.reign.metrics;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -31,28 +32,28 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
 public class MetricsData {
 
     @JsonProperty("node_count")
-    private int nodeCount = 1;
+    private Integer nodeCount = 1;
 
     @JsonProperty("gauges")
-    private Map<String, GaugeData> gauges;
+    private Map<String, GaugeData> gauges = Collections.EMPTY_MAP;
 
     @JsonProperty("counters")
-    private Map<String, CounterData> counters;
+    private Map<String, CounterData> counters = Collections.EMPTY_MAP;
 
     @JsonProperty("histograms")
-    private Map<String, HistogramData> histograms;
+    private Map<String, HistogramData> histograms = Collections.EMPTY_MAP;
 
     @JsonProperty("meters")
-    private Map<String, MeterData> meters;
+    private Map<String, MeterData> meters = Collections.EMPTY_MAP;
 
     @JsonProperty("timers")
-    private Map<String, TimerData> timers;
+    private Map<String, TimerData> timers = Collections.EMPTY_MAP;
 
     @JsonProperty("interval_start_ts")
-    private long intervalStartTimestamp;
+    private Long intervalStartTimestamp;
 
     @JsonProperty("interval_length")
-    private int intervalLength;
+    private Integer intervalLength;
 
     @JsonProperty("interval_length_unit")
     private TimeUnit intervalLengthTimeUnit;
@@ -65,19 +66,19 @@ public class MetricsData {
         return nodeCount;
     }
 
-    public long getIntervalStartTimestamp() {
+    public Long getIntervalStartTimestamp() {
         return intervalStartTimestamp;
     }
 
-    public void setIntervalStartTimestamp(long intervalStartTimestamp) {
+    public void setIntervalStartTimestamp(Long intervalStartTimestamp) {
         this.intervalStartTimestamp = intervalStartTimestamp;
     }
 
-    public int getIntervalLength() {
+    public Integer getIntervalLength() {
         return intervalLength;
     }
 
-    public void setIntervalLength(int intervalLength) {
+    public void setIntervalLength(Integer intervalLength) {
         this.intervalLength = intervalLength;
     }
 

@@ -484,8 +484,12 @@ public class WebSocketServerHandler extends ExecutionHandler {
             return null;
         }
 
-        if ("/".equals(path)) {
-            path = "/index.html";
+        if ("".equals(path)) {
+            path = path + "/";
+        }
+
+        if (path.endsWith("/")) {
+            path = path + "index.html";
         }
 
         // try to find resource in cache, otherwise try to retrieve as stream from classpath

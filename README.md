@@ -249,7 +249,7 @@ See [Codahale Metrics](http://metrics.codahale.com/) for specific details on dif
 		// get a MetricRegistry manager which will rotate data every 60 seconds
         RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(60, TimeUnit.SECONDS);       
         
-        // export data from the service node every 10 seconds
+        // export data from the service node to ZooKeeper every 10 seconds
         metricsService.scheduleExport("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);
         
         // get some counters and increment
@@ -259,7 +259,7 @@ See [Codahale Metrics](http://metrics.codahale.com/) for specific details on dif
         counter2.inc(3);
         
         // get aggregated/combined metrics data for all nodes in a given service
-        MetricsData metricsData = metricsService.getMetrics("clusterA", "serviceA")
+        MetricsData metricsData = metricsService.getServiceMetrics("clusterA", "serviceA")
         CounterData requestCounterData = metricsData.getCounter("requests");
         System.out.println("Number of requests across the service is " + requestCounterData.getCount()); 
 
