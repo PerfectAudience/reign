@@ -1,4 +1,4 @@
-package io.reign.presence;
+package io.reign.util;
 
 import java.io.IOException;
 import java.util.List;

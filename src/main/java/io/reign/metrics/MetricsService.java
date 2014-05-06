@@ -333,15 +333,16 @@ public class MetricsService extends AbstractService {
             String resource = parsedRequestMessage.getResource();
 
             // strip beginning and ending slashes "/"
+            boolean endsWithSlash = false;
             if (resource.startsWith("/")) {
                 resource = resource.substring(1);
             }
             if (resource.endsWith("/")) {
+                endsWithSlash = true;
                 resource = resource.substring(0, resource.length() - 1);
             }
 
             /** get response **/
-            // if base path, just return available clusters
             if ("observe".equals(parsedRequestMessage.getMeta())) {
                 responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
                 String[] tokens = getPathScheme().tokenizePath(resource);
@@ -375,7 +376,7 @@ public class MetricsService extends AbstractService {
                         }
 
                     } else if (tokens.length == 2) {
-                        if ("list".equals(parsedRequestMessage.getMeta())) {
+                        if (endsWithSlash) {
                             // list available nodes for a given service
                             String path = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
                                     tokens[1]);
@@ -424,6 +425,7 @@ public class MetricsService extends AbstractService {
             } else {
                 responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
             }
+
         } catch (Exception e) {
             logger.error("" + e, e);
             responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
