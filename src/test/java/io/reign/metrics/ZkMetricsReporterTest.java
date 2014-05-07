@@ -18,15 +18,17 @@ public class ZkMetricsReporterTest {
         try {
             RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(300, TimeUnit.SECONDS);
 
-            final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registryManager)
-                    .convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS).build();
+            final ZkMetricsReporter reporter = ZkMetricsReporter.builder().convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS).build();
 
-            String string = reporter.report(new StringBuilder()).toString();
+            String string = reporter.report(registryManager.get(), registryManager.getLastRotatedTimestamp(),
+                    registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), new StringBuilder())
+                    .toString();
             logger.debug(string);
 
             byte[] bytes = string.getBytes("UTF-8");
-            JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
-            assertTrue(true);
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(metricsData.getCounters().size() == 0);
         } catch (Exception e) {
             logger.error("" + e, e);
             assertFalse(true);

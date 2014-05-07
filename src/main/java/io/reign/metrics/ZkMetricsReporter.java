@@ -14,6 +14,7 @@ import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 
@@ -31,8 +32,8 @@ public class ZkMetricsReporter {
      *            the registry to report
      * @return a {@link Builder} instance for a {@link ZkMetricsReporter}
      */
-    public static Builder forRegistry(MetricRegistryManager registryRef) {
-        return new Builder(registryRef);
+    public static Builder builder() {
+        return new Builder();
     }
 
     /**
@@ -40,15 +41,14 @@ public class ZkMetricsReporter {
      * events/second, converting durations to milliseconds, and not filtering metrics.
      */
     public static class Builder {
-        private final MetricRegistryManager registryRef;
+
         private Locale locale;
         private TimeUnit rateUnit;
         private TimeUnit durationUnit;
         // private final Clock clock;
         private MetricFilter filter;
 
-        private Builder(MetricRegistryManager registryRef) {
-            this.registryRef = registryRef;
+        private Builder() {
             this.locale = Locale.getDefault();
             this.rateUnit = TimeUnit.SECONDS;
             this.durationUnit = TimeUnit.MILLISECONDS;
@@ -117,23 +117,22 @@ public class ZkMetricsReporter {
         }
 
         public ZkMetricsReporter build() {
-            return new ZkMetricsReporter(registryRef, rateUnit, durationUnit, filter);
+            return new ZkMetricsReporter(rateUnit, durationUnit, filter);
         }
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ZkMetricsReporter.class);
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-    private final MetricRegistryManager registryRef;
+    // private final AtomicReference<MetricRegistry> registryRef;
     private final MetricFilter filter;
     private final double durationFactor;
     private final String durationUnit;
     private final double rateFactor;
     private final String rateUnit;
 
-    private ZkMetricsReporter(MetricRegistryManager registryRef, TimeUnit rateUnit, TimeUnit durationUnit,
-            MetricFilter filter) {
-        this.registryRef = registryRef;
+    private ZkMetricsReporter(TimeUnit rateUnit, TimeUnit durationUnit, MetricFilter filter) {
+        // this.registryRef = registryRef;
         this.filter = filter;
         this.rateFactor = rateUnit.toSeconds(1);
         this.rateUnit = serializeUnit(rateUnit);
@@ -142,25 +141,28 @@ public class ZkMetricsReporter {
 
     }
 
-    public StringBuilder report(StringBuilder sb) {
-        return report(sb, registryRef.get().getGauges(filter), registryRef.get().getCounters(filter), registryRef.get()
-                .getHistograms(filter), registryRef.get().getMeters(filter), registryRef.get().getTimers(filter));
+    public StringBuilder report(MetricRegistry registry, long lastRotatedTimestamp, long rotationInterval,
+            TimeUnit rotationTimeUnit, StringBuilder sb) {
+        return report(lastRotatedTimestamp, rotationInterval, rotationTimeUnit, sb, registry.getGauges(filter),
+                registry.getCounters(filter), registry.getHistograms(filter), registry.getMeters(filter),
+                registry.getTimers(filter));
     }
 
-    public StringBuilder report(StringBuilder sb, SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters,
+    public StringBuilder report(long lastRotatedTimestamp, long rotationInterval, TimeUnit rotationTimeUnit,
+            StringBuilder sb, SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters,
             SortedMap<String, Histogram> histograms, SortedMap<String, Meter> meters, SortedMap<String, Timer> timers) {
         sb.append("{\n");
 
         sb.append("\"interval_start_ts\":");
-        sb.append(registryRef.getLastRotatedTimestamp());
+        sb.append(lastRotatedTimestamp);
         sb.append(",\n");
 
         sb.append("\"interval_length\":");
-        sb.append(registryRef.getRotationInterval());
+        sb.append(rotationInterval);
         sb.append(",\n");
 
         sb.append("\"interval_length_unit\":\"");
-        sb.append(serializeUnit(registryRef.getRotationTimeUnit()));
+        sb.append(serializeUnit(rotationTimeUnit));
         sb.append("\"");
 
         if (counters.size() > 0) {

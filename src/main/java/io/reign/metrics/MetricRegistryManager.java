@@ -29,7 +29,11 @@ public interface MetricRegistryManager {
 
     public MetricRegistry get();
 
-    public void rotateAsNecessary();
+    /**
+     * 
+     * @return old MetricRegistry if rotated; current MetricRegistry otherwise
+     */
+    public MetricRegistry rotateAsNecessary();
 
     public int getRotationInterval();
 

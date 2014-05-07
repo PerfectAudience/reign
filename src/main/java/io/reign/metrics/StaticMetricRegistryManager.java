@@ -61,8 +61,8 @@ public class StaticMetricRegistryManager implements MetricRegistryManager {
     }
 
     @Override
-    public void rotateAsNecessary() {
-
+    public MetricRegistry rotateAsNecessary() {
+        return this.metricRegistry;
     }
 
 }

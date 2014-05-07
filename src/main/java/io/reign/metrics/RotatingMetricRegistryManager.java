@@ -69,14 +69,17 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
     }
 
     @Override
-    public synchronized void rotateAsNecessary() {
+    public synchronized MetricRegistry rotateAsNecessary() {
+        MetricRegistry oldMetricRegistry = this.metricRegistry;
         if (System.currentTimeMillis() - lastRotatedTimestamp > rotationIntervalMillis) {
             this.metricRegistry = new MetricRegistry();
+            oldMetricRegistry = this.metricRegistry;
             this.lastRotatedTimestamp = getNormalizedTimestamp(rotationIntervalMillis);
             logger.debug(
                     "Rotating MetricRegistry:  System.currentTimeMillis()={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",
                     System.currentTimeMillis(), lastRotatedTimestamp, rotationIntervalMillis, lastRotatedTimestamp);
         }
+        return oldMetricRegistry;
     }
 
     long getNormalizedTimestamp(long intervalLength) {
