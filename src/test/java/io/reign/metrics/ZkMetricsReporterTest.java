@@ -198,4 +198,37 @@ public class ZkMetricsReporterTest {
             assertFalse(true);
         }
     }
+
+    @Test
+    public void testSingleGaugeSingleMeter() throws Exception {
+        try {
+            StaticMetricRegistryManager registryManager = new StaticMetricRegistryManager();
+            Gauge<Integer> gauge = registryManager.get().register("testGauge", new Gauge<Integer>() {
+                @Override
+                public Integer getValue() {
+                    return 1;
+                }
+            });
+            Meter meter = registryManager.get().meter("testMeter");
+            meter.mark(1);
+
+            final ZkMetricsReporter reporter = ZkMetricsReporter.builder().convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+
+            String string = reporter.report(registryManager.get(), registryManager.getLastRotatedTimestamp(),
+                    registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), new StringBuilder())
+                    .toString();
+            logger.debug(string);
+
+            byte[] bytes = string.getBytes("UTF-8");
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(metricsData.getGauges().size() == 1);
+            assertTrue(metricsData.getGauge("testGauge").getValue() == 1);
+            assertTrue(metricsData.getMeters().size() == 1);
+            assertTrue(metricsData.getMeter("testMeter").getCount() == 1);
+        } catch (Exception e) {
+            logger.error("" + e, e);
+            assertFalse(true);
+        }
+    }
 }
