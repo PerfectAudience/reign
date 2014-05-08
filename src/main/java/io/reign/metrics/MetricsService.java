@@ -365,6 +365,11 @@ public class MetricsService extends AbstractService {
                 } else {
                     responseMessage.setComment("Observing not supported:  " + resource);
                 }
+            } else if ("observe-stop".equals(parsedRequestMessage.getMeta())) {
+                responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
+                String absolutePath = getPathScheme().getAbsolutePath(PathType.METRICS, resource);
+                getContext().getObserverManager().removeByOwnerId(parsedRequestMessage.getSenderId().toString(),
+                        absolutePath);
             } else {
                 if (resource.length() == 0) {
                     // list available clusters
@@ -542,11 +547,18 @@ public class MetricsService extends AbstractService {
                                 logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
                                         serviceId, dataNode);
                                 String dataPath = null;
-                                MetricsData metricsData;
+                                MetricsData metricsData = null;
 
                                 dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                         pathScheme.joinTokens(clusterId, serviceId, dataNode));
-                                metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+
+                                try {
+                                    metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+                                } catch (Exception e) {
+                                    logger.warn("Error trying to aggregate data directory for service:  clusterId="
+                                            + clusterId + "; serviceId=" + serviceId + ":  " + e, e);
+                                    continue;
+                                }
 
                                 // skip data node if not within interval
                                 long millisToExpiry = millisToExpiry(metricsData);
@@ -698,7 +710,6 @@ public class MetricsService extends AbstractService {
                                 timers.put(key, timerData);
                             }
                             serviceMetricsData.setTimers(timers);
-
                             serviceMetricsData.setNodeCount(nodeCount);
 
                             // write to ZK
@@ -775,22 +786,29 @@ public class MetricsService extends AbstractService {
 
                             // remove all nodes that are older than rotation interval
                             for (String dataNode : dataNodes) {
-                                logger.trace("Checking data node expiry:  clusterId={}; serviceId={}; nodeId={}",
-                                        clusterId, serviceId, dataNode);
-                                dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                                        pathScheme.joinTokens(clusterId, serviceId, dataNode));
-                                MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
-                                long millisToExpiry = millisToExpiry(metricsData);
-                                if (millisToExpiry <= 0) {
-                                    logger.info("Removing expired data node:  path={}; millisToExpiry={}", dataPath,
-                                            millisToExpiry);
-                                    zkClient.delete(dataPath, -1);
-                                } else {
-                                    logger.trace("Data node is not yet expired:  path={}; millisToExpiry={}", dataPath,
-                                            millisToExpiry);
-                                }
-                            }
-                        }
+                                try {
+                                    logger.trace("Checking data node expiry:  clusterId={}; serviceId={}; nodeId={}",
+                                            clusterId, serviceId, dataNode);
+                                    dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                                            pathScheme.joinTokens(clusterId, serviceId, dataNode));
+                                    MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+
+                                    long millisToExpiry = millisToExpiry(metricsData);
+                                    if (millisToExpiry <= 0) {
+                                        logger.info("Removing expired data node:  path={}; millisToExpiry={}",
+                                                dataPath, millisToExpiry);
+                                        zkClient.delete(dataPath, -1);
+                                    } else {
+                                        logger.trace("Data node is not yet expired:  path={}; millisToExpiry={}",
+                                                dataPath, millisToExpiry);
+                                    }
+                                } catch (Exception e) {
+                                    logger.warn("Error trying to clean up data directory for service:  clusterId="
+                                            + clusterId + "; serviceId=" + serviceId + "; dataPath=" + dataPath + ":  "
+                                            + e, e);
+                                } // try
+                            }// for
+                        }// if
                     } catch (KeeperException e) {
                         if (e.code() != KeeperException.Code.NONODE) {
                             logger.warn("Error trying to clean up data directory for service:  clusterId=" + clusterId

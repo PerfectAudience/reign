@@ -166,12 +166,14 @@ public class ZkMetricsReporter {
         sb.append("\"");
 
         int metricClassRendered = 0;
+        int previousMetricClassRendered = 0;
 
         if (counters.size() > 0) {
-            if (metricClassRendered < 1) {
+            if (metricClassRendered < 1 || metricClassRendered > previousMetricClassRendered) {
                 sb.append(",\n");
             }
 
+            previousMetricClassRendered = metricClassRendered;
             metricClassRendered++;
 
             int i = 0;
@@ -188,16 +190,14 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            if (gauges.size() > 0) {
-                sb.append(",\n");
-            }
         }
 
         if (gauges.size() > 0) {
-            if (metricClassRendered < 1) {
+            if (metricClassRendered < 1 || metricClassRendered > previousMetricClassRendered) {
                 sb.append(",\n");
             }
 
+            previousMetricClassRendered = metricClassRendered;
             metricClassRendered++;
 
             int i = 0;
@@ -214,16 +214,14 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            if (histograms.size() > 0) {
-                sb.append(",\n");
-            }
         }
 
         if (histograms.size() > 0) {
-            if (metricClassRendered < 1) {
+            if (metricClassRendered < 1 || metricClassRendered > previousMetricClassRendered) {
                 sb.append(",\n");
             }
 
+            previousMetricClassRendered = metricClassRendered;
             metricClassRendered++;
 
             int i = 0;
@@ -240,16 +238,14 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            if (meters.size() > 0) {
-                sb.append(",\n");
-            }
         }
 
         if (meters.size() > 0) {
-            if (metricClassRendered < 1) {
+            if (metricClassRendered < 1 || metricClassRendered > previousMetricClassRendered) {
                 sb.append(",\n");
             }
 
+            previousMetricClassRendered = metricClassRendered;
             metricClassRendered++;
 
             int i = 0;
@@ -266,16 +262,14 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
 
-            if (timers.size() > 0) {
-                sb.append(",\n");
-            }
         }
 
         if (timers.size() > 0) {
-            if (metricClassRendered < 1) {
+            if (metricClassRendered < 1 || metricClassRendered > previousMetricClassRendered) {
                 sb.append(",\n");
             }
 
+            previousMetricClassRendered = metricClassRendered;
             metricClassRendered++;
 
             int i = 0;
@@ -292,6 +286,7 @@ public class ZkMetricsReporter {
             }
             sb.append("\n}");
         }
+
         sb.append("\n}");
 
         return sb;

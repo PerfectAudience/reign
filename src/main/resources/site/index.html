@@ -118,9 +118,28 @@ body {
 				<h4>Get info about a service node:</h4>
 				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]</code>				
 				<h4>Observe changes in service:</h4>
-				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe</code>				
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe</code><br/>
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe-stop</code>				
 				<hr />
 
+				<h2>Metrics Service</h2>
+				<p>
+					Route API calls to the Presence Service by prefixing with
+					<code>metrics:</code>
+				</p>	
+				<h4>List clusters:</h4>
+				<code>metrics:/</code>
+				<h4>List services in cluster:</h4>
+				<code>metrics:/[CLUSTER_ID]</code>
+				<h4>Get service metrics:</h4>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]</code>		
+				<h4>Get individual data nodes (trailing slash):</h4>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]/</code>									
+				<h4>Observe changes in service metrics:</h4>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe</code><br/>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe-stop</code>	
+				<hr />
+				
 				<h2>Configuration Service</h2>
 				<p>
 					Route API calls to the Configuration Service by prefixing with
