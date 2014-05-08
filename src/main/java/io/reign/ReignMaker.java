@@ -24,7 +24,7 @@ import io.reign.mesg.MessagingService;
 import io.reign.metrics.MetricsService;
 import io.reign.presence.PresenceService;
 import io.reign.zk.PathCache;
-import io.reign.zk.ResilientZkClientWithCache;
+import io.reign.zk.ResilientZkClient;
 import io.reign.zk.SimplePathCache;
 
 import java.io.IOException;
@@ -264,7 +264,7 @@ public class ReignMaker {
 
         ZkClient zkClient = null;
         try {
-            zkClient = new ResilientZkClientWithCache(zkConnectString, zkSessionTimeout, pathCache);
+            zkClient = new ResilientZkClient(zkConnectString, zkSessionTimeout);
         } catch (IOException e) {
             throw new ReignException("Fatal error:  could not initialize Zookeeper client!", e);
         }

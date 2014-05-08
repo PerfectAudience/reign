@@ -44,8 +44,6 @@ public class MetricsServiceTest {
                 TimeUnit.SECONDS));
         Counter observerTestCounter = registryManager.get().counter("observerTestCounter");
 
-        metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
-
         final AtomicInteger calledCount = new AtomicInteger(0);
         final AtomicReference<MetricsData> latest = new AtomicReference<MetricsData>();
         metricsService.observe("clusterA", "serviceC", new MetricsObserver() {
@@ -55,8 +53,8 @@ public class MetricsServiceTest {
 
                 logger.debug(
                         "*** OBSERVER:  calledCount={}; updated.observerTestCounter={}; previous.observerTestCounter={}",
-                        calledCount.get(), updated != null ? updated.getCounter("observerTestCounter").getCount()
-                                : null, previous != null ? previous.getCounter("observerTestCounter").getCount() : null);
+                        calledCount.get(), updated != null ? updated.getCounter("observerTestCounter") : null,
+                        previous != null ? previous.getCounter("observerTestCounter") : null);
 
                 latest.set(updated);
                 synchronized (calledCount) {
@@ -64,6 +62,8 @@ public class MetricsServiceTest {
                 }
             }
         });
+
+        metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
 
         // has not been updated yet
         assertTrue("calledCount should be 0, but is " + calledCount.get(), calledCount.get() == 0);
