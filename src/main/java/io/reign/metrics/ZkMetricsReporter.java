@@ -165,8 +165,15 @@ public class ZkMetricsReporter {
         sb.append(serializeUnit(rotationTimeUnit));
         sb.append("\"");
 
+        int metricClassRendered = 0;
+
         if (counters.size() > 0) {
-            sb.append(",\n");
+            if (metricClassRendered < 1) {
+                sb.append(",\n");
+            }
+
+            metricClassRendered++;
+
             int i = 0;
             sb.append("\"counters\":{\n");
             for (Map.Entry<String, Counter> entry : counters.entrySet()) {
@@ -187,6 +194,12 @@ public class ZkMetricsReporter {
         }
 
         if (gauges.size() > 0) {
+            if (metricClassRendered < 1) {
+                sb.append(",\n");
+            }
+
+            metricClassRendered++;
+
             int i = 0;
             sb.append("\"gauges\":{\n");
             for (Map.Entry<String, Gauge> entry : gauges.entrySet()) {
@@ -207,6 +220,12 @@ public class ZkMetricsReporter {
         }
 
         if (histograms.size() > 0) {
+            if (metricClassRendered < 1) {
+                sb.append(",\n");
+            }
+
+            metricClassRendered++;
+
             int i = 0;
             sb.append("\"histograms\":{\n");
             for (Map.Entry<String, Histogram> entry : histograms.entrySet()) {
@@ -227,6 +246,12 @@ public class ZkMetricsReporter {
         }
 
         if (meters.size() > 0) {
+            if (metricClassRendered < 1) {
+                sb.append(",\n");
+            }
+
+            metricClassRendered++;
+
             int i = 0;
             sb.append("\"meters\":{\n");
             for (Map.Entry<String, Meter> entry : meters.entrySet()) {
@@ -247,6 +272,12 @@ public class ZkMetricsReporter {
         }
 
         if (timers.size() > 0) {
+            if (metricClassRendered < 1) {
+                sb.append(",\n");
+            }
+
+            metricClassRendered++;
+
             int i = 0;
             sb.append("\"timers\":{\n");
             for (Map.Entry<String, Timer> entry : timers.entrySet()) {
