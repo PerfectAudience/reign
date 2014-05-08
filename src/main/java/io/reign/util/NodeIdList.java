@@ -14,30 +14,21 @@
  limitations under the License.
  */
 
-package io.reign.metrics;
+package io.reign.util;
 
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.codahale.metrics.MetricRegistry;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 /**
  * 
  * @author ypai
  * 
  */
-public interface MetricRegistryManager {
-
-    public MetricRegistry get();
-
-    /**
-     * 
-     * @return old MetricRegistry if rotated; current MetricRegistry otherwise
-     */
-    public MetricRegistry rotateAsNecessary();
-
-    public int getRotationInterval();
-
-    public TimeUnit getRotationTimeUnit();
-
-    public long getLastRotatedTimestamp();
+@JsonSerialize(using = NodeIdListSerializer.class)
+public class NodeIdList extends ArrayList<String> {
+    public NodeIdList(List<String> nodeList) {
+        super(nodeList);
+    }
 }

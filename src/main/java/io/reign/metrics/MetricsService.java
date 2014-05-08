@@ -54,6 +54,8 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.MetricRegistry;
+
 /**
  * 
  * @author ypai
@@ -126,21 +128,32 @@ public class MetricsService extends AbstractService {
             if (!exportPathMap.containsKey(key)) {
                 exportPathMap.put(key, new ExportMeta(null, registryManager));
             } else {
-                logger.info("Already exported metrics:  {}", key);
+                logger.info("Metrics export already scheduled:  {}", key);
                 return;
             }
         }
 
-        final ZkMetricsReporter reporter = ZkMetricsReporter.forRegistry(registryManager)
-                .convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS).build();
+        final ZkMetricsReporter reporter = ZkMetricsReporter.builder().convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+
+        long updateIntervalSeconds = updateIntervalTimeUnit.toSeconds(updateInterval);
+        updateIntervalSeconds = Math.min(updateIntervalSeconds / 2,
+                registryManager.getRotationTimeUnit().toSeconds(registryManager.getRotationInterval()) / 2);
+        if (updateIntervalSeconds < 1) {
+            updateIntervalSeconds = 1;
+        }
 
         executorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
+                // rotate as necessary
+                MetricRegistry metricRegistry = registryManager.rotateAsNecessary();
+
                 // logger.trace("EXPORTING METRICS...");
                 StringBuilder sb = new StringBuilder();
-                sb = reporter.report(sb);
+                sb = reporter.report(metricRegistry, registryManager.getLastRotatedTimestamp(),
+                        registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), sb);
                 // logger.trace("EXPORTING METRICS:  clusterId={}; serviceId={}; data=\n{}", clusterId, serviceId, sb);
 
                 // export to zk
@@ -172,11 +185,8 @@ public class MetricsService extends AbstractService {
                     logger.error("Could not export metrics data:  pathPrefix=" + exportMeta.dataPath, e);
                 }
 
-                // rotate as necessary
-                registryManager.rotateAsNecessary();
-
             }
-        }, 0, updateInterval, updateIntervalTimeUnit);
+        }, 0, updateIntervalSeconds, TimeUnit.SECONDS);
     }
 
     /**
@@ -298,13 +308,13 @@ public class MetricsService extends AbstractService {
 
     }
 
-    public synchronized void scheduleCleaner() {
+    synchronized void scheduleCleaner() {
         Runnable cleanerRunnable = new CleanerRunnable();
         executorService.scheduleAtFixedRate(cleanerRunnable, this.updateIntervalMillis / 2,
                 Math.max(this.updateIntervalMillis * 2, 60000), TimeUnit.MILLISECONDS);
     }
 
-    public synchronized void scheduleAggregation() {
+    synchronized void scheduleAggregation() {
         if (aggregationFuture != null) {
             aggregationFuture.cancel(false);
         }
@@ -333,15 +343,16 @@ public class MetricsService extends AbstractService {
             String resource = parsedRequestMessage.getResource();
 
             // strip beginning and ending slashes "/"
+            boolean endsWithSlash = false;
             if (resource.startsWith("/")) {
                 resource = resource.substring(1);
             }
             if (resource.endsWith("/")) {
+                endsWithSlash = true;
                 resource = resource.substring(0, resource.length() - 1);
             }
 
             /** get response **/
-            // if base path, just return available clusters
             if ("observe".equals(parsedRequestMessage.getMeta())) {
                 responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
                 String[] tokens = getPathScheme().tokenizePath(resource);
@@ -375,7 +386,7 @@ public class MetricsService extends AbstractService {
                         }
 
                     } else if (tokens.length == 2) {
-                        if ("list".equals(parsedRequestMessage.getMeta())) {
+                        if (endsWithSlash) {
                             // list available nodes for a given service
                             String path = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
                                     tokens[1]);
@@ -424,6 +435,7 @@ public class MetricsService extends AbstractService {
             } else {
                 responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);
             }
+
         } catch (Exception e) {
             logger.error("" + e, e);
             responseMessage.setStatus(ResponseStatus.ERROR_UNEXPECTED, "" + e);

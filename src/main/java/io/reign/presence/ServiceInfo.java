@@ -16,6 +16,8 @@
 
 package io.reign.presence;
 
+import io.reign.util.NodeIdListSerializer;
+
 import java.util.Collections;
 import java.util.List;
 
