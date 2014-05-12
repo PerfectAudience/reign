@@ -678,6 +678,11 @@ public class PresenceService extends AbstractService {
                 } else {
                     responseMessage.setComment("Observing not supported:  " + resource);
                 }
+            } else if ("observe-stop".equals(parsedRequestMessage.getMeta())) {
+                responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
+                String absolutePath = getPathScheme().getAbsolutePath(PathType.PRESENCE, resource);
+                getContext().getObserverManager().removeByOwnerId(parsedRequestMessage.getSenderId().toString(),
+                        absolutePath);
             }
 
             responseMessage.setId(requestMessage.getId());
