@@ -45,10 +45,13 @@ public class MeterData {
 
         MeterData meterData = new MeterData();
         meterData.setCount(samples);
-        meterData.setMeanRate(meanRateSum / samples);
-        meterData.setM1Rate(m1RateSum / samples);
-        meterData.setM5Rate(m5RateSum / samples);
-        meterData.setM15Rate(m15RateSum / samples);
+
+        if (samples > 0) {
+            meterData.setMeanRate(meanRateSum / samples);
+            meterData.setM1Rate(m1RateSum / samples);
+            meterData.setM5Rate(m5RateSum / samples);
+            meterData.setM15Rate(m15RateSum / samples);
+        }
 
         return meterData;
     }

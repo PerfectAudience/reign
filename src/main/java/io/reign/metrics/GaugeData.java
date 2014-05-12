@@ -26,7 +26,9 @@ public class GaugeData {
         }
 
         GaugeData gaugeData = new GaugeData();
-        gaugeData.setValue(sum / samples);
+        if (samples > 0) {
+            gaugeData.setValue(sum / samples);
+        }
         return gaugeData;
     }
 }
