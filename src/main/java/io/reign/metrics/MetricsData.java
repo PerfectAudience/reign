@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonPropertyOrder;
 
@@ -28,11 +29,15 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
  * @author ypai
  * 
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({ "interval_start_ts", "interval_length", "interval_length_unit" })
 public class MetricsData {
 
-    @JsonProperty("node_count")
-    private Integer nodeCount = 1;
+    @JsonProperty("data_node_count")
+    private Integer dataNodeCount = 0;
+
+    @JsonProperty("data_node_in_window_count")
+    private Integer dataNodeInWindowCount = 0;
 
     @JsonProperty("gauges")
     private Map<String, GaugeData> gauges = Collections.EMPTY_MAP;
@@ -58,12 +63,20 @@ public class MetricsData {
     @JsonProperty("interval_length_unit")
     private TimeUnit intervalLengthTimeUnit;
 
-    public void setNodeCount(int nodeCount) {
-        this.nodeCount = nodeCount;
+    public void setDataNodeInWindowCount(Integer dataNodeInWindowCount) {
+        this.dataNodeInWindowCount = dataNodeInWindowCount;
     }
 
-    public int getNodeCount() {
-        return nodeCount;
+    public Integer getDataNodeInWindowCount() {
+        return dataNodeInWindowCount;
+    }
+
+    public void setDataNodeCount(int dataNodeCount) {
+        this.dataNodeCount = dataNodeCount;
+    }
+
+    public int getDataNodeCount() {
+        return dataNodeCount;
     }
 
     public Long getIntervalStartTimestamp() {
