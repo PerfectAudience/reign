@@ -4,20 +4,21 @@ $(function() {
 	var requestIdSequence = 0;	
 	
     $("#cluster-id-menu .dropdown-menu").on('click', 'li a', function() {
-    	var previousClusterId = $("#cluster-id").text();
+    	
+    	var previousClusterId = selectedClusterId();
+    	hideAllServiceData();     	
+    	
     	var clusterId = $(this).text().trim();
     	console.log(clusterId);
     	$("#cluster-id").text(clusterId);
+    	$("#cluster-id").attr("clusterId", clusterId);   	
     	
-    	hideAllServiceData();    	
+     	$("li.active a.cluster-service-info").parent().removeClass("active");
     	
-    	var previousServiceId = $("li.active a.cluster-service-info").attr("serviceId");    	
-    	$("a.cluster-service-info").parent().removeClass("active");
-    	
-    	send("presence:/"+previousClusterId+"/"+previousServiceId+"#observe-stop > 5");
-    	send("metrics:/"+previousClusterId+"/"+previousServiceId+"#observe-stop > 5");    	
-    	
+     	send("presence:/"+previousClusterId+"#observe-stop > 1");
+     	
     	send("presence:/"+clusterId+" > 1");
+    	send("presence:/"+clusterId+"#observe > 1");
     	
     });
     
@@ -158,7 +159,7 @@ $(function() {
 				
 			} else if( (response.id && response.id==2) ) {
 				// metrics
-				renderMetrics( response.body );
+				renderMetrics( response.body.clusterId, response.body.serviceId, response.body );
                 
 		    } else if( (response.id && response.id==4) ) {
 		    	// service node list
@@ -200,7 +201,22 @@ $(function() {
 		}		
 	}
 	
+	function selectedServiceId() {
+		return $("li.active a.cluster-service-info").attr("serviceId");	
+	}
+	
+	function selectedClusterId() {
+		return $("#cluster-id").attr("clusterId");
+	}
+	
 	function renderNodeList(clusterId, serviceId, nodeIdList) {
+		if( clusterId!=selectedClusterId() ) {			
+			send("presence:/"+clusterId+"/"+serviceId+"#observe-stop > 5");
+		}
+		if( serviceId!=selectedServiceId() ) {
+			return;
+		}
+		
     	// service node list
 		var serviceNodeHtml = '';
      
@@ -223,8 +239,13 @@ $(function() {
 		$('#'+clusterId+"-"+serviceId+'-node-count').html(count);
 	}
 	
-	function renderMetrics( metrics ) {
-		console.log("Rendering metrics...");
+	function renderMetrics( clusterId, serviceId, metrics ) {
+		if( !clusterId || clusterId!=selectedClusterId() ) {			
+			send("metrics:/"+clusterId+"/"+serviceId+"#observe-stop > 5");
+		}
+		if( !serviceId || serviceId!=selectedServiceId() ) {
+			return;
+		}
 		
 		// counters
 		if( metrics.counters ) {
@@ -339,7 +360,7 @@ $(function() {
 		
 		// handle event	
 		if( mesg.event && mesg.event=="metrics" ) {			
-			renderMetrics( mesg.body.updated );
+			renderMetrics( mesg.clusterId, mesg.serviceId, mesg.body.updated );
 		} else if(mesg.event && mesg.event=="presence") {
             renderNodeList(mesg.clusterId, mesg.serviceId, mesg.body.updated.nodeIdList);
             updateServiceNodeCount(mesg.clusterId, mesg.serviceId, mesg.body.updated.nodeIdList.length);	    
@@ -354,6 +375,8 @@ $(function() {
 		console.log(html);
 	}
 	
-	connectWebSocket("${HOST}");
+	//connectWebSocket("${HOST}");
+	
+	connectWebSocket("ws://dev-rtb-test01.dev.tm-emy-1a.public:33033/ws");
 	
 });
