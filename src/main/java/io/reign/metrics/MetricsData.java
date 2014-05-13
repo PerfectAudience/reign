@@ -30,13 +30,11 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
  * 
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({ "interval_start_ts", "interval_length", "interval_length_unit" })
+@JsonPropertyOrder({ "clusterId", "serviceId", "intervalStartTimestamp", "intervalLength", "intervalLengthTimeUnit" })
 public class MetricsData {
 
-    @JsonProperty("data_node_count")
     private Integer dataNodeCount = 0;
 
-    @JsonProperty("data_node_in_window_count")
     private Integer dataNodeInWindowCount = 0;
 
     @JsonProperty("gauges")
@@ -54,14 +52,31 @@ public class MetricsData {
     @JsonProperty("timers")
     private Map<String, TimerData> timers = Collections.EMPTY_MAP;
 
-    @JsonProperty("interval_start_ts")
     private Long intervalStartTimestamp;
 
-    @JsonProperty("interval_length")
     private Integer intervalLength;
 
-    @JsonProperty("interval_length_unit")
-    private TimeUnit intervalLengthTimeUnit;
+    private TimeUnit intervalLengthUnit;
+
+    private String clusterId;
+
+    private String serviceId;
+
+    public String getClusterId() {
+        return clusterId;
+    }
+
+    public void setClusterId(String clusterId) {
+        this.clusterId = clusterId;
+    }
+
+    public String getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(String serviceId) {
+        this.serviceId = serviceId;
+    }
 
     public void setDataNodeInWindowCount(Integer dataNodeInWindowCount) {
         this.dataNodeInWindowCount = dataNodeInWindowCount;
@@ -95,12 +110,12 @@ public class MetricsData {
         this.intervalLength = intervalLength;
     }
 
-    public TimeUnit getIntervalLengthTimeUnit() {
-        return intervalLengthTimeUnit;
+    public TimeUnit getIntervalLengthUnit() {
+        return intervalLengthUnit;
     }
 
-    public void setIntervalLengthTimeUnit(TimeUnit intervalLengthTimeUnit) {
-        this.intervalLengthTimeUnit = intervalLengthTimeUnit;
+    public void setIntervalLengthUnit(TimeUnit intervalLengthUnit) {
+        this.intervalLengthUnit = intervalLengthUnit;
     }
 
     public GaugeData getGauge(String key) {
