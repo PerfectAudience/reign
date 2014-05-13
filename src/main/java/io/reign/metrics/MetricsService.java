@@ -202,6 +202,8 @@ public class MetricsService extends AbstractService {
             MetricsData metricsData = null;
             if (bytes != null) {
                 metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+                metricsData.setClusterId(clusterId);
+                metricsData.setServiceId(serviceId);
             }
             return metricsData;
         } catch (KeeperException e) {
@@ -243,6 +245,8 @@ public class MetricsService extends AbstractService {
             logger.debug("Retrieving metrics:  path={}", exportMeta.dataPath);
             byte[] bytes = getContext().getZkClient().getData(exportMeta.dataPath, true, new Stat());
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            metricsData.setClusterId(clusterId);
+            metricsData.setServiceId(serviceId);
             return metricsData;
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
@@ -488,7 +492,7 @@ public class MetricsService extends AbstractService {
             return -1;
         }
         long currentTimestamp = System.currentTimeMillis();
-        long intervalLengthMillis = metricsData.getIntervalLengthTimeUnit().toMillis(metricsData.getIntervalLength());
+        long intervalLengthMillis = metricsData.getIntervalLengthUnit().toMillis(metricsData.getIntervalLength());
         return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 30000 - currentTimestamp;
     }
 
