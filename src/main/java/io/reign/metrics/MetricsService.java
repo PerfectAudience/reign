@@ -715,6 +715,7 @@ public class MetricsService extends AbstractService {
                                 timers.put(key, timerData);
                             }
                             serviceMetricsData.setTimers(timers);
+
                             serviceMetricsData.setDataNodeCount(dataNodeCount);
                             serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
 
