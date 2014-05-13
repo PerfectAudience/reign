@@ -528,14 +528,14 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
         // if found return buffer to serve
         if (bytes != null) {
-            if (!contentType.startsWith("text")) {
+            if (!contentType.startsWith("text") && !contentType.endsWith("/javascript")) {
                 // binary file
                 return ChannelBuffers.copiedBuffer(bytes);
 
             } else {
                 // text file
                 String textContent = new String(bytes);
-                if (contentType.startsWith("text/html")) {
+                if (contentType.startsWith("text/") || contentType.endsWith("/javascript")) {
                     textContent = textContent.replace("${HOST}", host);
                 }
                 return ChannelBuffers.copiedBuffer(textContent, CharsetUtil.UTF_8);
