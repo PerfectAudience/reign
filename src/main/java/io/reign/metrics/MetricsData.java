@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonPropertyOrder;
 
@@ -28,11 +29,13 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
  * @author ypai
  * 
  */
-@JsonPropertyOrder({ "interval_start_ts", "interval_length", "interval_length_unit" })
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonPropertyOrder({ "clusterId", "serviceId", "intervalStartTimestamp", "intervalLength", "intervalLengthTimeUnit" })
 public class MetricsData {
 
-    @JsonProperty("node_count")
-    private Integer nodeCount = 1;
+    private Integer dataNodeCount = 0;
+
+    private Integer dataNodeInWindowCount = 0;
 
     @JsonProperty("gauges")
     private Map<String, GaugeData> gauges = Collections.EMPTY_MAP;
@@ -49,21 +52,46 @@ public class MetricsData {
     @JsonProperty("timers")
     private Map<String, TimerData> timers = Collections.EMPTY_MAP;
 
-    @JsonProperty("interval_start_ts")
     private Long intervalStartTimestamp;
 
-    @JsonProperty("interval_length")
     private Integer intervalLength;
 
-    @JsonProperty("interval_length_unit")
-    private TimeUnit intervalLengthTimeUnit;
+    private TimeUnit intervalLengthUnit;
 
-    public void setNodeCount(int nodeCount) {
-        this.nodeCount = nodeCount;
+    private String clusterId;
+
+    private String serviceId;
+
+    public String getClusterId() {
+        return clusterId;
     }
 
-    public int getNodeCount() {
-        return nodeCount;
+    public void setClusterId(String clusterId) {
+        this.clusterId = clusterId;
+    }
+
+    public String getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(String serviceId) {
+        this.serviceId = serviceId;
+    }
+
+    public void setDataNodeInWindowCount(Integer dataNodeInWindowCount) {
+        this.dataNodeInWindowCount = dataNodeInWindowCount;
+    }
+
+    public Integer getDataNodeInWindowCount() {
+        return dataNodeInWindowCount;
+    }
+
+    public void setDataNodeCount(int dataNodeCount) {
+        this.dataNodeCount = dataNodeCount;
+    }
+
+    public int getDataNodeCount() {
+        return dataNodeCount;
     }
 
     public Long getIntervalStartTimestamp() {
@@ -82,12 +110,12 @@ public class MetricsData {
         this.intervalLength = intervalLength;
     }
 
-    public TimeUnit getIntervalLengthTimeUnit() {
-        return intervalLengthTimeUnit;
+    public TimeUnit getIntervalLengthUnit() {
+        return intervalLengthUnit;
     }
 
-    public void setIntervalLengthTimeUnit(TimeUnit intervalLengthTimeUnit) {
-        this.intervalLengthTimeUnit = intervalLengthTimeUnit;
+    public void setIntervalLengthUnit(TimeUnit intervalLengthUnit) {
+        this.intervalLengthUnit = intervalLengthUnit;
     }
 
     public GaugeData getGauge(String key) {
