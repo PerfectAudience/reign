@@ -21,7 +21,12 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 
 /**
  * 
@@ -38,6 +43,27 @@ public class StaticMetricRegistryManager implements MetricRegistryManager {
     public StaticMetricRegistryManager() {
         this.metricRegistry = new MetricRegistry();
         lastRotatedTimestamp = System.currentTimeMillis();
+    }
+
+    public Counter counter(String name) {
+        return this.metricRegistry.counter(name);
+    }
+
+    public Meter meter(String name) {
+        return this.metricRegistry.meter(name);
+    }
+
+    public Timer timer(String name) {
+        return this.metricRegistry.timer(name);
+    }
+
+    public Histogram histogram(String name) {
+        return this.metricRegistry.histogram(name);
+    }
+
+    public Gauge gauge(String name, Gauge gauge) {
+        this.metricRegistry.register(name, gauge);
+        return gauge;
     }
 
     @Override
