@@ -46,11 +46,19 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
     private final TimeUnit rotationTimeUnit;
     private final long rotationIntervalMillis;
 
+    private MetricRegistryManagerCallback callback = NullMetricRegistryManagerCallback.NULL_CALLBACK;
+
     public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit) {
         this.rotationInterval = rotationInterval;
         this.rotationTimeUnit = rotationTimeUnit;
         rotationIntervalMillis = rotationTimeUnit.toMillis(rotationInterval);
         rotateAsNecessary();
+    }
+
+    public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
+            MetricRegistryManagerCallback callback) {
+        this(rotationInterval, rotationTimeUnit);
+        this.callback = callback;
     }
 
     @Override
@@ -101,16 +109,18 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
 
     @Override
     public synchronized MetricRegistry rotateAsNecessary() {
-        MetricRegistry oldMetricRegistry = this.metricRegistry;
         if (System.currentTimeMillis() - lastRotatedTimestamp > rotationIntervalMillis) {
+            MetricRegistry oldMetricRegistry = this.metricRegistry;
             this.metricRegistry = new MetricRegistry();
-            oldMetricRegistry = this.metricRegistry;
             this.lastRotatedTimestamp = getNormalizedTimestamp(rotationIntervalMillis);
+
+            callback.rotated(metricRegistry, oldMetricRegistry);
+
             logger.debug(
                     "Rotating MetricRegistry:  System.currentTimeMillis()={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",
                     System.currentTimeMillis(), lastRotatedTimestamp, rotationIntervalMillis, lastRotatedTimestamp);
         }
-        return oldMetricRegistry;
+        return this.metricRegistry;
     }
 
     long getNormalizedTimestamp(long intervalLength) {
