@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>Reign Framework</title>
+<title>Reign : Terminal</title>
 
 <meta charset="utf-8">
 <meta name="google" content="notranslate">
@@ -45,9 +45,11 @@ body {
 					<ul class="nav" id="nav">
 						<li><a href="#terminal" data-toggle="tab">Terminal</a></li>
 						<li><a href="#help" data-toggle="tab">Terminal Guide</a></li>
-						<li><a href="dashboard.html">Dashboard</a></li>
 						<li><a href="#contact" data-toggle="tab">Project Info</a></li>
-					</ul>					
+					</ul>	
+					<ul class="nav pull-right">
+						<li><a href="dashboard.html">Dashboard</a></li>
+					</ul>				
 				</div>
 				<!--/.nav-collapse -->
 			</div>
@@ -90,7 +92,7 @@ body {
 				<h1 class="text-info">Terminal Guide</h1>
 				<hr />
 
-				<h2>General API Format</h2>
+				<h3>General API Format</h3>
 
 				<p>
 					Core API calls are REST-ful in style and generally follow the form:<br />
@@ -100,11 +102,10 @@ body {
 					</code>
 				</p>
 				<p>Most calls have been designed in a familiar HTTP REST style.</p>
-				<p>&nbsp;</p>
 				<hr />
 
 
-				<h2>Presence Service</h2>
+				<h3>Presence Service</h3>
 				<p>
 					Route API calls to the Presence Service by prefixing with
 					<code>presence:</code>
@@ -122,7 +123,7 @@ body {
 				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe-stop</code>				
 				<hr />
 
-				<h2>Metrics Service</h2>
+				<h3>Metrics Service</h3>
 				<p>
 					Route API calls to the Presence Service by prefixing with
 					<code>metrics:</code>
@@ -140,7 +141,11 @@ body {
 				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe-stop</code>	
 				<hr />
 				
+<<<<<<< HEAD
 				<h2>Configuration Service</h2>
+=======
+				<h3>Configuration Service</h3>
+>>>>>>> develop
 				<p>
 					Route API calls to the Configuration Service by prefixing with
 					<code>conf:</code>
@@ -192,7 +197,7 @@ body {
 
 				<hr />
 
-				<h2>Coordination Service</h2>
+				<h3>Coordination Service</h3>
 				<p>
 					Route API calls to the Coordination Service by prefixing with
 					<code>coord:</code>
@@ -200,7 +205,7 @@ body {
 				<p>&nbsp;</p>
 				<hr />
 
-				<h2>Data Service</h2>
+				<h3>Data Service</h3>
 				<p>
 					Route API calls to the Coordination Service by prefixing with
 					<code>data:</code>
@@ -208,7 +213,7 @@ body {
 				<p>&nbsp;</p>
 				<hr />
 
-				<h2>Messaging Service</h2>
+				<h3>Messaging Service</h3>
 				<p>
 					Route API calls to the Messaging Service by prefixing with
 					<code>mesg:</code>

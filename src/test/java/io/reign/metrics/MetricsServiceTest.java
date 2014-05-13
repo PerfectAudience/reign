@@ -152,7 +152,7 @@ public class MetricsServiceTest {
         // get service metrics, but wait for both service nodes to be there before checking values
         MetricsData metricsData = null;
         while ((metricsData = metricsService.getServiceMetrics("clusterA", "serviceB")) == null
-                || metricsData.getNodeCount() < 2) {
+                || metricsData.getDataNodeCount() < 2) {
             // wait for aggregation to happen
             Thread.sleep(metricsService.getUpdateIntervalMillis() / 2);
         }

@@ -18,7 +18,12 @@ package io.reign.metrics;
 
 import java.util.concurrent.TimeUnit;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 
 /**
  * 
@@ -26,6 +31,16 @@ import com.codahale.metrics.MetricRegistry;
  * 
  */
 public interface MetricRegistryManager {
+
+    public Counter counter(String name);
+
+    public Meter meter(String name);
+
+    public Timer timer(String name);
+
+    public Histogram histogram(String name);
+
+    public Gauge gauge(String name, Gauge gauge);
 
     public MetricRegistry get();
 

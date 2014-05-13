@@ -542,10 +542,15 @@ public class MetricsService extends AbstractService {
                                     dataNodes.size() + 1, 1.0f);
                             Map<String, List<TimerData>> timerMap = new HashMap<String, List<TimerData>>(
                                     dataNodes.size() + 1, 1.0f);
-                            int nodeCount = 0;
+                            int dataNodeCount = 0;
+                            int dataNodeInWindowCount = 0;
                             for (String dataNode : dataNodes) {
+
+                                dataNodeCount++;
+
                                 logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
                                         serviceId, dataNode);
+
                                 String dataPath = null;
                                 MetricsData metricsData = null;
 
@@ -572,7 +577,7 @@ public class MetricsService extends AbstractService {
                                         millisToExpiry);
 
                                 // increment node count
-                                nodeCount++;
+                                dataNodeInWindowCount++;
 
                                 // counters
                                 Map<String, CounterData> counters = metricsData.getCounters();
@@ -644,10 +649,10 @@ public class MetricsService extends AbstractService {
                                     1.0f);
                             for (String key : counterMap.keySet()) {
                                 List<CounterData> counterList = counterMap.get(key);
-                                if (counterList.size() != nodeCount) {
+                                if (counterList.size() != dataNodeCount) {
                                     logger.warn(
                                             "counterList size does not match nodeCount:  counterList.size={}; nodeCount={}",
-                                            counterList.size(), nodeCount);
+                                            counterList.size(), dataNodeCount);
                                 }
                                 CounterData counterData = CounterData.merge(counterList);
                                 counters.put(key, counterData);
@@ -658,10 +663,10 @@ public class MetricsService extends AbstractService {
                             Map<String, GaugeData> gauges = new HashMap<String, GaugeData>(gaugeMap.size() + 1, 1.0f);
                             for (String key : gaugeMap.keySet()) {
                                 List<GaugeData> gaugeList = gaugeMap.get(key);
-                                if (gaugeList.size() != nodeCount) {
+                                if (gaugeList.size() != dataNodeCount) {
                                     logger.warn(
                                             "gaugeList size does not match nodeCount:  gaugeList.size={}; nodeCount={}",
-                                            gaugeList.size(), nodeCount);
+                                            gaugeList.size(), dataNodeCount);
                                 }
                                 GaugeData gaugeData = GaugeData.merge(gaugeList);
                                 gauges.put(key, gaugeData);
@@ -673,10 +678,10 @@ public class MetricsService extends AbstractService {
                                     histogramMap.size() + 1, 1.0f);
                             for (String key : histogramMap.keySet()) {
                                 List<HistogramData> histogramList = histogramMap.get(key);
-                                if (histogramList.size() != nodeCount) {
+                                if (histogramList.size() != dataNodeCount) {
                                     logger.warn(
                                             "histogramList size does not match nodeCount:  histogramList.size={}; nodeCount={}",
-                                            histogramList.size(), nodeCount);
+                                            histogramList.size(), dataNodeCount);
                                 }
                                 HistogramData histogramData = HistogramData.merge(histogramList);
                                 histograms.put(key, histogramData);
@@ -687,10 +692,10 @@ public class MetricsService extends AbstractService {
                             Map<String, MeterData> meters = new HashMap<String, MeterData>(meterMap.size() + 1, 1.0f);
                             for (String key : meterMap.keySet()) {
                                 List<MeterData> meterList = meterMap.get(key);
-                                if (meterList.size() != nodeCount) {
+                                if (meterList.size() != dataNodeCount) {
                                     logger.warn(
                                             "meterList size does not match nodeCount:  meterList.size={}; nodeCount={}",
-                                            meterList.size(), nodeCount);
+                                            meterList.size(), dataNodeCount);
                                 }
                                 MeterData meterData = MeterData.merge(meterList);
                                 meters.put(key, meterData);
@@ -701,16 +706,17 @@ public class MetricsService extends AbstractService {
                             Map<String, TimerData> timers = new HashMap<String, TimerData>(timerMap.size() + 1, 1.0f);
                             for (String key : timerMap.keySet()) {
                                 List<TimerData> timerList = timerMap.get(key);
-                                if (timerList.size() != nodeCount) {
+                                if (timerList.size() != dataNodeCount) {
                                     logger.warn(
                                             "timerList size does not match nodeCount:  timerList.size={}; nodeCount={}",
-                                            timerList.size(), nodeCount);
+                                            timerList.size(), dataNodeCount);
                                 }
                                 TimerData timerData = TimerData.merge(timerList);
                                 timers.put(key, timerData);
                             }
                             serviceMetricsData.setTimers(timers);
-                            serviceMetricsData.setNodeCount(nodeCount);
+                            serviceMetricsData.setDataNodeCount(dataNodeCount);
+                            serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
 
                             // write to ZK
                             String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
