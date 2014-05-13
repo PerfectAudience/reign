@@ -35,11 +35,17 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getCounters().size() == 0);
         } catch (Exception e) {
             logger.error("" + e, e);
             assertFalse(true);
         }
+    }
+
+    boolean isMetricsDataSane(MetricsData metricsData) {
+        return metricsData.getIntervalLengthUnit() != null && metricsData.getIntervalStartTimestamp() != null
+                && metricsData.getIntervalLength() != null;
     }
 
     @Test
@@ -59,6 +65,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getCounters().size() == 1);
             assertTrue(metricsData.getCounter("test").getCount() == 1);
         } catch (Exception e) {
@@ -84,6 +91,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getMeters().size() == 1);
             assertTrue(metricsData.getMeter("test").getCount() == 1);
         } catch (Exception e) {
@@ -113,6 +121,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getGauges().size() == 1);
             assertTrue(metricsData.getGauge("test").getValue() == 1);
         } catch (Exception e) {
@@ -138,6 +147,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getHistograms().size() == 1);
         } catch (Exception e) {
             logger.error("" + e, e);
@@ -163,7 +173,106 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getTimers().size() == 1);
+        } catch (Exception e) {
+            logger.error("" + e, e);
+            assertFalse(true);
+        }
+    }
+
+    @Test
+    public void testSingleCounterSingleTimer() throws Exception {
+        try {
+            StaticMetricRegistryManager registryManager = new StaticMetricRegistryManager();
+            Counter counter = registryManager.get().counter("testCounter");
+            counter.inc();
+            Timer timer = registryManager.get().timer("testTimer");
+            Context timerContext = timer.time();
+            timerContext.stop();
+
+            final ZkMetricsReporter reporter = ZkMetricsReporter.builder().convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+
+            String string = reporter.report(registryManager.get(), registryManager.getLastRotatedTimestamp(),
+                    registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), new StringBuilder())
+                    .toString();
+            logger.debug(string);
+
+            byte[] bytes = string.getBytes("UTF-8");
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
+            assertTrue(metricsData.getCounters().size() == 1);
+            assertTrue(metricsData.getCounter("testCounter").getCount() == 1);
+            assertTrue(metricsData.getTimers().size() == 1);
+        } catch (Exception e) {
+            logger.error("" + e, e);
+            assertFalse(true);
+        }
+    }
+
+    @Test
+    public void testSingleGaugeSingleMeter() throws Exception {
+        try {
+            StaticMetricRegistryManager registryManager = new StaticMetricRegistryManager();
+            Gauge<Integer> gauge = registryManager.get().register("testGauge", new Gauge<Integer>() {
+                @Override
+                public Integer getValue() {
+                    return 1;
+                }
+            });
+            Meter meter = registryManager.get().meter("testMeter");
+            meter.mark(1);
+
+            final ZkMetricsReporter reporter = ZkMetricsReporter.builder().convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+
+            String string = reporter.report(registryManager.get(), registryManager.getLastRotatedTimestamp(),
+                    registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), new StringBuilder())
+                    .toString();
+            logger.debug(string);
+
+            byte[] bytes = string.getBytes("UTF-8");
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
+            assertTrue(metricsData.getGauges().size() == 1);
+            assertTrue(metricsData.getGauge("testGauge").getValue() == 1);
+            assertTrue(metricsData.getMeters().size() == 1);
+            assertTrue(metricsData.getMeter("testMeter").getCount() == 1);
+        } catch (Exception e) {
+            logger.error("" + e, e);
+            assertFalse(true);
+        }
+    }
+
+    @Test
+    public void testSingleCounterSingleGauge() throws Exception {
+        try {
+            StaticMetricRegistryManager registryManager = new StaticMetricRegistryManager();
+            Counter counter = registryManager.get().counter("testCounter");
+            counter.inc();
+            Gauge<Integer> gauge = registryManager.get().register("testGauge", new Gauge<Integer>() {
+                @Override
+                public Integer getValue() {
+                    return 1;
+                }
+            });
+
+            final ZkMetricsReporter reporter = ZkMetricsReporter.builder().convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+
+            String string = reporter.report(registryManager.get(), registryManager.getLastRotatedTimestamp(),
+                    registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), new StringBuilder())
+                    .toString();
+            logger.debug(string);
+
+            byte[] bytes = string.getBytes("UTF-8");
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
+            assertTrue(metricsData.getGauges().size() == 1);
+            assertTrue(metricsData.getGauge("testGauge").getValue() == 1);
+            assertTrue(metricsData.getCounters().size() == 1);
+            assertTrue(metricsData.getCounter("testCounter").getCount() == 1);
         } catch (Exception e) {
             logger.error("" + e, e);
             assertFalse(true);
