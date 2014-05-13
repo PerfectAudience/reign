@@ -153,15 +153,15 @@ public class ZkMetricsReporter {
             SortedMap<String, Histogram> histograms, SortedMap<String, Meter> meters, SortedMap<String, Timer> timers) {
         sb.append("{\n");
 
-        sb.append("\"interval_start_ts\":");
+        sb.append("\"intervalStartTimestamp\":");
         sb.append(lastRotatedTimestamp);
         sb.append(",\n");
 
-        sb.append("\"interval_length\":");
+        sb.append("\"intervalLength\":");
         sb.append(rotationInterval);
         sb.append(",\n");
 
-        sb.append("\"interval_length_unit\":\"");
+        sb.append("\"intervalLengthUnit\":\"");
         sb.append(serializeUnit(rotationTimeUnit));
         sb.append("\"");
 

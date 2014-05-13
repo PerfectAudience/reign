@@ -35,11 +35,17 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getCounters().size() == 0);
         } catch (Exception e) {
             logger.error("" + e, e);
             assertFalse(true);
         }
+    }
+
+    boolean isMetricsDataSane(MetricsData metricsData) {
+        return metricsData.getIntervalLengthUnit() != null && metricsData.getIntervalStartTimestamp() != null
+                && metricsData.getIntervalLength() != null;
     }
 
     @Test
@@ -59,6 +65,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getCounters().size() == 1);
             assertTrue(metricsData.getCounter("test").getCount() == 1);
         } catch (Exception e) {
@@ -84,6 +91,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getMeters().size() == 1);
             assertTrue(metricsData.getMeter("test").getCount() == 1);
         } catch (Exception e) {
@@ -113,6 +121,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getGauges().size() == 1);
             assertTrue(metricsData.getGauge("test").getValue() == 1);
         } catch (Exception e) {
@@ -138,6 +147,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getHistograms().size() == 1);
         } catch (Exception e) {
             logger.error("" + e, e);
@@ -163,6 +173,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getTimers().size() == 1);
         } catch (Exception e) {
             logger.error("" + e, e);
@@ -190,6 +201,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getCounters().size() == 1);
             assertTrue(metricsData.getCounter("testCounter").getCount() == 1);
             assertTrue(metricsData.getTimers().size() == 1);
@@ -222,6 +234,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getGauges().size() == 1);
             assertTrue(metricsData.getGauge("testGauge").getValue() == 1);
             assertTrue(metricsData.getMeters().size() == 1);
@@ -255,6 +268,7 @@ public class ZkMetricsReporterTest {
 
             byte[] bytes = string.getBytes("UTF-8");
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            assertTrue(isMetricsDataSane(metricsData));
             assertTrue(metricsData.getGauges().size() == 1);
             assertTrue(metricsData.getGauge("testGauge").getValue() == 1);
             assertTrue(metricsData.getCounters().size() == 1);
