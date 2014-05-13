@@ -16,8 +16,8 @@
 
 package io.reign.metrics;
 
-import java.util.Calendar;
-import java.util.TimeZone;
+import io.reign.util.TimeUnitUtil;
+
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -109,10 +109,12 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
 
     @Override
     public synchronized MetricRegistry rotateAsNecessary() {
-        if (System.currentTimeMillis() - lastRotatedTimestamp > rotationIntervalMillis) {
+        long currentTimestamp = System.currentTimeMillis();
+        if (currentTimestamp - lastRotatedTimestamp > rotationIntervalMillis) {
             MetricRegistry oldMetricRegistry = this.metricRegistry;
             this.metricRegistry = new MetricRegistry();
-            this.lastRotatedTimestamp = getNormalizedTimestamp(rotationIntervalMillis);
+            this.lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
+                    System.currentTimeMillis());
 
             if (oldMetricRegistry != null) {
                 callback.rotated(metricRegistry, oldMetricRegistry);
@@ -125,87 +127,4 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
         return this.metricRegistry;
     }
 
-    long getNormalizedTimestamp(long intervalLength) {
-        long currentTimestamp = System.currentTimeMillis();
-        long intervalStartTimestamp;
-
-        /***** check interval lengths and create a normalized starting point, so all nodes are on the same interval clock *****/
-        if (intervalLength >= 3600000) {
-            // interval >= hour, set to previous hour start point
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            cal.setTimeInMillis(currentTimestamp);
-            cal.set(Calendar.MINUTE, 0);
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            intervalStartTimestamp = cal.getTimeInMillis();
-        } else if (intervalLength >= 1800000) {
-            // interval >= 30 minutes, set to previous half-hour start point
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            cal.setTimeInMillis(currentTimestamp);
-
-            if (cal.get(Calendar.MINUTE) >= 30) {
-                cal.set(Calendar.MINUTE, 30);
-            } else {
-                cal.set(Calendar.MINUTE, 0);
-            }
-
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            intervalStartTimestamp = cal.getTimeInMillis();
-        } else if (intervalLength >= 900000) {
-            // interval >= 15 minutes, set to nearest previous quarter hour
-            // start point
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            cal.setTimeInMillis(currentTimestamp);
-
-            int minutes = cal.get(Calendar.MINUTE);
-            int diff = minutes % 15;
-            cal.set(Calendar.MINUTE, minutes - diff);
-
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            intervalStartTimestamp = cal.getTimeInMillis();
-
-        } else if (intervalLength >= 600000) {
-            // interval >= 10 minutes, set to nearest previous 10 minute
-            // start point
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            cal.setTimeInMillis(currentTimestamp);
-
-            int minutes = cal.get(Calendar.MINUTE);
-            int diff = minutes % 10;
-            cal.set(Calendar.MINUTE, minutes - diff);
-
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            intervalStartTimestamp = cal.getTimeInMillis();
-
-        } else if (intervalLength >= 300000) {
-            // interval >= 5 minutes, set to nearest previous 5 minute start
-            // point
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            cal.setTimeInMillis(currentTimestamp);
-
-            int minutes = cal.get(Calendar.MINUTE);
-            int diff = minutes % 5;
-            cal.set(Calendar.MINUTE, minutes - diff);
-
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            intervalStartTimestamp = cal.getTimeInMillis();
-
-        } else if (intervalLength >= 60000) {
-            // interval >= 1 minute, set to nearest previous minute start point
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            cal.setTimeInMillis(currentTimestamp);
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            intervalStartTimestamp = cal.getTimeInMillis();
-        } else {
-            // smaller resolutions we just start whenever
-            intervalStartTimestamp = currentTimestamp;
-        }
-
-        return intervalStartTimestamp;
-    }
 }

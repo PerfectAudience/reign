@@ -16,8 +16,6 @@
 
 package io.reign.coord;
 
-import io.reign.util.TimeUnitUtil;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -335,7 +333,7 @@ public class ZkSemaphore implements DistributedSemaphore {
         // attempt to acquire all permits, returning all temporarily acquired
         // permits if we to get desired number of permits quickly
         Set<String> tmpAcquiredPermitPathSet = new HashSet<String>(permits, 0.9f);
-        long timeWaitMillis = TimeUnitUtil.toMillis(wait, timeUnit);
+        long timeWaitMillis = timeUnit.toMicros(wait);
         long startTimestamp = System.currentTimeMillis();
         try {
             for (int i = 0; i < permits && System.currentTimeMillis() - startTimestamp < timeWaitMillis; i++) {
@@ -414,7 +412,7 @@ public class ZkSemaphore implements DistributedSemaphore {
             return false;
         }
 
-        long timeWaitMillis = TimeUnitUtil.toMillis(wait, timeUnit);
+        long timeWaitMillis = timeUnit.toMicros(wait);
 
         String acquiredPermitPath = zkReservationManager.acquireForSemaphore(ownerId, entityPath,
                 ReservationType.SEMAPHORE, permitPoolSize(), aclList, timeWaitMillis, false);
