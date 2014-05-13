@@ -31,6 +31,7 @@ public class HistogramData {
 
         double p50Sum = 0;
         double p75Sum = 0;
+        double p95Sum = 0;
         double p98Sum = 0;
         double p99Sum = 0;
         double p999Sum = 0;
@@ -45,6 +46,7 @@ public class HistogramData {
 
             p50Sum += data.getP50() * data.getCount();
             p75Sum += data.getP75() * data.getCount();
+            p95Sum += data.getP95() * data.getCount();
             p98Sum += data.getP98() * data.getCount();
             p99Sum += data.getP99() * data.getCount();
             p999Sum += data.getP999() * data.getCount();
@@ -52,19 +54,22 @@ public class HistogramData {
 
         HistogramData data = new HistogramData();
         data.setCount(samples);
-        data.setMin(min);
-        data.setMax(max);
+        data.setMin(samples > 0 ? min : 0);
+        data.setMax(samples > 0 ? max : 0);
 
         // sqrt of variances
         data.setStddev(Math.sqrt(stddevSum));
 
         // weighted avgs
-        data.setMean(meanSum / samples);
-        data.setP50(p50Sum / samples);
-        data.setP75(p75Sum / samples);
-        data.setP98(p98Sum / samples);
-        data.setP99(p99Sum / samples);
-        data.setP999(p999Sum / samples);
+        if (samples > 0) {
+            data.setMean(meanSum / samples);
+            data.setP50(p50Sum / samples);
+            data.setP75(p75Sum / samples);
+            data.setP95(p95Sum / samples);
+            data.setP98(p98Sum / samples);
+            data.setP99(p99Sum / samples);
+            data.setP999(p999Sum / samples);
+        }
 
         return data;
     }
