@@ -130,8 +130,9 @@ public class PresenceServiceTest {
                     }
                 });
 
+        assertTrue(serviceInfo != null);
         assertTrue("serviceInfo=" + ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE),
-                serviceInfo == null);
+                serviceInfo.getNodeIdList().size() == 0);
 
         presenceService.announce("clusterC", "serviceC1", true);
         synchronized (serviceInfoRef) {
