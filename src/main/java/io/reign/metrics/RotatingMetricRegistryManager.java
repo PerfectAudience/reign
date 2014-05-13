@@ -114,7 +114,9 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
             this.metricRegistry = new MetricRegistry();
             this.lastRotatedTimestamp = getNormalizedTimestamp(rotationIntervalMillis);
 
-            callback.rotated(metricRegistry, oldMetricRegistry);
+            if (oldMetricRegistry != null) {
+                callback.rotated(metricRegistry, oldMetricRegistry);
+            }
 
             logger.debug(
                     "Rotating MetricRegistry:  System.currentTimeMillis()={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",

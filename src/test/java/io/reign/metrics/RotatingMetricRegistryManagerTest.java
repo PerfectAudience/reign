@@ -6,6 +6,7 @@ import io.reign.presence.PresenceService;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -37,33 +38,42 @@ public class RotatingMetricRegistryManagerTest {
         metricsService.setUpdateIntervalMillis(3000);
 
         presenceService = MasterTestSuite.getReign().getService("presence");
-        presenceService.announce("clusterA", "serviceA", true);
+        presenceService.announce("clusterZ", "serviceZ", true);
     }
 
     @Test
     public void testCallback() throws Exception {
         final AtomicBoolean testPassed = new AtomicBoolean(false);
+        final AtomicReference<MetricRegistry> previousRef = new AtomicReference<MetricRegistry>();
+        final AtomicReference<MetricRegistry> currentRef = new AtomicReference<MetricRegistry>();
 
         MetricRegistryManager registryManager = getMetricRegistryManager(new RotatingMetricRegistryManager(1,
                 TimeUnit.SECONDS, new MetricRegistryManagerCallback() {
                     @Override
                     public void rotated(MetricRegistry current, MetricRegistry previous) {
+                        logger.debug("previous.counter1={}; current.counter1={}", previous.counter("counter1")
+                                .getCount(), current.counter("counter1").getCount());
                         if (!testPassed.get()) {
+                            previousRef.set(previous);
+                            currentRef.set(current);
                             testPassed.set(previous.counter("counter1").getCount() == 1
                                     && current.counter("counter1").getCount() == 0);
-                        }
-                        synchronized (testPassed) {
-                            testPassed.notifyAll();
+                            synchronized (testPassed) {
+                                testPassed.notifyAll();
+                            }
                         }
                     }
                 }));
-        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterZ", "serviceZ", registryManager, 1, TimeUnit.SECONDS);
 
         synchronized (testPassed) {
-            testPassed.wait(5000);
+            testPassed.wait(10000);
         }
 
-        assertTrue(testPassed.get());
+        assertTrue("previous=" + previousRef.get() + "; current=" + currentRef.get(), previousRef.get() != null
+                && currentRef.get() != null);
+        assertTrue("previous.counter1=" + previousRef.get().counter("counter1") + "; current.counter1="
+                + currentRef.get().counter("counter1").getCount(), testPassed.get());
     }
 
     MetricRegistryManager getMetricRegistryManager(MetricRegistryManager registryManager) throws Exception {
