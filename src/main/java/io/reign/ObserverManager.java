@@ -433,6 +433,22 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         }
     }
 
+    /**
+     * Remove observer associated with given node at the path.
+     * 
+     * @param ownerNodeId
+     */
+    public void removeByOwnerId(String ownerId, String path) {
+        logger.debug("Removing observer by owner:  ownerId={}; path={}", ownerId, path);
+        Set<T> ownerObserverSet = getOwnerObserverSet(ownerId, true);
+        for (Observer observer : ownerObserverSet) {
+            if (path.equals(observer.getPath())) {
+                logger.debug("Removing observer by owner:  ownerId={}; path={}", ownerId, path);
+                this.remove(path, observer);
+            }
+        }
+    }
+
     public void remove(String path, Observer observer) {
         Set<T> observerSet = getObserverSet(path, false);
         boolean success = observerSet.remove(observer);
