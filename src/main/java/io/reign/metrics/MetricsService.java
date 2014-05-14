@@ -146,19 +146,29 @@ public class MetricsService extends AbstractService {
 
         executorService.scheduleAtFixedRate(new Runnable() {
 
+            private volatile MetricRegistry currentMetricRegistry = null;
+
             @Override
             public void run() {
+                // get export metadata for this key
+                ExportMeta exportMeta = exportPathMap.get(key);
+
                 // rotate as necessary
                 MetricRegistry metricRegistry = registryManager.rotateAsNecessary();
+                if (metricRegistry != currentMetricRegistry) {
+                    currentMetricRegistry = metricRegistry;
+
+                    // set to null to force creation of new node in ZK
+                    exportMeta.dataPath = null;
+                }
 
                 // logger.trace("EXPORTING METRICS...");
                 StringBuilder sb = new StringBuilder();
-                sb = reporter.report(metricRegistry, registryManager.getLastRotatedTimestamp(),
+                sb = reporter.report(currentMetricRegistry, registryManager.getLastRotatedTimestamp(),
                         registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), sb);
                 // logger.trace("EXPORTING METRICS:  clusterId={}; serviceId={}; data=\n{}", clusterId, serviceId, sb);
 
                 // export to zk
-                ExportMeta exportMeta = exportPathMap.get(key);
                 try {
                     if (exportMeta.dataPath == null) {
                         PathScheme pathScheme = getContext().getPathScheme();
