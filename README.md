@@ -242,6 +242,8 @@ This information can be used for decisioning and/or monitoring within your distr
 
 See [Codahale Metrics](http://metrics.codahale.com/) for specific details on different types of metrics (counters, histograms, etc.).
 
+Basic usage:
+
         /** EXAMPLE #1:  metrics service example **/
         // get metrics service
         MetricsService metricsService = reign.getService("metrics");
@@ -262,6 +264,8 @@ See [Codahale Metrics](http://metrics.codahale.com/) for specific details on dif
         MetricsData metricsData = metricsService.getServiceMetrics("clusterA", "serviceA")
         CounterData requestCounterData = metricsData.getCounter("requests");
         System.out.println("Number of requests across the service is " + requestCounterData.getCount()); 
+        
+Instrumenting with Metrics and using a callback to receive notifications when metrics are rotated:        
         
         /** EXAMPLE #2:  metrics service example using a callback when metrics are rotated **/
         // a class that we want to instrument with metrics and we want to use references to Metric counters 
