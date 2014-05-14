@@ -196,7 +196,8 @@ public class MetricsService extends AbstractService {
         try {
             PathScheme pathScheme = getContext().getPathScheme();
             String dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId, serviceId));
-            byte[] bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+            Stat stat = new Stat();
+            byte[] bytes = getContext().getZkClient().getData(dataPath, true, stat);
             // String metricsDataJson = new String(bytes, UTF_8);
             // metricsDataJson.replaceAll("\n", "");
             MetricsData metricsData = null;
@@ -204,6 +205,7 @@ public class MetricsService extends AbstractService {
                 metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
                 metricsData.setClusterId(clusterId);
                 metricsData.setServiceId(serviceId);
+                metricsData.setLastUpdatedTimestamp(stat.getMtime());
             }
             return metricsData;
         } catch (KeeperException e) {
@@ -243,10 +245,12 @@ public class MetricsService extends AbstractService {
 
         try {
             logger.debug("Retrieving metrics:  path={}", exportMeta.dataPath);
-            byte[] bytes = getContext().getZkClient().getData(exportMeta.dataPath, true, new Stat());
+            Stat stat = new Stat();
+            byte[] bytes = getContext().getZkClient().getData(exportMeta.dataPath, true, stat);
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
             metricsData.setClusterId(clusterId);
             metricsData.setServiceId(serviceId);
+            metricsData.setLastUpdatedTimestamp(stat.getMtime());
             return metricsData;
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
@@ -265,8 +269,10 @@ public class MetricsService extends AbstractService {
                 pathScheme.joinTokens(clusterId, serviceId, dataNode));
         byte[] bytes = null;
         try {
-            bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+            Stat stat = new Stat();
+            bytes = getContext().getZkClient().getData(dataPath, true, stat);
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            metricsData.setLastUpdatedTimestamp(stat.getMtime());
             return metricsData;
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
@@ -487,13 +493,13 @@ public class MetricsService extends AbstractService {
         return observer;
     }
 
-    long millisToExpiry(MetricsData metricsData) {
-        if (metricsData == null) {
+    long millisToExpiry(MetricsData metricsData, long currentTimestamp) {
+        if (metricsData == null || metricsData.getIntervalLengthUnit() == null
+                || metricsData.getIntervalLength() == null) {
             return -1;
         }
-        long currentTimestamp = System.currentTimeMillis();
         long intervalLengthMillis = metricsData.getIntervalLengthUnit().toMillis(metricsData.getIntervalLength());
-        return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 30000 - currentTimestamp;
+        return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 5000 - currentTimestamp;
     }
 
     public class AggregationRunnable implements Runnable {
@@ -524,6 +530,8 @@ public class MetricsService extends AbstractService {
                     if (!presenceService.isMemberOf(clusterId, serviceId)) {
                         continue;
                     }
+
+                    long currentTimestamp = System.currentTimeMillis();
 
                     // get lock for a service
                     DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
@@ -570,7 +578,7 @@ public class MetricsService extends AbstractService {
                                 }
 
                                 // skip data node if not within interval
-                                long millisToExpiry = millisToExpiry(metricsData);
+                                long millisToExpiry = millisToExpiry(metricsData, currentTimestamp);
                                 if (millisToExpiry <= 0) {
                                     continue;
 
@@ -786,6 +794,8 @@ public class MetricsService extends AbstractService {
                         continue;
                     }
 
+                    long currentTimestamp = System.currentTimeMillis();
+
                     // get lock for a service
                     DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
                             + serviceId);
@@ -806,7 +816,8 @@ public class MetricsService extends AbstractService {
                                             pathScheme.joinTokens(clusterId, serviceId, dataNode));
                                     MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
 
-                                    long millisToExpiry = millisToExpiry(metricsData);
+                                    // keep last days worth of data
+                                    long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - 86400000);
                                     if (millisToExpiry <= 0) {
                                         logger.info("Removing expired data node:  path={}; millisToExpiry={}",
                                                 dataPath, millisToExpiry);
