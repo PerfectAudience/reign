@@ -722,6 +722,8 @@ public class MetricsService extends AbstractService {
 
                             serviceMetricsData.setDataNodeCount(dataNodeCount);
                             serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
+                            serviceMetricsData.setClusterId(clusterId);
+                            serviceMetricsData.setServiceId(serviceId);
 
                             // write to ZK
                             String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
