@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonPropertyOrder;
 
@@ -29,7 +28,6 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
  * @author ypai
  * 
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({ "clusterId", "serviceId", "intervalStartTimestamp", "intervalLength", "intervalLengthTimeUnit" })
 public class MetricsData {
 
