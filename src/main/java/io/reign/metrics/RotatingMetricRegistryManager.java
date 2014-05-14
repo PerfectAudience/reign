@@ -74,6 +74,9 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
             if (callbackList == Collections.EMPTY_LIST) {
                 callbackList = new ArrayList<MetricRegistryManagerCallback>();
             }
+            if (callbackList.contains(callback)) {
+                return;
+            }
             callbackList.add(callback);
         }
     }
