@@ -5,6 +5,7 @@ $(function() {
 	var requestIdSequence = 0;	
 	
     $("#cluster-id-menu .dropdown-menu").on('click', 'li a', function() {
+    	// handle selection of cluster
     	
     	var previousClusterId = selectedClusterId();
     	hideAllServiceData();     	
@@ -24,6 +25,8 @@ $(function() {
     });
     
     $("#service-list").on('click', 'li a.cluster-service-info', function() {
+    	// handle selection of service
+    	
     	hideAllServiceData();
     	
     	var clusterId = $("#cluster-id").text().trim();
@@ -34,6 +37,7 @@ $(function() {
     	
     	var previousServiceId = $("li.active a.cluster-service-info").attr("serviceId");
     	
+    	$(".service-name").html(clusterId+"/"+serviceId);
     	
     	$("a.cluster-service-info").parent().removeClass("active");
     	$(this).parent().addClass("active");
