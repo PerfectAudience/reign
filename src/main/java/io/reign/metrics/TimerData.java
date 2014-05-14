@@ -3,8 +3,6 @@ package io.reign.metrics;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.codehaus.jackson.annotate.JsonProperty;
-
 /**
  * 
  * @author ypai
@@ -24,22 +22,16 @@ public class TimerData {
     private double p99;
     private double p999;
 
-    @JsonProperty("mean_rate")
     private double meanRate;
 
-    @JsonProperty("m1_rate")
     private double m1Rate;
 
-    @JsonProperty("m5_rate")
     private double m5Rate;
 
-    @JsonProperty("m15_rate")
     private double m15Rate;
 
-    @JsonProperty("rate_unit")
     private TimeUnit rateUnit;
 
-    @JsonProperty("duration_unit")
     private TimeUnit durationUnit;
 
     public static TimerData merge(List<TimerData> dataList) {
@@ -77,6 +69,11 @@ public class TimerData {
         data.setCount(samples);
         data.setMin(samples > 0 ? min : 0);
         data.setMax(samples > 0 ? max : 0);
+
+        if (dataList.size() > 0) {
+            data.setRateUnit(dataList.get(0).getRateUnit());
+            data.setDurationUnit(dataList.get(0).getDurationUnit());
+        }
 
         // sqrt of variances
         data.setStddev(Math.sqrt(stddevSum));
