@@ -1,3 +1,4 @@
+var connectWebSocket;
 $(function() {
 
 	var socket;
@@ -70,7 +71,7 @@ $(function() {
 			requestId = requestId.trim();
 		}
 		if( !socket || socket.readyState==socket.CLOSED ) {
-			connectWebSocket();	
+			connectWebSocket($('#connectHost').val());	
 			
 			// add additional event handling
 			var currentOnOpen = socket.onopen;
@@ -91,7 +92,7 @@ $(function() {
 		}
 	} // send
 
-	function connectWebSocket( uri ) {			
+	connectWebSocket = function ( uri ) {			
 		// close socket if already open
 		if (socket && socket.readyState!=socket.CLOSED && socket.readyState!=socket.CLOSING ) {
 			socket.close();
@@ -125,6 +126,9 @@ $(function() {
 			newSocket.onopen = function(event) {
 				handleControlMessage('Web Socket opened:  '
 						+ socketUri);
+				
+				send('presence:/#observe > 5');
+				send('presence:/ > 6');				
 			};
 			newSocket.onclose = function(event) {
 				handleControlMessage(
@@ -162,37 +166,36 @@ $(function() {
 				renderMetrics( response.body.clusterId, response.body.serviceId, response.body );
                 
 		    } else if( (response.id && response.id==4) ) {
-		    	// service node list
-//		    	var nodeIdList = response.body.nodeIdList
-//				var serviceNodeHtml = '';
-//             
-//		    	if( nodeIdList.length && nodeIdList.length>0 ) {
-//	                for (var i = 0; i < nodeIdList.length; i++) { 
-//	                  var nodeInfo = nodeIdList[i];
-//	                  serviceNodeHtml += '<tr><td>'+nodeInfo.pid+'</td><td>'+nodeInfo.h+'</td><td>'+nodeInfo.ip+'</td><td>'+nodeInfo.mp+'</td></tr>';
-//	                }
-//	                console.log(serviceNodeHtml);
-//		        } else {
-//		        	serviceNodeHtml = '<tr><td colspan="4">No nodes available.</td></tr>'
-//		        }
-//		    	
-//                $('#service-node-list-data').html(serviceNodeHtml);
-//                $('#service-node-list').fadeIn('fast').removeClass('hidden');
-                
-                renderNodeList(response.body.clusterId, response.body.serviceId, response.body.nodeIdList);
-                updateServiceNodeCount(response.body.clusterId, response.body.serviceId, response.body.nodeIdList.length);
+                                renderNodeList(response.body.clusterId, response.body.serviceId, response.body.nodeIdList);
+                                updateServiceNodeCount(response.body.clusterId, response.body.serviceId, response.body.nodeIdList.length);
 		    	
 		    } else if( (response.id && response.id==1) ) {		    
 				// service list
 				var serviceList  = response.body;
+				serviceList.sort();
 				var serviceHtml = '';
 				var clusterId = $("#cluster-id").text().trim();
 				for (var i = 0; i < serviceList.length; i++) { 
 				  var clusterIdServiceId = clusterId+'-'+serviceList[i];
 				  serviceHtml += '<li><a id="'+clusterIdServiceId+'-info" class="cluster-service-info" href="#'+clusterIdServiceId+'" serviceId="'+serviceList[i]+'"><span id="'+clusterIdServiceId+'-id" class="cluster-service-id">'+serviceList[i]+'</span>&nbsp;<span id="'+clusterIdServiceId+'-node-count" class="cluster-service-node-count badge alert-success pull-right"></span></a></li>';
 				  send("presence:/"+clusterId+"/"+serviceList[i] + " > 3");
+				  send("presence:/"+clusterId+"/"+serviceList[i] + "#observe > 5");
 				}
 				
+				$('#service-list').html(serviceHtml);
+
+			} else if( (response.id && response.id==6) ) {
+				// cluster list
+				var clusterList  = response.body;
+				clusterList.sort();
+				var clusterListHtml = '';
+				for( var i=0; i<clusterList.length; i++) {
+					if( i>0 ) {
+						clusterListHtml += '<li class="divider"></li>';
+					}
+					clusterListHtml += '<li><a href="#">'+clusterList[i]+'</a></li>';
+				}
+				$('#cluster-id-menu-items').html(clusterListHtml);
 				$('#service-list').html(serviceHtml);
 			}
 			
@@ -209,6 +212,7 @@ $(function() {
 		return $("#cluster-id").attr("clusterId");
 	}
 	
+	
 	function renderNodeList(clusterId, serviceId, nodeIdList) {
 		if( clusterId!=selectedClusterId() ) {			
 			send("presence:/"+clusterId+"/"+serviceId+"#observe-stop > 5");
@@ -217,8 +221,18 @@ $(function() {
 			return;
 		}
 		
-    	// service node list
+    	        // service node list
 		var serviceNodeHtml = '';
+		
+		// sort node list
+		nodeIdList.sort(function(a, b) {
+	        if (a.h < b.h) {
+	            return -1;
+	        }  else if (a.h > b.h) {
+	            return 1;
+		    }
+	        return 0;
+	    });
      
     	if( nodeIdList.length && nodeIdList.length>0 ) {
             for (var i = 0; i < nodeIdList.length; i++) { 
@@ -226,7 +240,7 @@ $(function() {
               var pid = nodeInfo.pid ? nodeInfo.pid : '--';
               serviceNodeHtml += '<tr><td>'+pid+'</td><td>'+nodeInfo.h+'</td><td>'+nodeInfo.ip+'</td><td>'+nodeInfo.mp+'</td></tr>';
             }
-            console.log(serviceNodeHtml);
+            //console.log(serviceNodeHtml);
         } else {
         	serviceNodeHtml = '<tr><td colspan="4">No nodes available.</td></tr>'
         }
@@ -375,8 +389,7 @@ $(function() {
 		console.log(html);
 	}
 	
-	//connectWebSocket("${HOST}");
+	connectWebSocket($('#connectHost').val());
 	
-	connectWebSocket("ws://dev-rtb-test01.dev.tm-emy-1a.public:33033/ws");
 	
 });

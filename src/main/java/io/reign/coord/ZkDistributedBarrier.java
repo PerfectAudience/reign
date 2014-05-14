@@ -18,7 +18,6 @@ package io.reign.coord;
 
 import io.reign.AbstractObserver;
 import io.reign.ReignContext;
-import io.reign.util.TimeUnitUtil;
 import io.reign.util.ZkClientUtil;
 
 import java.util.Collections;
@@ -150,7 +149,7 @@ public class ZkDistributedBarrier implements DistributedBarrier {
                 if (timeout == -1) {
                     wait();
                 } else {
-                    wait(TimeUnitUtil.toMillis(timeout, timeUnit));
+                    wait(timeUnit.toMicros(timeout));
                 }
 
                 // see if we got out of wait without meeting barrier conditions

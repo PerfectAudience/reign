@@ -16,8 +16,6 @@
 
 package io.reign.coord;
 
-import io.reign.util.TimeUnitUtil;
-
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -163,7 +161,7 @@ public class ZkReentrantLock implements DistributedReentrantLock {
     public boolean tryLock(long wait, TimeUnit timeUnit) throws InterruptedException {
         if (acquiredLockPath == null) {
             // convert wait to millis
-            long timeWaitMillis = TimeUnitUtil.toMillis(wait, timeUnit);
+            long timeWaitMillis = timeUnit.toMicros(wait);
 
             // attempt to acquire lock
             acquiredLockPath = zkReservationManager.acquire(ownerId, entityPath, reservationType, aclList,
