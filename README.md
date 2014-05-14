@@ -242,7 +242,7 @@ This information can be used for decisioning and/or monitoring within your distr
 
 See [Codahale Metrics](http://metrics.codahale.com/) for specific details on different types of metrics (counters, histograms, etc.).
 
-        /** metrics service example **/
+        /** EXAMPLE #1:  metrics service example **/
         // get metrics service
         MetricsService metricsService = reign.getService("metrics");
 
@@ -262,6 +262,45 @@ See [Codahale Metrics](http://metrics.codahale.com/) for specific details on dif
         MetricsData metricsData = metricsService.getServiceMetrics("clusterA", "serviceA")
         CounterData requestCounterData = metricsData.getCounter("requests");
         System.out.println("Number of requests across the service is " + requestCounterData.getCount()); 
+        
+        /** EXAMPLE #2:  metrics service example using a callback when metrics are rotated **/
+        // a class that we want to instrument with metrics and we want to use references to Metric counters 
+        // instead of always retrieving them from a MetricRegistryManager instance
+        public class MyClass {
+            private volatile Counter requestCounter;
+            private volatile Counter errorCounter;
+            
+            public void setRequestCounter( Counter requestCounter ) {
+                this.requestCounter = requestCounter;
+            }
+            
+            public void setErrorCounter( Counter errorCounter ) {
+                this.errorCounter = errorCounter;
+            }
+        }
+          
+        // get metrics service
+        MetricsService metricsService = reign.getService("metrics");
+
+		// define a metrics rotation callback that updates counters used in the MyClass instance as metrics are rotated
+		MetricRegistryManagerCallback callback = new MetricRegistryManagerCallback() {
+			private MyClass myClass;
+		
+		    public void setMyClass(MyClass myClass) {
+		        this.myClass = myClass;
+		    }
+		
+		    public void rotated(MetricRegistry current, MetricRegistry previous) {
+		        myClass.setRequestCounter(current.counter("requestCounter"));
+		        myClass.setErrorCounter(current.counter("errorCounter"));
+		    }
+		};
+
+		// get a MetricRegistry manager which will rotate data every 60 seconds, and notify when rotating via a callback
+        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(60, TimeUnit.SECONDS, callback);       
+        
+        // export data from the service node to ZooKeeper every 10 seconds
+        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);                        
 
 ### Shutting down 
 
