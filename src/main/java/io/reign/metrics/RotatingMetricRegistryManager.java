@@ -18,6 +18,9 @@ package io.reign.metrics;
 
 import io.reign.util.TimeUnitUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -45,8 +48,7 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
     private final int rotationInterval;
     private final TimeUnit rotationTimeUnit;
     private final long rotationIntervalMillis;
-
-    private MetricRegistryManagerCallback callback = NullMetricRegistryManagerCallback.NULL_CALLBACK;
+    private List<MetricRegistryManagerCallback> callbackList = Collections.EMPTY_LIST;
 
     public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit) {
         this.rotationInterval = rotationInterval;
@@ -58,7 +60,43 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
     public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
             MetricRegistryManagerCallback callback) {
         this(rotationInterval, rotationTimeUnit);
-        this.callback = callback;
+        registerCallback(callback);
+    }
+
+    public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
+            List<MetricRegistryManagerCallback> callbackList) {
+        this(rotationInterval, rotationTimeUnit);
+        this.callbackList = callbackList;
+    }
+
+    public void registerCallback(MetricRegistryManagerCallback callback) {
+        synchronized (callbackList) {
+            if (callbackList == Collections.EMPTY_LIST) {
+                callbackList = new ArrayList<MetricRegistryManagerCallback>();
+            }
+            if (callbackList.contains(callback)) {
+                return;
+            }
+            callbackList.add(callback);
+        }
+    }
+
+    public void removeCallback(MetricRegistryManagerCallback callback) {
+        synchronized (callbackList) {
+            if (callbackList == Collections.EMPTY_LIST) {
+                return;
+            }
+            callbackList.remove(callback);
+        }
+    }
+
+    public void removeAllCallbacks() {
+        synchronized (callbackList) {
+            if (callbackList == Collections.EMPTY_LIST) {
+                return;
+            }
+            callbackList.clear();
+        }
     }
 
     @Override
@@ -117,7 +155,11 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
                     System.currentTimeMillis());
 
             if (oldMetricRegistry != null) {
-                callback.rotated(metricRegistry, oldMetricRegistry);
+                synchronized (callbackList) {
+                    for (MetricRegistryManagerCallback callback : callbackList) {
+                        callback.rotated(metricRegistry, oldMetricRegistry);
+                    }
+                }
             }
 
             logger.debug(

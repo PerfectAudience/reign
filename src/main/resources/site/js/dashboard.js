@@ -5,6 +5,7 @@ $(function() {
 	var requestIdSequence = 0;	
 	
     $("#cluster-id-menu .dropdown-menu").on('click', 'li a', function() {
+    	// handle selection of cluster
     	
     	var previousClusterId = selectedClusterId();
     	hideAllServiceData();     	
@@ -24,6 +25,8 @@ $(function() {
     });
     
     $("#service-list").on('click', 'li a.cluster-service-info', function() {
+    	// handle selection of service
+    	
     	hideAllServiceData();
     	
     	var clusterId = $("#cluster-id").text().trim();
@@ -34,6 +37,7 @@ $(function() {
     	
     	var previousServiceId = $("li.active a.cluster-service-info").attr("serviceId");
     	
+    	$(".service-name").html(clusterId+"/"+serviceId+'&nbsp;');
     	
     	$("a.cluster-service-info").parent().removeClass("active");
     	$(this).parent().addClass("active");
@@ -177,7 +181,7 @@ $(function() {
 				var clusterId = $("#cluster-id").text().trim();
 				for (var i = 0; i < serviceList.length; i++) { 
 				  var clusterIdServiceId = clusterId+'-'+serviceList[i];
-				  serviceHtml += '<li><a id="'+clusterIdServiceId+'-info" class="cluster-service-info" href="#'+clusterIdServiceId+'" serviceId="'+serviceList[i]+'"><span id="'+clusterIdServiceId+'-id" class="cluster-service-id">'+serviceList[i]+'</span>&nbsp;<span id="'+clusterIdServiceId+'-node-count" class="cluster-service-node-count badge alert-success pull-right"></span></a></li>';
+				  serviceHtml += '<li><a id="'+clusterIdServiceId+'-info" class="cluster-service-info" href="#'+clusterId+"/"+serviceList[i]+'" serviceId="'+serviceList[i]+'"><span id="'+clusterIdServiceId+'-id" class="cluster-service-id">'+serviceList[i]+'</span>&nbsp;<span id="'+clusterIdServiceId+'-node-count" class="cluster-service-node-count badge alert-success pull-right"></span></a></li>';
 				  send("presence:/"+clusterId+"/"+serviceList[i] + " > 3");
 				  send("presence:/"+clusterId+"/"+serviceList[i] + "#observe > 5");
 				}
@@ -317,10 +321,10 @@ $(function() {
 			  meterHtml += '<tr id="'+meterName+'">';
 			  meterHtml += '<td>'+meterName+'</td>';
 			  meterHtml += '<td>'+Math.round(meter.count)+'</td>';					  
-			  meterHtml += '<td>'+Math.round(meter.mean)+'</td>';
-			  meterHtml += '<td>'+Math.round(meter.m1_rate)+'</td>';
-			  meterHtml += '<td>'+Math.round(meter.m5_rate)+'</td>';
-			  meterHtml += '<td>'+Math.round(meter.m15_rate)+'</td>';
+			  meterHtml += '<td>'+Math.round(meter.meanRate)+'</td>';
+			  meterHtml += '<td>'+Math.round(meter.m1Rate)+'</td>';
+			  meterHtml += '<td>'+Math.round(meter.m5Rate)+'</td>';
+			  meterHtml += '<td>'+Math.round(meter.m15Rate)+'</td>';
 			  meterHtml += '</tr>';
 		      count++;
 			}

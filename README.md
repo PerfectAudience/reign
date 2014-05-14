@@ -301,7 +301,14 @@ Instrumenting with Metrics and using a callback to receive notifications when me
 		};
 
 		// get a MetricRegistry manager which will rotate data every 60 seconds, and notify when rotating via a callback
-        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(60, TimeUnit.SECONDS, callback);       
+        RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(60, TimeUnit.SECONDS, callback);
+        
+        // register another callback as necessary
+        registryManager.registerCallback( new MetricRegistryManagerCallback() {
+		    public void rotated(MetricRegistry current, MetricRegistry previous) {
+		        // do something else here
+		    }
+		};   
         
         // export data from the service node to ZooKeeper every 10 seconds
         metricsService.scheduleExport("clusterA", "serviceA", registryManager, 10, TimeUnit.SECONDS);                        

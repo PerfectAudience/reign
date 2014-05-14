@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonPropertyOrder;
 
@@ -29,7 +28,6 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
  * @author ypai
  * 
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({ "clusterId", "serviceId", "intervalStartTimestamp", "intervalLength", "intervalLengthTimeUnit" })
 public class MetricsData {
 
@@ -62,6 +60,16 @@ public class MetricsData {
 
     private String serviceId;
 
+    private long lastUpdatedTimestamp;
+
+    public long getLastUpdatedTimestamp() {
+        return lastUpdatedTimestamp;
+    }
+
+    public void setLastUpdatedTimestamp(long lastUpdatedTimestamp) {
+        this.lastUpdatedTimestamp = lastUpdatedTimestamp;
+    }
+
     public String getClusterId() {
         return clusterId;
     }
@@ -86,11 +94,11 @@ public class MetricsData {
         return dataNodeInWindowCount;
     }
 
-    public void setDataNodeCount(int dataNodeCount) {
+    public void setDataNodeCount(Integer dataNodeCount) {
         this.dataNodeCount = dataNodeCount;
     }
 
-    public int getDataNodeCount() {
+    public Integer getDataNodeCount() {
         return dataNodeCount;
     }
 

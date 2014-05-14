@@ -296,8 +296,8 @@ public class ZkMetricsReporter {
         final Snapshot snapshot = timer.getSnapshot();
 
         report(sb, name, new String[] { "count", "max", "mean", "min", "stddev", "p50", "p75", "p95", "p98", "p99",
-                "p999", "mean_rate", "m1_rate", "m5_rate", "m15_rate", "rate_unit", "duration_unit" },
-                timer.getCount(), convertDuration(snapshot.getMax()), convertDuration(snapshot.getMean()),
+                "p999", "meanRate", "m1Rate", "m5Rate", "m15Rate", "rateUnit", "durationUnit" }, timer.getCount(),
+                convertDuration(snapshot.getMax()), convertDuration(snapshot.getMean()),
                 convertDuration(snapshot.getMin()), convertDuration(snapshot.getStdDev()),
                 convertDuration(snapshot.getMedian()), convertDuration(snapshot.get75thPercentile()),
                 convertDuration(snapshot.get95thPercentile()), convertDuration(snapshot.get98thPercentile()),
@@ -308,7 +308,7 @@ public class ZkMetricsReporter {
     }
 
     private void reportMeter(StringBuilder sb, String name, Meter meter) {
-        report(sb, name, new String[] { "count", "mean_rate", "m1_rate", "m5_rate", "m15_rate", "rate_unit" },
+        report(sb, name, new String[] { "count", "meanRate", "m1Rate", "m5Rate", "m15Rate", "rateUnit" },
                 meter.getCount(), convertRate(meter.getMeanRate()), convertRate(meter.getOneMinuteRate()),
                 convertRate(meter.getFiveMinuteRate()), convertRate(meter.getFifteenMinuteRate()), getRateUnit());
     }

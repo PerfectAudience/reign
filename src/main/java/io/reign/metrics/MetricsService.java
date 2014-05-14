@@ -51,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
+import org.codehaus.jackson.map.exc.UnrecognizedPropertyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -196,7 +197,8 @@ public class MetricsService extends AbstractService {
         try {
             PathScheme pathScheme = getContext().getPathScheme();
             String dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId, serviceId));
-            byte[] bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+            Stat stat = new Stat();
+            byte[] bytes = getContext().getZkClient().getData(dataPath, true, stat);
             // String metricsDataJson = new String(bytes, UTF_8);
             // metricsDataJson.replaceAll("\n", "");
             MetricsData metricsData = null;
@@ -204,6 +206,7 @@ public class MetricsService extends AbstractService {
                 metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
                 metricsData.setClusterId(clusterId);
                 metricsData.setServiceId(serviceId);
+                metricsData.setLastUpdatedTimestamp(stat.getMtime());
             }
             return metricsData;
         } catch (KeeperException e) {
@@ -243,10 +246,12 @@ public class MetricsService extends AbstractService {
 
         try {
             logger.debug("Retrieving metrics:  path={}", exportMeta.dataPath);
-            byte[] bytes = getContext().getZkClient().getData(exportMeta.dataPath, true, new Stat());
+            Stat stat = new Stat();
+            byte[] bytes = getContext().getZkClient().getData(exportMeta.dataPath, true, stat);
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
             metricsData.setClusterId(clusterId);
             metricsData.setServiceId(serviceId);
+            metricsData.setLastUpdatedTimestamp(stat.getMtime());
             return metricsData;
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
@@ -265,8 +270,10 @@ public class MetricsService extends AbstractService {
                 pathScheme.joinTokens(clusterId, serviceId, dataNode));
         byte[] bytes = null;
         try {
-            bytes = getContext().getZkClient().getData(dataPath, true, new Stat());
+            Stat stat = new Stat();
+            bytes = getContext().getZkClient().getData(dataPath, true, stat);
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            metricsData.setLastUpdatedTimestamp(stat.getMtime());
             return metricsData;
         } catch (KeeperException e) {
             if (e.code() == KeeperException.Code.NONODE) {
@@ -276,6 +283,10 @@ public class MetricsService extends AbstractService {
                     + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)) + ":  " + e, e);
             throw new ReignException("Error retrieving data node:  clusterId=" + clusterId + "; serviceId=" + serviceId
                     + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)), e);
+        } catch (UnrecognizedPropertyException e) {
+            logger.warn("Error retrieving data node:  clusterId=" + clusterId + "; serviceId=" + serviceId
+                    + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)) + ":  " + e, e);
+            return null;
         } catch (Exception e) {
             logger.warn("Error retrieving data node:  clusterId=" + clusterId + "; serviceId=" + serviceId
                     + "; dataPath=" + dataPath + "; dataAsString=" + (new String(bytes, UTF_8)) + ":  " + e, e);
@@ -487,13 +498,13 @@ public class MetricsService extends AbstractService {
         return observer;
     }
 
-    long millisToExpiry(MetricsData metricsData) {
-        if (metricsData == null) {
+    long millisToExpiry(MetricsData metricsData, long currentTimestamp) {
+        if (metricsData == null || metricsData.getIntervalLengthUnit() == null
+                || metricsData.getIntervalLength() == null) {
             return -1;
         }
-        long currentTimestamp = System.currentTimeMillis();
         long intervalLengthMillis = metricsData.getIntervalLengthUnit().toMillis(metricsData.getIntervalLength());
-        return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 30000 - currentTimestamp;
+        return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 5000 - currentTimestamp;
     }
 
     public class AggregationRunnable implements Runnable {
@@ -524,6 +535,8 @@ public class MetricsService extends AbstractService {
                     if (!presenceService.isMemberOf(clusterId, serviceId)) {
                         continue;
                     }
+
+                    long currentTimestamp = System.currentTimeMillis();
 
                     // get lock for a service
                     DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
@@ -563,6 +576,9 @@ public class MetricsService extends AbstractService {
 
                                 try {
                                     metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+                                    if (metricsData == null) {
+                                        continue;
+                                    }
                                 } catch (Exception e) {
                                     logger.warn("Error trying to aggregate data directory for service:  clusterId="
                                             + clusterId + "; serviceId=" + serviceId + ":  " + e, e);
@@ -570,7 +586,7 @@ public class MetricsService extends AbstractService {
                                 }
 
                                 // skip data node if not within interval
-                                long millisToExpiry = millisToExpiry(metricsData);
+                                long millisToExpiry = millisToExpiry(metricsData, currentTimestamp);
                                 if (millisToExpiry <= 0) {
                                     continue;
 
@@ -653,11 +669,11 @@ public class MetricsService extends AbstractService {
                                     1.0f);
                             for (String key : counterMap.keySet()) {
                                 List<CounterData> counterList = counterMap.get(key);
-                                if (counterList.size() != dataNodeCount) {
-                                    logger.warn(
-                                            "counterList size does not match nodeCount:  counterList.size={}; nodeCount={}",
-                                            counterList.size(), dataNodeCount);
-                                }
+                                // if (counterList.size() != dataNodeCount) {
+                                // logger.warn(
+                                // "counterList size does not match nodeCount:  counterList.size={}; nodeCount={}",
+                                // counterList.size(), dataNodeCount);
+                                // }
                                 CounterData counterData = CounterData.merge(counterList);
                                 counters.put(key, counterData);
                             }
@@ -667,11 +683,11 @@ public class MetricsService extends AbstractService {
                             Map<String, GaugeData> gauges = new HashMap<String, GaugeData>(gaugeMap.size() + 1, 1.0f);
                             for (String key : gaugeMap.keySet()) {
                                 List<GaugeData> gaugeList = gaugeMap.get(key);
-                                if (gaugeList.size() != dataNodeCount) {
-                                    logger.warn(
-                                            "gaugeList size does not match nodeCount:  gaugeList.size={}; nodeCount={}",
-                                            gaugeList.size(), dataNodeCount);
-                                }
+                                // if (gaugeList.size() != dataNodeCount) {
+                                // logger.warn(
+                                // "gaugeList size does not match nodeCount:  gaugeList.size={}; nodeCount={}",
+                                // gaugeList.size(), dataNodeCount);
+                                // }
                                 GaugeData gaugeData = GaugeData.merge(gaugeList);
                                 gauges.put(key, gaugeData);
                             }
@@ -682,11 +698,11 @@ public class MetricsService extends AbstractService {
                                     histogramMap.size() + 1, 1.0f);
                             for (String key : histogramMap.keySet()) {
                                 List<HistogramData> histogramList = histogramMap.get(key);
-                                if (histogramList.size() != dataNodeCount) {
-                                    logger.warn(
-                                            "histogramList size does not match nodeCount:  histogramList.size={}; nodeCount={}",
-                                            histogramList.size(), dataNodeCount);
-                                }
+                                // if (histogramList.size() != dataNodeCount) {
+                                // logger.warn(
+                                // "histogramList size does not match nodeCount:  histogramList.size={}; nodeCount={}",
+                                // histogramList.size(), dataNodeCount);
+                                // }
                                 HistogramData histogramData = HistogramData.merge(histogramList);
                                 histograms.put(key, histogramData);
                             }
@@ -696,11 +712,11 @@ public class MetricsService extends AbstractService {
                             Map<String, MeterData> meters = new HashMap<String, MeterData>(meterMap.size() + 1, 1.0f);
                             for (String key : meterMap.keySet()) {
                                 List<MeterData> meterList = meterMap.get(key);
-                                if (meterList.size() != dataNodeCount) {
-                                    logger.warn(
-                                            "meterList size does not match nodeCount:  meterList.size={}; nodeCount={}",
-                                            meterList.size(), dataNodeCount);
-                                }
+                                // if (meterList.size() != dataNodeCount) {
+                                // logger.warn(
+                                // "meterList size does not match nodeCount:  meterList.size={}; nodeCount={}",
+                                // meterList.size(), dataNodeCount);
+                                // }
                                 MeterData meterData = MeterData.merge(meterList);
                                 meters.put(key, meterData);
                             }
@@ -710,11 +726,11 @@ public class MetricsService extends AbstractService {
                             Map<String, TimerData> timers = new HashMap<String, TimerData>(timerMap.size() + 1, 1.0f);
                             for (String key : timerMap.keySet()) {
                                 List<TimerData> timerList = timerMap.get(key);
-                                if (timerList.size() != dataNodeCount) {
-                                    logger.warn(
-                                            "timerList size does not match nodeCount:  timerList.size={}; nodeCount={}",
-                                            timerList.size(), dataNodeCount);
-                                }
+                                // if (timerList.size() != dataNodeCount) {
+                                // logger.warn(
+                                // "timerList size does not match nodeCount:  timerList.size={}; nodeCount={}",
+                                // timerList.size(), dataNodeCount);
+                                // }
                                 TimerData timerData = TimerData.merge(timerList);
                                 timers.put(key, timerData);
                             }
@@ -722,6 +738,8 @@ public class MetricsService extends AbstractService {
 
                             serviceMetricsData.setDataNodeCount(dataNodeCount);
                             serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
+                            serviceMetricsData.setClusterId(clusterId);
+                            serviceMetricsData.setServiceId(serviceId);
 
                             // write to ZK
                             String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
@@ -784,6 +802,8 @@ public class MetricsService extends AbstractService {
                         continue;
                     }
 
+                    long currentTimestamp = System.currentTimeMillis();
+
                     // get lock for a service
                     DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
                             + serviceId);
@@ -803,8 +823,15 @@ public class MetricsService extends AbstractService {
                                     dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                             pathScheme.joinTokens(clusterId, serviceId, dataNode));
                                     MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+                                    if (metricsData == null) {
+                                        logger.warn("Removing unrecognized/corrupted/deprecated data node:  path={}",
+                                                dataPath);
+                                        zkClient.delete(dataPath, -1);
+                                        continue;
+                                    }
 
-                                    long millisToExpiry = millisToExpiry(metricsData);
+                                    // keep last days worth of data
+                                    long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - 86400000);
                                     if (millisToExpiry <= 0) {
                                         logger.info("Removing expired data node:  path={}; millisToExpiry={}",
                                                 dataPath, millisToExpiry);

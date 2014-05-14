@@ -3,8 +3,6 @@ package io.reign.metrics;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.codehaus.jackson.annotate.JsonProperty;
-
 /**
  * 
  * @author ypai
@@ -14,19 +12,14 @@ public class MeterData {
 
     private long count;
 
-    @JsonProperty("mean_rate")
     private double meanRate;
 
-    @JsonProperty("m1_rate")
     private double m1Rate;
 
-    @JsonProperty("m5_rate")
     private double m5Rate;
 
-    @JsonProperty("m15_rate")
     private double m15Rate;
 
-    @JsonProperty("rate_unit")
     private TimeUnit rateUnit;
 
     public static MeterData merge(List<MeterData> dataList) {
@@ -45,6 +38,10 @@ public class MeterData {
 
         MeterData meterData = new MeterData();
         meterData.setCount(samples);
+
+        if (dataList.size() > 0) {
+            meterData.setRateUnit(dataList.get(0).getRateUnit());
+        }
 
         if (samples > 0) {
             meterData.setMeanRate(meanRateSum / samples);
