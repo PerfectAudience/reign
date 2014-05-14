@@ -1,5 +1,4 @@
 var connectWebSocket;
-
 $(function() {
 
 	var socket;
@@ -167,9 +166,8 @@ $(function() {
 				renderMetrics( response.body.clusterId, response.body.serviceId, response.body );
                 
 		    } else if( (response.id && response.id==4) ) {
-		    	// service node list     
-                renderNodeList(response.body.clusterId, response.body.serviceId, response.body.nodeIdList);
-                updateServiceNodeCount(response.body.clusterId, response.body.serviceId, response.body.nodeIdList.length);
+                                renderNodeList(response.body.clusterId, response.body.serviceId, response.body.nodeIdList);
+                                updateServiceNodeCount(response.body.clusterId, response.body.serviceId, response.body.nodeIdList.length);
 		    	
 		    } else if( (response.id && response.id==1) ) {		    
 				// service list
@@ -185,6 +183,7 @@ $(function() {
 				}
 				
 				$('#service-list').html(serviceHtml);
+
 			} else if( (response.id && response.id==6) ) {
 				// cluster list
 				var clusterList  = response.body;
@@ -197,6 +196,7 @@ $(function() {
 					clusterListHtml += '<li><a href="#">'+clusterList[i]+'</a></li>';
 				}
 				$('#cluster-id-menu-items').html(clusterListHtml);
+				$('#service-list').html(serviceHtml);
 			}
 			
 		} else if( response.event ) {
@@ -212,13 +212,6 @@ $(function() {
 		return $("#cluster-id").attr("clusterId");
 	}
 	
-	function stringCompare(a, b) {
-	  if (a.last_nom < b.last_nom)
-	     return -1;
-	  if (a.last_nom > b.last_nom)
-	    return 1;
-	  return 0;
-	}
 	
 	function renderNodeList(clusterId, serviceId, nodeIdList) {
 		if( clusterId!=selectedClusterId() ) {			
@@ -228,7 +221,7 @@ $(function() {
 			return;
 		}
 		
-    	// service node list
+    	        // service node list
 		var serviceNodeHtml = '';
 		
 		// sort node list
@@ -397,5 +390,6 @@ $(function() {
 	}
 	
 	connectWebSocket($('#connectHost').val());
+	
 	
 });

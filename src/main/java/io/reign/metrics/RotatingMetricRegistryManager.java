@@ -88,6 +88,32 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
     }
 
     @Override
+    public Counter counter(String name) {
+        return this.metricRegistry.counter(name);
+    }
+
+    @Override
+    public Meter meter(String name) {
+        return this.metricRegistry.meter(name);
+    }
+
+    @Override
+    public Timer timer(String name) {
+        return this.metricRegistry.timer(name);
+    }
+
+    @Override
+    public Histogram histogram(String name) {
+        return this.metricRegistry.histogram(name);
+    }
+
+    @Override
+    public Gauge gauge(String name, Gauge gauge) {
+        this.metricRegistry.register(name, gauge);
+        return gauge;
+    }
+
+    @Override
     public MetricRegistry get() {
         return this.metricRegistry;
     }
