@@ -62,6 +62,16 @@ public class MetricsData {
 
     private String serviceId;
 
+    private long lastUpdatedTimestamp;
+
+    public long getLastUpdatedTimestamp() {
+        return lastUpdatedTimestamp;
+    }
+
+    public void setLastUpdatedTimestamp(long lastUpdatedTimestamp) {
+        this.lastUpdatedTimestamp = lastUpdatedTimestamp;
+    }
+
     public String getClusterId() {
         return clusterId;
     }
@@ -86,11 +96,11 @@ public class MetricsData {
         return dataNodeInWindowCount;
     }
 
-    public void setDataNodeCount(int dataNodeCount) {
+    public void setDataNodeCount(Integer dataNodeCount) {
         this.dataNodeCount = dataNodeCount;
     }
 
-    public int getDataNodeCount() {
+    public Integer getDataNodeCount() {
         return dataNodeCount;
     }
 
