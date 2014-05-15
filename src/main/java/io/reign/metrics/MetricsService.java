@@ -369,8 +369,8 @@ public class MetricsService extends AbstractService {
                         }
 
                         long oldLastRotatedTimestamp = registryManager.getLastRotatedTimestamp();
-                        MetricRegistry currentMetricRegistry = registryManager.get();
-                        MetricRegistry workingMetricRegistry = registryManager.rotateAsNecessary();
+                        MetricRegistry currentMetricRegistry = registryManager.rotateAsNecessary();
+                        MetricRegistry workingMetricRegistry = registryManager.get();
                         if (currentMetricRegistry != null && currentMetricRegistry != workingMetricRegistry) {
 
                             if (exportMeta.dataPath != null) {
