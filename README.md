@@ -299,6 +299,10 @@ Instrumenting with Metrics and using a callback to receive notifications when me
 		        myClass.setErrorCounter(current.counter("errorCounter"));
 		    }
 		};
+		
+		// set instance into the callback
+		MyClass myClassInstance = new MyClass();		
+		callback.setMyClass( myClassInstance );
 
 		// get a MetricRegistry manager which will rotate data every 60 seconds, and notify when rotating via a callback
         RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(60, TimeUnit.SECONDS, callback);
