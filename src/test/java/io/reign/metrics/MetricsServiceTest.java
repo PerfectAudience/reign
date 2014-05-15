@@ -36,6 +36,7 @@ public class MetricsServiceTest {
         presenceService.announce("clusterA", "serviceA", true);
         presenceService.announce("clusterA", "serviceB", true);
         presenceService.announce("clusterA", "serviceC", true);
+        presenceService.announce("clusterA", "serviceD", true);
     }
 
     @Test
@@ -87,6 +88,42 @@ public class MetricsServiceTest {
                 + latest.get().getCounter("observerTestCounter").getCount(),
                 latest.get().getCounter("observerTestCounter").getCount() == (previousValue + 1));
 
+    }
+
+    @Test
+    public void testIntervalNodes() throws Exception {
+        // test that each interval creates its own data node
+        final MetricRegistryManager registryManager = new RotatingMetricRegistryManager(5, TimeUnit.SECONDS);
+        registryManager.registerCallback(new MetricRegistryManagerCallback() {
+            @Override
+            public void rotated(MetricRegistry current, MetricRegistry previous) {
+                synchronized (registryManager) {
+                    registryManager.notifyAll();
+                }
+            }
+        });
+        metricsService.scheduleExport("clusterA", "serviceD", registryManager, 1, TimeUnit.SECONDS);
+
+        Counter counter1 = registryManager.counter("c1");
+        counter1.inc();
+
+        synchronized (registryManager) {
+            registryManager.wait(10000);
+        }
+
+        counter1 = registryManager.counter("c1");
+        counter1.inc();
+
+        synchronized (registryManager) {
+            registryManager.wait(10000);
+        }
+
+        MetricsData metricsData = metricsService.getServiceMetrics("clusterA", "serviceD");
+        assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() == 2);
+        assertTrue("Unexpected value:  " + metricsData.getDataNodeInWindowCount(),
+                metricsData.getDataNodeInWindowCount() == 1);
+        assertTrue("Unexpected value:  " + metricsData.getCounter("c1").getCount(), metricsData.getCounter("c1")
+                .getCount() == 1);
     }
 
     @Test

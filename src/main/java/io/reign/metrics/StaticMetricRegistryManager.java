@@ -45,22 +45,27 @@ public class StaticMetricRegistryManager implements MetricRegistryManager {
         lastRotatedTimestamp = System.currentTimeMillis();
     }
 
+    @Override
     public Counter counter(String name) {
         return this.metricRegistry.counter(name);
     }
 
+    @Override
     public Meter meter(String name) {
         return this.metricRegistry.meter(name);
     }
 
+    @Override
     public Timer timer(String name) {
         return this.metricRegistry.timer(name);
     }
 
+    @Override
     public Histogram histogram(String name) {
         return this.metricRegistry.histogram(name);
     }
 
+    @Override
     public Gauge gauge(String name, Gauge gauge) {
         this.metricRegistry.register(name, gauge);
         return gauge;
@@ -91,4 +96,18 @@ public class StaticMetricRegistryManager implements MetricRegistryManager {
         return this.metricRegistry;
     }
 
+    @Override
+    public void registerCallback(MetricRegistryManagerCallback callback) {
+        throw new UnsupportedOperationException("Not supported!");
+    }
+
+    @Override
+    public void removeCallback(MetricRegistryManagerCallback callback) {
+        throw new UnsupportedOperationException("Not supported!");
+    }
+
+    @Override
+    public void removeAllCallbacks() {
+        throw new UnsupportedOperationException("Not supported!");
+    }
 }

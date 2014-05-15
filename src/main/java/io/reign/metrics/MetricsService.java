@@ -42,7 +42,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -76,12 +78,15 @@ public class MetricsService extends AbstractService {
     private final Map<String, ExportMeta> exportPathMap = new ConcurrentHashMap<String, ExportMeta>(16, 0.9f, 1);
 
     private static class ExportMeta {
-        public String dataPath;
-        public MetricRegistryManager registryManager;
+        public volatile String dataPath;
+        public volatile MetricRegistryManager registryManager;
+        public volatile Future future = null;
+        public volatile ZkMetricsReporter metricsReporter;
 
-        public ExportMeta(String dataPath, MetricRegistryManager registryManager) {
+        public ExportMeta(String dataPath, MetricRegistryManager registryManager, ZkMetricsReporter metricsReporter) {
             this.dataPath = dataPath;
             this.registryManager = registryManager;
+            this.metricsReporter = metricsReporter;
         }
     }
 
@@ -98,7 +103,7 @@ public class MetricsService extends AbstractService {
 
     public MetricRegistryManager getRegistered(String clusterId, String serviceId) {
         String key = exportPathMapKey(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
-        synchronized (this) {
+        synchronized (exportPathMap) {
             ExportMeta exportMeta = exportPathMap.get(key);
             if (exportMeta != null) {
                 return exportMeta.registryManager;
@@ -125,9 +130,9 @@ public class MetricsService extends AbstractService {
             final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
 
         final String key = exportPathMapKey(clusterId, serviceId, nodeId);
-        synchronized (this) {
+        synchronized (exportPathMap) {
             if (!exportPathMap.containsKey(key)) {
-                exportPathMap.put(key, new ExportMeta(null, registryManager));
+                exportPathMap.put(key, new ExportMeta(null, registryManager, null));
             } else {
                 logger.info("Metrics export already scheduled:  {}", key);
                 return;
@@ -137,6 +142,7 @@ public class MetricsService extends AbstractService {
         final ZkMetricsReporter reporter = ZkMetricsReporter.builder().convertRatesTo(TimeUnit.SECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS).build();
 
+        // determine runnable interval
         long updateIntervalSeconds = updateIntervalTimeUnit.toSeconds(updateInterval);
         updateIntervalSeconds = Math.min(updateIntervalSeconds / 2,
                 registryManager.getRotationTimeUnit().toSeconds(registryManager.getRotationInterval()) / 2);
@@ -144,56 +150,65 @@ public class MetricsService extends AbstractService {
             updateIntervalSeconds = 1;
         }
 
-        executorService.scheduleAtFixedRate(new Runnable() {
+        // get export metadata for this key
+        final ExportMeta exportMeta = exportPathMap.get(key);
+        if (exportMeta.future != null) {
+            // cancel existing job if there is one
+            exportMeta.future.cancel(false);
+        }
 
-            private volatile MetricRegistry currentMetricRegistry = null;
+        exportMeta.metricsReporter = reporter;
+
+        // create future
+        exportMeta.future = executorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
-                // get export metadata for this key
-                ExportMeta exportMeta = exportPathMap.get(key);
-
-                // rotate as necessary
-                MetricRegistry metricRegistry = registryManager.rotateAsNecessary();
-                if (metricRegistry != currentMetricRegistry) {
-                    currentMetricRegistry = metricRegistry;
-
-                    // set to null to force creation of new node in ZK
-                    exportMeta.dataPath = null;
-                }
-
-                // logger.trace("EXPORTING METRICS...");
-                StringBuilder sb = new StringBuilder();
-                sb = reporter.report(currentMetricRegistry, registryManager.getLastRotatedTimestamp(),
-                        registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), sb);
-                // logger.trace("EXPORTING METRICS:  clusterId={}; serviceId={}; data=\n{}", clusterId, serviceId, sb);
-
                 // export to zk
                 try {
-                    if (exportMeta.dataPath == null) {
-                        PathScheme pathScheme = getContext().getPathScheme();
-                        String dataPathPrefix = pathScheme.getAbsolutePath(PathType.METRICS,
-                                pathScheme.joinTokens(clusterId, serviceId, nodeId));
-                        exportMeta.dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext()
-                                .getPathScheme(), dataPathPrefix + "-", sb.toString().getBytes(UTF_8), getContext()
-                                .getDefaultZkAclList(), CreateMode.PERSISTENT_SEQUENTIAL, -1);
+                    synchronized (exportMeta) {
+                        MetricRegistry currentMetricRegistry = registryManager.get();
 
-                        // put in again to update data
-                        exportPathMap.put(key, exportMeta);
+                        // logger.trace("EXPORTING METRICS...");
+                        StringBuilder sb = new StringBuilder();
+                        sb = reporter.report(currentMetricRegistry, registryManager.getLastRotatedTimestamp(),
+                                registryManager.getRotationInterval(), registryManager.getRotationTimeUnit(), sb);
+                        // logger.trace("EXPORTING METRICS:  clusterId={}; serviceId={}; data=\n{}", clusterId,
+                        // serviceId,
+                        // sb);
 
-                        synchronized (exportMeta) {
-                            exportMeta.notifyAll();
+                        if (exportMeta.dataPath == null) {
+                            PathScheme pathScheme = getContext().getPathScheme();
+                            String dataPathPrefix = pathScheme.getAbsolutePath(PathType.METRICS,
+                                    pathScheme.joinTokens(clusterId, serviceId, nodeId));
+
+                            // update node and get new path
+                            exportMeta.dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext()
+                                    .getPathScheme(), dataPathPrefix + "-", sb.toString().getBytes(UTF_8), getContext()
+                                    .getDefaultZkAclList(), CreateMode.PERSISTENT_SEQUENTIAL, -1);
+
+                            logger.debug("New data path:  path={}", exportMeta.dataPath);
+
+                            // put in again to update data
+                            exportPathMap.put(key, exportMeta);
+
+                        } else {
+                            logger.debug("Updating data path:  path={}", exportMeta.dataPath);
+
+                            // update node
+                            zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(),
+                                    exportMeta.dataPath, sb.toString().getBytes(UTF_8), getContext()
+                                            .getDefaultZkAclList(), CreateMode.PERSISTENT, -1);
                         }
 
-                    } else {
-                        zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(),
-                                exportMeta.dataPath, sb.toString().getBytes(UTF_8), getContext().getDefaultZkAclList(),
-                                CreateMode.PERSISTENT, -1);
+                        exportMeta.notifyAll();
                     }
 
                     logger.debug("Updated metrics data:  dataPath={}", exportMeta.dataPath);
+
                 } catch (Exception e) {
-                    logger.error("Could not export metrics data:  pathPrefix=" + exportMeta.dataPath, e);
+                    logger.error("Could not export metrics data:  clusterId=" + clusterId + "; serviceId=" + serviceId
+                            + "; nodeId=" + nodeId + "; dataPath=" + exportMeta.dataPath, e);
                 }
 
             }
@@ -230,7 +245,7 @@ public class MetricsService extends AbstractService {
     }
 
     /**
-     * Get metrics data for this service node (self).
+     * Get metrics data for this service node (self) for current interval.
      */
     public MetricsData getMyMetrics(String clusterId, String serviceId) {
         String key = clusterId + "/" + serviceId + "/" + getContext().getZkNodeId().getPathToken();
@@ -330,7 +345,69 @@ public class MetricsService extends AbstractService {
         // schedule admin activity
         scheduleAggregation();
         scheduleCleaner();
+        scheduleRotator();
 
+    }
+
+    synchronized void scheduleRotator() {
+        Runnable cleanerRunnable = new RotatorRunnable();
+        executorService.scheduleAtFixedRate(cleanerRunnable, 500, 500, TimeUnit.MILLISECONDS);
+    }
+
+    class RotatorRunnable implements Runnable {
+        @Override
+        public void run() {
+            try {
+                for (Entry<String, ExportMeta> mapEntry : exportPathMap.entrySet()) {
+                    ExportMeta exportMeta = mapEntry.getValue();
+
+                    // rotate as necessary
+                    synchronized (exportMeta) {
+                        MetricRegistryManager registryManager = exportMeta.registryManager;
+                        if (registryManager == null) {
+                            continue;
+                        }
+
+                        long oldLastRotatedTimestamp = registryManager.getLastRotatedTimestamp();
+                        MetricRegistry currentMetricRegistry = registryManager.get();
+                        MetricRegistry workingMetricRegistry = registryManager.rotateAsNecessary();
+                        if (currentMetricRegistry != null && currentMetricRegistry != workingMetricRegistry) {
+
+                            if (exportMeta.dataPath != null) {
+
+                                try {
+                                    // write out stats for old metric registry
+                                    StringBuilder sb = new StringBuilder();
+                                    sb = exportMeta.metricsReporter.report(currentMetricRegistry,
+                                            oldLastRotatedTimestamp, registryManager.getRotationInterval(),
+                                            registryManager.getRotationTimeUnit(), sb);
+
+                                    if (logger.isDebugEnabled()) {
+                                        logger.debug(
+                                                "Flushing to old data node after rotation:  currentMetricRegistry={}; workingMetricRegistry={}; path={}; data={}",
+                                                currentMetricRegistry, workingMetricRegistry, exportMeta.dataPath, sb
+                                                        .toString().replace("\n", ""));
+                                    }
+
+                                    zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(),
+                                            exportMeta.dataPath, sb.toString().getBytes(UTF_8), getContext()
+                                                    .getDefaultZkAclList(), CreateMode.PERSISTENT, -1);
+                                } catch (Exception e) {
+                                    logger.error("Could not export update metrics data after rotation:  path="
+                                            + exportMeta.dataPath, e);
+                                }
+                            }
+
+                            // set to null to force creation of new node in ZK
+                            exportMeta.dataPath = null;
+                        }
+                    }
+
+                }
+            } catch (Exception e) {
+                logger.error("Unexpected exception:  " + e, e);
+            }
+        }// run
     }
 
     synchronized void scheduleCleaner() {
@@ -514,7 +591,7 @@ public class MetricsService extends AbstractService {
             return -1;
         }
         long intervalLengthMillis = metricsData.getIntervalLengthUnit().toMillis(metricsData.getIntervalLength());
-        return metricsData.getIntervalStartTimestamp() + intervalLengthMillis + 5000 - currentTimestamp;
+        return metricsData.getIntervalStartTimestamp() + intervalLengthMillis - currentTimestamp;
     }
 
     public class AggregationRunnable implements Runnable {

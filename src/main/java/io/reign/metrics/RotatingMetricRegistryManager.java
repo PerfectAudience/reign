@@ -69,6 +69,7 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
         this.callbackList = callbackList;
     }
 
+    @Override
     public void registerCallback(MetricRegistryManagerCallback callback) {
         synchronized (callbackList) {
             if (callbackList == Collections.EMPTY_LIST) {
@@ -81,6 +82,7 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
         }
     }
 
+    @Override
     public void removeCallback(MetricRegistryManagerCallback callback) {
         synchronized (callbackList) {
             if (callbackList == Collections.EMPTY_LIST) {
@@ -90,6 +92,7 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
         }
     }
 
+    @Override
     public void removeAllCallbacks() {
         synchronized (callbackList) {
             if (callbackList == Collections.EMPTY_LIST) {
@@ -149,10 +152,15 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
     public synchronized MetricRegistry rotateAsNecessary() {
         long currentTimestamp = System.currentTimeMillis();
         if (currentTimestamp - lastRotatedTimestamp > rotationIntervalMillis) {
+
+            logger.debug(
+                    "Rotating MetricRegistry:  currentTimestamp={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",
+                    currentTimestamp, lastRotatedTimestamp, rotationIntervalMillis, lastRotatedTimestamp);
+
             MetricRegistry oldMetricRegistry = this.metricRegistry;
             this.metricRegistry = new MetricRegistry();
             this.lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
-                    System.currentTimeMillis());
+                    currentTimestamp);
 
             if (oldMetricRegistry != null) {
                 synchronized (callbackList) {
@@ -162,9 +170,6 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
                 }
             }
 
-            logger.debug(
-                    "Rotating MetricRegistry:  System.currentTimeMillis()={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",
-                    System.currentTimeMillis(), lastRotatedTimestamp, rotationIntervalMillis, lastRotatedTimestamp);
         }
         return this.metricRegistry;
     }

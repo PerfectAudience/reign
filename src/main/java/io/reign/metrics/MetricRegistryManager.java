@@ -55,4 +55,10 @@ public interface MetricRegistryManager {
     public TimeUnit getRotationTimeUnit();
 
     public long getLastRotatedTimestamp();
+
+    public void registerCallback(MetricRegistryManagerCallback callback);
+
+    public void removeCallback(MetricRegistryManagerCallback callback);
+
+    public void removeAllCallbacks();
 }
