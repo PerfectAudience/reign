@@ -422,6 +422,8 @@ $(function() {
 			hash = hash.substring(0,hash.length-1);			
 		} 
 		
+		location.hash = hash;
+		
 		// split on middle slash
 	    slashIndex = hash.indexOf('/');
 		var clusterId = null;
