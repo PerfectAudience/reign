@@ -1,6 +1,6 @@
 var connectWebSocket;
-$(function() {
-
+$(function() {	
+	
 	var socket;
 	var requestIdSequence = 0;	
 	
@@ -187,6 +187,9 @@ $(function() {
 				}
 				
 				$('#service-list').html(serviceHtml);
+				
+				// if there is a hash location, attempt to show it
+				handleHash('service');
 
 			} else if( (response.id && response.id==6) ) {
 				// cluster list
@@ -197,10 +200,13 @@ $(function() {
 					if( i>0 ) {
 						clusterListHtml += '<li class="divider"></li>';
 					}
-					clusterListHtml += '<li><a href="#">'+clusterList[i]+'</a></li>';
+					clusterListHtml += '<li><a id="'+clusterList[i]+'-info" href="#'+clusterList[i]+'">'+clusterList[i]+'</a></li>';
 				}
 				$('#cluster-id-menu-items').html(clusterListHtml);
 				$('#service-list').html(serviceHtml);
+				
+				// if there is a hash location, attempt to show it
+				handleHash('cluster');
 			}
 			
 		} else if( response.event ) {
@@ -393,7 +399,53 @@ $(function() {
 		console.log(html);
 	}
 	
+	function handleHash( type ) {
+		hash = location.hash ? location.hash.replace('#', '') : null;
+		
+		console.log('handleHash():  hash='+hash);
+		
+		if( !hash || !type ) {
+			return;
+		}
+		
+		hash = hash.trim();
+		
+		// strip leading slash
+		var slashIndex = hash.indexOf('/');
+		if( slashIndex==0 ) {
+			hash = hash.substring(slashIndex+1);			
+		} 
+		
+		// strip trailing slash
+		slashIndex = hash.lastIndexOf('/');
+		if( slashIndex==hash.length-1 ) {
+			hash = hash.substring(0,hash.length-1);			
+		} 
+		
+		// split on middle slash
+	    slashIndex = hash.indexOf('/');
+		var clusterId = null;
+		var serviceId = null;
+		if( slashIndex!=-1) {
+			clusterId = hash.substring(0, slashIndex);	
+			serviceId = hash.substring(slashIndex+1);
+		} else {
+			clusterId = hash;
+		}
+		
+		console.log('handleHash:  type='+type+'; hash='+hash+'; clusterId='+clusterId+"; serviceId="+serviceId);
+		
+		if( type=='cluster' && clusterId ) {
+			$('#'+clusterId+'-info').click();
+		}
+		if( type=='service' && serviceId ) {
+			$('#'+clusterId+'-'+serviceId+'-info').click();
+		}
+		
+	}
+	
 	connectWebSocket($('#connectHost').val());
+	
 	
 	
 });
