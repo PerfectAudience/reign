@@ -3,6 +3,7 @@ package io.reign.metrics;
 import static org.junit.Assert.assertTrue;
 import io.reign.MasterTestSuite;
 import io.reign.presence.PresenceService;
+import io.reign.util.JacksonUtil;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -119,6 +120,9 @@ public class MetricsServiceTest {
         }
 
         MetricsData metricsData = metricsService.getServiceMetrics("clusterA", "serviceD");
+
+        logger.debug("metricsData={}", JacksonUtil.getObjectMapper().writeValueAsString(metricsData));
+
         assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() == 2);
         assertTrue("Unexpected value:  " + metricsData.getDataNodeInWindowCount(),
                 metricsData.getDataNodeInWindowCount() == 1);
