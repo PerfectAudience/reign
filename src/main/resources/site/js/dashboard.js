@@ -263,6 +263,24 @@ $(function() {
 		$('#'+clusterId+"-"+serviceId+'-node-count').html(count);
 	}
 	
+    function sortedKeyList( map ) {
+        var keyList = new Array();
+        var i = 0;
+        for(var key in map) {
+            keyList[i] = key;
+            i++;
+        }
+        keyList.sort(function(a, b) {
+	        if (a < b) {
+	            return -1;
+	        }  else if (a > b) {
+	            return 1;
+		    }
+	        return 0;
+	    });
+        return keyList;
+    }
+    
 	function renderMetrics( clusterId, serviceId, metrics ) {
 		if( !clusterId || clusterId!=selectedClusterId() ) {			
 			send("metrics:/"+clusterId+"/"+serviceId+"#observe-stop > 5");
@@ -276,9 +294,11 @@ $(function() {
 			var counters = metrics.counters;
 			var counterHtml = '';
 			var count = 0;
-			for(var counterName in counters) {					  
+            var metricKeyList = sortedKeyList(counters);
+			for(var i = 0; i < metricKeyList.length; i++) {		
+              var counterName = metricKeyList[i];
 			  var counter = counters[counterName];
-              counterHtml += '<tr id="'+counterName+'">';
+              counterHtml += '<tr id="'+counterName+'" class="metric-data">';
               counterHtml += '<td>'+counterName+'</td>';
               counterHtml += '<td>'+counter.count+'</td>';
               counterHtml += '</tr>';
@@ -295,15 +315,18 @@ $(function() {
 			var histograms = metrics.histograms;
 			var histogramHtml = '';
 			var count = 0;
-			for(var histogramName in histograms) {
+            var metricKeyList = sortedKeyList(histograms);
+			for(var i = 0; i < metricKeyList.length; i++) {		
+              var histogramName = metricKeyList[i];
 			  var histogram = histograms[histogramName];
-			  histogramHtml += '<tr id="'+histogramName+'">';
+			  histogramHtml += '<tr id="'+histogramName+'" class="metric-data">';
 			  histogramHtml += '<td>'+histogramName+'</td>';
 		      histogramHtml += '<td>'+Math.round(histogram.count)+'</td>';					  
 		      histogramHtml += '<td>'+Math.round(histogram.max)+'</td>';
 		      histogramHtml += '<td>'+Math.round(histogram.mean)+'</td>';
 		      histogramHtml += '<td>'+Math.round(histogram.min)+'</td>';
 		      histogramHtml += '<td>'+Math.round(histogram.p50)+'</td>';
+              histogramHtml += '<td>'+Math.round(histogram.p75)+'</td>';
 		      histogramHtml += '<td>'+Math.round(histogram.p95)+'</td>';
 		      histogramHtml += '<td>'+Math.round(histogram.p98)+'</td>';
 		      histogramHtml += '<td>'+Math.round(histogram.p99)+'</td>';
@@ -322,9 +345,11 @@ $(function() {
 			var meters = metrics.meters;
 			var meterHtml = '';
 			var count = 0;
-			for(var meterName in meters) {
+            var metricKeyList = sortedKeyList(meters);
+			for(var i = 0; i < metricKeyList.length; i++) {		
+              var meterName = metricKeyList[i];
 			  var meter = meters[meterName];
-			  meterHtml += '<tr id="'+meterName+'">';
+			  meterHtml += '<tr id="'+meterName+'" class="metric-data">';
 			  meterHtml += '<td>'+meterName+'</td>';
 			  meterHtml += '<td>'+Math.round(meter.count)+'</td>';					  
 			  meterHtml += '<td>'+Math.round(meter.meanRate)+'</td>';
@@ -345,15 +370,18 @@ $(function() {
 			var timers = metrics.timers;
 			var timerHtml = '';
 			var count = 0;
-			for(var timerName in timers) {
+            var metricKeyList = sortedKeyList(timers);
+			for(var i = 0; i < metricKeyList.length; i++) {		
+              var timerName = metricKeyList[i];
 			  var timer = timers[timerName];
-			  timerHtml += '<tr id="'+timerName+'">'
+			  timerHtml += '<tr id="'+timerName+'" class="metric-data">';
 			  timerHtml += '<td>'+timerName+'</td>';
 			  timerHtml += '<td>'+Math.round(timer.count)+'</td>';					  
 			  timerHtml += '<td>'+Math.round(timer.max)+'</td>';
 			  timerHtml += '<td>'+Math.round(timer.mean)+'</td>';
 			  timerHtml += '<td>'+Math.round(timer.min)+'</td>';
 			  timerHtml += '<td>'+Math.round(timer.p50)+'</td>';
+              timerHtml += '<td>'+Math.round(timer.p75)+'</td>';
 			  timerHtml += '<td>'+Math.round(timer.p95)+'</td>';
 			  timerHtml += '<td>'+Math.round(timer.p98)+'</td>';
 			  timerHtml += '<td>'+Math.round(timer.p99)+'</td>';
