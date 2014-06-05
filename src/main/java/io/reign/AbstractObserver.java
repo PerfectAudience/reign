@@ -3,6 +3,8 @@ package io.reign;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.zookeeper.data.Stat;
+
 /*
  Copyright 2013 Yen Pai ypai@reign.io
 
@@ -83,11 +85,19 @@ public abstract class AbstractObserver implements Observer {
     }
 
     @Override
+    public void nodeDataChanged(byte[] updatedData, byte[] previousData, Stat updatedStat) {
+    }
+
+    @Override
     public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
     }
 
     @Override
     public void nodeCreated(byte[] data, List<String> childList) {
+    }
+
+    @Override
+    public void nodeCreated(byte[] data, List<String> childList, Stat updatedStat) {
     }
 
 }

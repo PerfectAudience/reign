@@ -180,7 +180,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
                     // fetch info about node
                     Stat zkStat = zkClient.exists(path, true);
-                    byte[] zkData = zkClient.getData(path, true, new Stat());
+                    Stat updatedStat = new Stat();
+                    byte[] zkData = zkClient.getData(path, true, updatedStat);
                     List<String> zkChildList = zkClient.getChildren(path, true);
 
                     Set<T> observerSet = getObserverSet(path, false);
@@ -204,6 +205,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                                 logger.warn("RECHECK:  NODE DATA CHANGED:  updated={}; previous={}", zkData,
                                         observerData);
                                 observer.nodeDataChanged(zkData, observerData);
+                                observer.nodeDataChanged(zkData, observerData, updatedStat);
                             }
                         } else {
                             // node deleted
@@ -312,7 +314,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
             if (observerSet.size() > 0) {
                 // get children just to get a child watch
                 List<String> childList = zkClient.getChildren(path, true);
-                byte[] data = zkClient.getData(path, true, new Stat());
+                Stat updatedStat = new Stat();
+                byte[] data = zkClient.getData(path, true, updatedStat);
 
                 for (T observer : observerSet) {
                     logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
@@ -326,6 +329,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
 
                         if (previousData == null && previousChildList == Collections.EMPTY_LIST) {
                             observer.nodeCreated(data, childList);
+                            observer.nodeCreated(data, childList, updatedStat);
                         }
                     }
                 }
@@ -348,7 +352,8 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
         try {
             Set<T> observerSet = getObserverSet(path, false);
             if (observerSet.size() > 0) {
-                byte[] updatedData = zkClient.getData(path, true, new Stat());
+                Stat updatedStat = new Stat();
+                byte[] updatedData = zkClient.getData(path, true, updatedStat);
                 for (T observer : observerSet) {
                     logger.trace("Notifying observer:  observer.hashCode()={}", observer.hashCode());
                     synchronized (observer) {
@@ -359,6 +364,7 @@ public class ObserverManager<T extends Observer> extends AbstractZkEventHandler 
                             updateObserver(path, observer);
 
                             observer.nodeDataChanged(updatedData, previousData);
+                            observer.nodeDataChanged(updatedData, previousData, updatedStat);
                         }
                     }
                 }

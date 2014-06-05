@@ -219,29 +219,29 @@ public class MetricsService extends AbstractService {
      * Get metrics data for given service.
      */
     public MetricsData getServiceMetrics(String clusterId, String serviceId) {
-        try {
-            PathScheme pathScheme = getContext().getPathScheme();
-            String dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId, serviceId));
-            Stat stat = new Stat();
-            byte[] bytes = getContext().getZkClient().getData(dataPath, true, stat);
-            // String metricsDataJson = new String(bytes, UTF_8);
-            // metricsDataJson.replaceAll("\n", "");
-            MetricsData metricsData = null;
-            if (bytes != null) {
-                metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
-                metricsData.setClusterId(clusterId);
-                metricsData.setServiceId(serviceId);
-                metricsData.setLastUpdatedTimestamp(stat.getMtime());
-            }
-            return metricsData;
-        } catch (KeeperException e) {
-            if (e.code() == KeeperException.Code.NONODE) {
-                return null;
-            }
-            throw new ReignException(e);
-        } catch (Exception e) {
-            throw new ReignException(e);
-        }
+
+        // PathScheme pathScheme = getContext().getPathScheme();
+        // String dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId,
+        // serviceId));
+        // Stat stat = new Stat();
+        // byte[] bytes = getContext().getZkClient().getData(dataPath, true, stat);
+        // // String metricsDataJson = new String(bytes, UTF_8);
+        // // metricsDataJson.replaceAll("\n", "");
+        //
+        // logger.debug("XXX:  stat.ctime = {}", stat.getCtime());
+        //
+        // MetricsData metricsData = null;
+        // if (bytes != null) {
+        // metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+        // metricsData.setClusterId(clusterId);
+        // metricsData.setServiceId(serviceId);
+        // metricsData.setLastUpdatedTimestamp(stat.getMtime());
+        // }
+
+        MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, null);
+
+        return metricsData;
+
     }
 
     /**
@@ -291,8 +291,13 @@ public class MetricsService extends AbstractService {
 
     MetricsData getMetricsFromDataNode(String clusterId, String serviceId, String dataNode) {
         PathScheme pathScheme = getContext().getPathScheme();
-        String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                pathScheme.joinTokens(clusterId, serviceId, dataNode));
+        String dataPath = null;
+        if (dataNode != null) {
+            dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                    pathScheme.joinTokens(clusterId, serviceId, dataNode));
+        } else {
+            dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId, serviceId));
+        }
         byte[] bytes = null;
         try {
             Stat stat = new Stat();
@@ -505,31 +510,21 @@ public class MetricsService extends AbstractService {
                             }
                         } else {
                             // get metrics data for service
-                            String dataPath = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
-                                    tokens[1]);
-                            byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
-                            MetricsData metricsData = null;
-                            if (bytes != null) {
-                                metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
-                            }
-                            responseMessage.setBody(metricsData);
+                            MetricsData metricsData = getMetricsFromDataNode(tokens[0], tokens[1], null);
                             if (metricsData == null) {
                                 responseMessage.setComment("Not found:  " + resource);
+                            } else {
+                                responseMessage.setBody(metricsData);
                             }
                         }
 
                     } else if (tokens.length == 3) {
                         // get metrics data for single data node
-                        String dataPath = getContext().getPathScheme().getAbsolutePath(PathType.METRICS, tokens[0],
-                                tokens[1], tokens[2]);
-                        byte[] bytes = getContext().getZkClient().getData(dataPath, false, new Stat());
-                        MetricsData metricsData = null;
-                        if (bytes != null) {
-                            metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
-                        }
-                        responseMessage.setBody(metricsData);
+                        MetricsData metricsData = getMetricsFromDataNode(tokens[0], tokens[1], tokens[2]);
                         if (metricsData == null) {
                             responseMessage.setComment("Not found:  " + resource);
+                        } else {
+                            responseMessage.setBody(metricsData);
                         }
 
                     }
@@ -827,13 +822,13 @@ public class MetricsService extends AbstractService {
                             serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
                             serviceMetricsData.setClusterId(clusterId);
                             serviceMetricsData.setServiceId(serviceId);
+                            serviceMetricsData.setLastUpdatedTimestamp(System.currentTimeMillis());
 
                             // write to ZK
                             String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
                                     pathScheme.joinTokens(clusterId, serviceId));
                             String serviceMetricsDataString = JacksonUtil.getObjectMapper().writeValueAsString(
                                     serviceMetricsData);
-                            // logger.trace("EXPORT SERVICE DATA:  {}", serviceMetricsDataString);
                             zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(), dataPath,
                                     serviceMetricsDataString.getBytes(UTF_8), getContext().getDefaultZkAclList(),
                                     CreateMode.PERSISTENT, -1);
@@ -917,7 +912,7 @@ public class MetricsService extends AbstractService {
                                         continue;
                                     }
 
-                                    // keep last days worth of data
+                                    // keep last day's worth of data
                                     long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - 86400000);
                                     if (millisToExpiry <= 0) {
                                         logger.info("Removing expired data node:  path={}; millisToExpiry={}",

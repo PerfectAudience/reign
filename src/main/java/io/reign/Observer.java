@@ -18,6 +18,8 @@ package io.reign;
 
 import java.util.List;
 
+import org.apache.zookeeper.data.Stat;
+
 /**
  * 
  * @author ypai
@@ -46,9 +48,13 @@ public interface Observer {
 
     public void nodeDataChanged(byte[] updatedData, byte[] previousData);
 
+    public void nodeDataChanged(byte[] updatedData, byte[] previousData, Stat updatedStat);
+
     public void nodeDeleted(byte[] previousData, List<String> previousChildList);
 
     public void nodeCreated(byte[] data, List<String> childList);
+
+    public void nodeCreated(byte[] data, List<String> childList, Stat updatedStat);
 
     public String getPath();
 

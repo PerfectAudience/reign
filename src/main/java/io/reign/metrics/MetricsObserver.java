@@ -56,7 +56,8 @@ public abstract class MetricsObserver extends AbstractObserver {
         if (bytes == null)
             return null;
         try {
-            return JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
+            return metricsData;
         } catch (Exception e) {
             throw new ReignException(e);
         }
