@@ -32,11 +32,6 @@ Applications using Reign quickly gain a high level of cluster-awareness and coor
 
 Quick Start
 -----------
-Some of the following code and a simple Java `main()` hook can be found in  
-`io.reign.examples.QuickStartExample`  
-
-Other code examples are also available in the same package, for those that like to dive right in.
-  
 
 ### Prerequisites
 
@@ -159,23 +154,39 @@ List nodes comprising "service2":
         ConfService confService = (ConfService) reign.getService("conf");
 
         // store configuration as properties file
-        Properties props = new Properties();
+        Map<String,String> props = new HashMap<String,String>();
         props.setProperty("capacity.min", "111");
         props.setProperty("capacity.max", "999");
         props.setProperty("lastSavedTimestamp", System.currentTimeMillis() + "");
 
-        // serialization/deserialization in ZooKeeper is done by fle "extension"
-        confService.putConf("examples", "config1.properties", props);
+        // save configuration to ZooKeeper (uses JSON as standard serialization)
+        confService.putConf("examples", "config1.props", props);
 
-        // retrieve configuration as properties file
-        Properties loadedProperties = confService.getConf("examples", "config1.properties");
+        // retrieve configuration 
+        Map<String,String> loadedProperties = confService.getConf("examples", "config1.props");
 
-        // store configuration as JSON file (uses utility buildable Map for conciseness)
+        // another example:  store configuration (uses utility buildable Map for conciseness)
         confService.putConf("examples", "config1.js", Structs.<String, String> map().kv("capacity.min", "222").kv("capacity.max", "888")
                         .kv("lastSavedTimestamp", System.currentTimeMillis() + ""));
 
-        // retrieve configuration as JSON file
+        // another example:  retrieve configuration
         Map<String, String> loadedJson = confService.getConf("examples", "config1.js");
+        
+        // Use read-only utility class that self updates using an internal observer:  
+        // eventually consistent with latest configuration values in ZooKeeper
+        ReignContext context = reign.getContext();
+        UpdatingConf<String,String> updatingConf = new UpdatingConf<String,String>(context, "test", "service1/test1.conf");
+        
+        // will be null initially
+        String value1 = updatingConf.get("key1");
+        
+        // update the value
+        confService.putConf("test", "service1/test1.conf",
+                    Structs.<String, String> map().kv("key1", "value1"));
+        
+        // value for "key1" will eventually be visible
+        String checkingValue1Again = updatingConf.get("key1");
+        
 
 ### Messaging between nodes
 
