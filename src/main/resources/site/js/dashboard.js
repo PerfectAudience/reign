@@ -11,7 +11,7 @@ $(function() {
     	hideAllServiceData();     	
     	
     	var clusterId = $(this).text().trim();
-    	console.log(clusterId);
+    	//console.log(clusterId);
     	$("#cluster-id").text(clusterId);
     	$("#cluster-id").attr("clusterId", clusterId);   	
     	
@@ -33,7 +33,7 @@ $(function() {
     	//var serviceId = $(this).text().trim();
     	var serviceId = $(this).attr("serviceId").trim();
     	var clusterIdServiceId = clusterId+"/"+serviceId;
-    	console.log(clusterIdServiceId);
+    	//console.log(clusterIdServiceId);
     	
     	var previousServiceId = $("li.active a.cluster-service-info").attr("serviceId");
     	
@@ -152,11 +152,11 @@ $(function() {
 	} // connectWebSocket
 
 	function handleResponse(html) {
-		console.log(html);
+		//console.log(html);
 
 		var response = eval('(' + html + ')');
 		if( response.body ) {
-			console.log("non-event:  "+html);
+			//console.log("non-event:  "+html);
 			if( (response.id && response.id==3) ) {
 				// service node count
 				var nodeIdList = response.body.nodeIdList;
@@ -210,7 +210,7 @@ $(function() {
 			}
 			
 		} else if( response.event ) {
-			console.log("event:  "+html);
+			//console.log("event:  "+html);
 		}		
 	}
 	
@@ -402,11 +402,11 @@ $(function() {
 	}
 	
 	function handleRequest(html, requestId) {
-		console.log(html);	
+		//console.log(html);	
 	}
 
 	function handleIncomingMessage(raw) {
-		console.log("EVENT:  " + raw);
+		//console.log("EVENT:  " + raw);
 		
 		var mesg = eval('(' + raw + ')');
 		
@@ -420,17 +420,17 @@ $(function() {
 	}
 
 	function handleControlMessage(html) {
-		console.log(html);
+		//console.log(html);
 	}
 
 	function handleErrorMessage(html) {
-		console.log(html);
+		//console.log(html);
 	}
 	
 	function handleHash( type ) {
 		hash = location.hash ? location.hash.replace('#', '') : null;
 		
-		console.log('handleHash():  hash='+hash);
+		//console.log('handleHash():  hash='+hash);
 		
 		if( !hash || !type ) {
 			return;
@@ -463,7 +463,7 @@ $(function() {
 			clusterId = hash;
 		}
 		
-		console.log('handleHash:  type='+type+'; hash='+hash+'; clusterId='+clusterId+"; serviceId="+serviceId);
+		//console.log('handleHash:  type='+type+'; hash='+hash+'; clusterId='+clusterId+"; serviceId="+serviceId);
 		
 		if( type=='cluster' && clusterId ) {
 			$('#'+clusterId+'-info').click();
