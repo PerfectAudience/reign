@@ -1,17 +1,14 @@
 /*
- Copyright 2013 Yen Pai ypai@reign.io
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ * Copyright 2013 Yen Pai ypai@reign.io
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package io.reign.conf;
@@ -26,12 +23,10 @@ import io.reign.mesg.ResponseStatus;
 import io.reign.mesg.SimpleResponseMessage;
 import io.reign.util.ZkClientUtil;
 
-import java.io.ByteArrayInputStream;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -49,17 +44,20 @@ import org.slf4j.LoggerFactory;
  */
 public class ConfService extends AbstractService {
 
+    static final DataSerializer DEFAULT_CONF_SERIALIZER = new JsonDataSerializer();
+
     private static final Logger logger = LoggerFactory.getLogger(ConfService.class);
 
     private final ZkClientUtil zkUtil = new ZkClientUtil();
 
-    private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(17,
-            0.9f, 1);
+    // private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(17,
+    // 0.9f, 1);
 
     public ConfService() {
-        dataSerializerMap.put("properties", new ConfPropertiesSerializer<ConfProperties>(false));
-        dataSerializerMap.put("json", new JsonDataSerializer());
-        dataSerializerMap.put("js", dataSerializerMap.get("json"));
+        // dataSerializerMap.put("json", new JsonDataSerializer());
+        // dataSerializerMap.put("js", dataSerializerMap.get("json"));
+        // dataSerializerMap.put("properties", dataSerializerMap.get("json"));
+        // dataSerializerMap.put("properties", new ConfPropertiesSerializer<ConfProperties>(false));
     }
 
     @Override
@@ -71,16 +69,16 @@ public class ConfService extends AbstractService {
     public void destroy() {
     }
 
-    /**
-     * 
-     * @param extension
-     *            "file" extension of path: would be "properties" in the following path:
-     *            /my-cluster/my-config.properties
-     * @param dataSerializer
-     */
-    public void registerSerializer(String extension, DataSerializer dataSerializer) {
-        dataSerializerMap.put(extension, dataSerializer);
-    }
+    // /**
+    // *
+    // * @param extension
+    // * "file" extension of path: would be "properties" in the following path:
+    // * /my-cluster/my-config.properties
+    // * @param dataSerializer
+    // */
+    // public void registerSerializer(String extension, DataSerializer dataSerializer) {
+    // dataSerializerMap.put(extension, dataSerializer);
+    // }
 
     static DataSerializer getDataSerializer(String path, Map<String, DataSerializer> dataSerializerMap) {
         int lastDotIndex = path.lastIndexOf(".");
@@ -123,7 +121,7 @@ public class ConfService extends AbstractService {
                 getPathScheme().joinPaths(clusterId, relativeConfPath));
 
         observer.setClusterId(clusterId);
-        observer.setDataSerializerMap(dataSerializerMap);
+        // observer.setDataSerializerMap(dataSerializerMap);
 
         getObserverManager().put(absolutePath, observer);
     }
@@ -146,13 +144,13 @@ public class ConfService extends AbstractService {
     public <T> T getConf(String clusterId, String relativeConfPath, ConfObserver<T> observer) {
         throwExceptionIfInvalidConfPath(relativeConfPath);
 
-        DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
+        // DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
 
         if (observer != null) {
             observe(clusterId, relativeConfPath, observer);
         }
 
-        return (T) getConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, confSerializer, null);
+        return (T) getConfAbsolutePath(PathType.CONF, clusterId, relativeConfPath, DEFAULT_CONF_SERIALIZER, null);
 
     }
 
@@ -169,10 +167,10 @@ public class ConfService extends AbstractService {
      * @param conf
      */
     public <T> void putConf(String clusterId, String relativeConfPath, T conf, ConfObserver<T> observer) {
-        DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
+        // DataSerializer confSerializer = getDataSerializer(relativeConfPath, dataSerializerMap);
         putConfAbsolutePath(
                 getPathScheme().getAbsolutePath(PathType.CONF, getPathScheme().joinPaths(clusterId, relativeConfPath)),
-                conf, confSerializer, getDefaultZkAclList());
+                conf, DEFAULT_CONF_SERIALIZER, getDefaultZkAclList());
 
         if (observer != null) {
             observe(clusterId, relativeConfPath, observer);
@@ -412,7 +410,7 @@ public class ConfService extends AbstractService {
                 if ("put".equals(meta)) {
                     logger.info("PUT configuration:  clusterId={}; path={}", clusterId, relativePath);
 
-                    conf = new Properties();
+                    conf = new HashMap<String, Object>();
 
                 } else {
                     logger.info("UPDATE configuration:  clusterId={}; path={}", clusterId, relativePath);
@@ -426,25 +424,35 @@ public class ConfService extends AbstractService {
                     // create one to build upon if doesn't exist yet
                     if (conf == null) {
                         // if this is a new configuration
-                        conf = new Properties();
+                        conf = new HashMap<String, Object>();
                     }
                 }
 
                 // TODO: use UTF-8 universally in the future?
                 // read in api body as properties for easier processing
-                Properties updateProperties = new Properties();
+                Map<String, String> updateConf = new HashMap<String, String>();
                 if (confBody != null) {
-                    updateProperties.load(new ByteArrayInputStream(confBody.getBytes("ISO-8859-1")));
+                    String[] confBodyLines = confBody.split("\n");
+                    for (String confLine : confBodyLines) {
+                        int equalsIndex = confLine.indexOf("=");
+                        if (equalsIndex != -1) {
+                            String key = confLine.substring(0, equalsIndex).trim();
+                            String value = confLine.substring(equalsIndex + 1).trim();
+                            updateConf.put(key, value);
+                        } else {
+                            logger.debug("Could not parse line:  ignoring:  '" + confLine + "'");
+                        }
+                    }
                 }
                 boolean isUpdate = "update".equals(meta);
-                for (Object keyObject : updateProperties.keySet()) {
+                for (Object keyObject : updateConf.keySet()) {
                     String key = (String) keyObject;
                     if (isUpdate && key.startsWith("+")) {
                         String newKey = key.substring(1);
 
                         // only add if doesn't already exist
                         if (conf.get(newKey) == null) {
-                            conf.put(newKey, castValueIfNecessary(updateProperties.getProperty(key)));
+                            conf.put(newKey, castValueIfNecessary(updateConf.get(key)));
                         }
 
                     } else if (isUpdate && key.startsWith("-")) {
@@ -454,8 +462,7 @@ public class ConfService extends AbstractService {
                         conf.remove(key);
                     } else {
                         // add or overwrite existing property
-                        conf.put(key,
-                                castToMatchExistingTypeIfNecessary(updateProperties.getProperty(key), conf.get(key)));
+                        conf.put(key, castToMatchExistingTypeIfNecessary(updateConf.get(key), conf.get(key)));
                     }
                 }// for
 
