@@ -1,17 +1,14 @@
 /*
- Copyright 2013 Yen Pai ypai@reign.io
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ * Copyright 2013 Yen Pai ypai@reign.io
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package io.reign.metrics;
@@ -21,6 +18,9 @@ import io.reign.util.TimeUnitUtil;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -30,6 +30,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 
@@ -42,7 +43,7 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
 
     private static final Logger logger = LoggerFactory.getLogger(RotatingMetricRegistryManager.class);
 
-    private volatile MetricRegistry metricRegistry;
+    private final MetricRegistry metricRegistry;
     private volatile long lastRotatedTimestamp = 0L;
 
     private final int rotationInterval;
@@ -54,7 +55,11 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
         this.rotationInterval = rotationInterval;
         this.rotationTimeUnit = rotationTimeUnit;
         rotationIntervalMillis = rotationTimeUnit.toMillis(rotationInterval);
-        rotateAsNecessary();
+
+        metricRegistry = new MetricRegistry();
+        lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
+                System.currentTimeMillis());
+
     }
 
     public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
@@ -150,7 +155,7 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
 
     @Override
     public synchronized MetricRegistry rotateAsNecessary() {
-        MetricRegistry currentMetricRegistry = this.metricRegistry;
+        MetricRegistry outputMetricRegistry = this.metricRegistry;
 
         long currentTimestamp = System.currentTimeMillis();
         if (currentTimestamp - lastRotatedTimestamp > rotationIntervalMillis) {
@@ -159,20 +164,43 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
                     "Rotating MetricRegistry:  currentTimestamp={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",
                     currentTimestamp, lastRotatedTimestamp, rotationIntervalMillis, lastRotatedTimestamp);
 
-            this.metricRegistry = new MetricRegistry();
+            // migrate metrics to outputMetricRegistry to ensure caller is able to flush persist current state
+            outputMetricRegistry = new MetricRegistry();
+
+            // reset metrics
+            Map<String, Metric> metricMap = this.metricRegistry.getMetrics();
+            Set<Entry<String, Metric>> entries = metricMap.entrySet();
+            for (Entry<String, Metric> entry : entries) {
+                String name = entry.getKey();
+                Metric metric = entry.getValue();
+
+                if (metric instanceof Counter) {
+                    Counter counter = (Counter) metric;
+
+                    // add counter with current value to outputMetricRegistry
+                    long count = counter.getCount();
+                    Counter counterCopy = outputMetricRegistry.counter(name);
+                    counterCopy.inc(count);
+
+                    // decrement "live" counter with count
+                    counter.dec(count);
+                } else {
+                    outputMetricRegistry.register(name, metric);
+                }
+            }
+
+            // set rotated timestamp
             this.lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
                     currentTimestamp);
 
-            if (currentMetricRegistry != null) {
-                synchronized (callbackList) {
-                    for (MetricRegistryManagerCallback callback : callbackList) {
-                        callback.rotated(metricRegistry, currentMetricRegistry);
-                    }
+            synchronized (callbackList) {
+                for (MetricRegistryManagerCallback callback : callbackList) {
+                    callback.rotated(metricRegistry, outputMetricRegistry);
                 }
             }
 
         }
-        return currentMetricRegistry;
-    }
 
+        return outputMetricRegistry;
+    }
 }

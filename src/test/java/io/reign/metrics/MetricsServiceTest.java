@@ -139,13 +139,14 @@ public class MetricsServiceTest {
         MetricsData metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
         while (metricsData == null) {
             metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
+            Thread.sleep(1000);
         }
 
         // counters
         CounterData counter1Data = metricsData.getCounter("counter1");
         CounterData counter2Data = metricsData.getCounter("counter2");
-        assertTrue(counter1Data.getCount() == 1L);
-        assertTrue(counter2Data.getCount() == 2L);
+        assertTrue("Unexpected value:  " + counter1Data.getCount(), counter1Data.getCount() == 1L);
+        assertTrue("Unexpected value:  " + counter2Data.getCount(), counter2Data.getCount() == 2L);
 
         // gauges
         GaugeData gauge1 = metricsData.getGauge("gauge1");
