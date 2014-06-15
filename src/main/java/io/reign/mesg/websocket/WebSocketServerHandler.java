@@ -297,7 +297,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
     }
 
     private void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest req) throws Exception {
-        // only GET methods.
+        // only GET/POST methods
         if (req.getMethod() != GET && req.getMethod() != POST) {
             sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1, FORBIDDEN));
             return;
@@ -305,7 +305,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
         // anything but a request for the websocket will be treated like a regular HTTP Web request
         String uri = req.getUri();
-        logger.debug("Received request:  uri={}", req.getUri());
+        logger.debug("Received request:  uri={}", uri);
         if (uri != null && !WebSocketMessagingProvider.WEBSOCKET_PATH.equals(uri)) {
             // web request
             handleWebResourceRequest(ctx, req, uri);
@@ -318,40 +318,64 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
     }
 
-    private void handleWebResourceRequest(ChannelHandlerContext ctx, HttpRequest req, String uri) {
-        HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
+    private void handleWebResourceRequest(final ChannelHandlerContext ctx, final HttpRequest req, final String uri) {
 
-        // ChannelBuffer content = WebSocketServerIndexPage.getContent(getWebSocketLocation(req));
+        this.getExecutor().execute(new Runnable() {
+            @Override
+            public void run() {
 
-        String contentType = null;
-        if (uri.endsWith(".png")) {
-            contentType = "image/png";
-        } else if (uri.endsWith(".ico")) {
-            contentType = "image/x-icon";
-        } else if (uri.endsWith(".css")) {
-            contentType = "text/css";
-        } else if (uri.endsWith(".js")) {
-            contentType = "application/javascript";
-        } else {
-            contentType = "text/html; charset=UTF-8";
-        }
+                ChannelBuffer content = null;
+                String contentType = null;
+                if (uri.startsWith("/api") || uri.startsWith("api")) {
+                    contentType = "application/javascript";
+                    content = loadRestApi(uri, req);
 
-        ChannelBuffer content = loadWebResource(uri, contentType, host(req));
+                    if (content != null) {
+                        HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
+                        res.setHeader(CONTENT_TYPE, contentType);
+                        setContentLength(res, content.readableBytes());
 
-        if (content != null) {
-            res.setHeader(CONTENT_TYPE, contentType);
-            setContentLength(res, content.readableBytes());
+                        res.setContent(content);
+                        sendHttpResponse(ctx, req, res);
+                    } else {
+                        sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.NOT_FOUND));
+                    }
 
-            res.setContent(content);
-            sendHttpResponse(ctx, req, res);
-        } else {
-            sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.NOT_FOUND));
-        }
+                } else {
+                    contentType = null;
+                    if (uri.endsWith(".png")) {
+                        contentType = "image/png";
+                    } else if (uri.endsWith(".ico")) {
+                        contentType = "image/x-icon";
+                    } else if (uri.endsWith(".css")) {
+                        contentType = "text/css";
+                    } else if (uri.endsWith(".js")) {
+                        contentType = "application/javascript";
+                    } else {
+                        contentType = "text/html; charset=UTF-8";
+                    }
+                    content = loadWebResource(uri, contentType, webSocketUri(req));
+
+                    if (content != null) {
+                        HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
+                        res.setHeader(CONTENT_TYPE, contentType);
+                        setContentLength(res, content.readableBytes());
+
+                        res.setContent(content);
+                        sendHttpResponse(ctx, req, res);
+                    } else {
+                        sendHttpResponse(ctx, req, new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.NOT_FOUND));
+                    }
+                }
+            }
+        });
+
     }
 
     private void handleWebSocketHandshake(ChannelHandlerContext ctx, HttpRequest req) throws Exception {
         // do web socket handshake
-        WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(host(req), null, false);
+        WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(webSocketUri(req), null,
+                false);
         handshaker = wsFactory.newHandshaker(req);
         if (handshaker == null) {
             wsFactory.sendUnsupportedWebSocketVersionResponse(ctx.getChannel());
@@ -479,6 +503,10 @@ public class WebSocketServerHandler extends ExecutionHandler {
         e.getChannel().close();
     }
 
+    private ChannelBuffer loadRestApi(String uri, HttpRequest req) {
+        return null;
+    }
+
     private ChannelBuffer loadWebResource(String path, String contentType, String host) {
         if (path == null || contentType == null) {
             return null;
@@ -545,7 +573,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
         return null;
     }
 
-    private static String host(HttpRequest req) {
+    private static String webSocketUri(HttpRequest req) {
         return "ws://" + req.getHeader(HOST) + WebSocketMessagingProvider.WEBSOCKET_PATH;
     }
 }
