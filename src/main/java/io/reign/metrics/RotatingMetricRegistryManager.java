@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -169,25 +168,62 @@ public class RotatingMetricRegistryManager implements MetricRegistryManager {
 
             // reset metrics
             Map<String, Metric> metricMap = this.metricRegistry.getMetrics();
-            Set<Entry<String, Metric>> entries = metricMap.entrySet();
-            for (Entry<String, Metric> entry : entries) {
-                String name = entry.getKey();
-                Metric metric = entry.getValue();
+            Set<String> keys = metricMap.keySet();
+            for (String key : keys) {
+                String metricName = key;
+                Metric metric = metricMap.get(metricName);
 
-                if (metric instanceof Counter) {
+                if (metric instanceof RotatingMetric) {
+                    Metric oldValue = ((RotatingMetric) metric).rotate();
+                    outputMetricRegistry.register(metricName, oldValue);
+
+                } else if (metric instanceof Counter) {
                     Counter counter = (Counter) metric;
 
                     // add counter with current value to outputMetricRegistry
                     long count = counter.getCount();
-                    Counter counterCopy = outputMetricRegistry.counter(name);
+                    Counter counterCopy = outputMetricRegistry.counter(metricName);
                     counterCopy.inc(count);
 
                     // decrement "live" counter with count
                     counter.dec(count);
-                } else {
-                    outputMetricRegistry.register(name, metric);
+                } else if (metric instanceof Gauge) {
+                    // save old one to copy that will be returned
+                    outputMetricRegistry.register(metricName, metric);
+
+                    // we don't rotate gauges unless they are marked RotatingMetric
+
+                } else if (metric instanceof Histogram) {
+                    // save old one to copy that will be returned
+                    outputMetricRegistry.register(metricName, metric);
+
+                    // rotate in new
+                    if (!metricRegistry.remove(metricName)) {
+                        logger.warn("Metric was not removed:  metricName={}", metricName);
+                    }
+                    metricRegistry.histogram(metricName);
+
+                } else if (metric instanceof Meter) {
+                    // save old one to copy that will be returned
+                    outputMetricRegistry.register(metricName, metric);
+
+                    // rotate in new
+                    if (!metricRegistry.remove(metricName)) {
+                        logger.warn("Metric was not removed:  metricName={}", metricName);
+                    }
+                    metricRegistry.meter(metricName);
+
+                } else if (metric instanceof Timer) {
+                    // save old one to copy that will be returned
+                    outputMetricRegistry.register(metricName, metric);
+
+                    // rotate in new
+                    if (!metricRegistry.remove(metricName)) {
+                        logger.warn("Metric was not removed:  metricName={}", metricName);
+                    }
+                    metricRegistry.timer(metricName);
                 }
-            }
+            }// for
 
             // set rotated timestamp
             this.lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
