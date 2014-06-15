@@ -1,17 +1,14 @@
 /*
- Copyright 2013 Yen Pai ypai@reign.io
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ * Copyright 2013 Yen Pai ypai@reign.io
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package io.reign;
@@ -27,10 +24,13 @@ import io.reign.zk.PathCache;
 import io.reign.zk.ResilientZkClient;
 import io.reign.zk.SimplePathCache;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
+import org.apache.curator.test.TestingServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +64,8 @@ public class ReignMaker {
     private NodeIdProvider canonicalIdMaker = null;
 
     private final Map<String, Service> serviceMap = new HashMap<String, Service>();
+
+    private TestingServer zkTestServer;
 
     private ReignMaker core() {
         // configure Reign with all core services
@@ -192,6 +194,35 @@ public class ReignMaker {
         return this;
     }
 
+    public String zkConnectString() {
+        return this.zkConnectString;
+    }
+
+    public int zkSessionTimeout() {
+        return this.zkSessionTimeout;
+    }
+
+    public ReignMaker zkClientTestMode(int zkPort, int zkSessionTimeout) {
+        logger.debug("Starting in-process ZooKeeper server on port {} -- meant for testing only!", zkPort);
+        try {
+            String dataDirectory = System.getProperty("java.io.tmpdir");
+            if (!dataDirectory.endsWith("/")) {
+                dataDirectory += File.separator;
+            }
+            dataDirectory += UUID.randomUUID().toString();
+            logger.debug("ZK dataDirectory={}", dataDirectory);
+            File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
+            zkTestServer = new TestingServer(zkPort, dir);
+
+            this.zkConnectString = "localhost:" + zkPort;
+            this.zkSessionTimeout = 30000;
+        } catch (Exception e) {
+            logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
+        }
+
+        return this;
+    }
+
     public ReignMaker registerService(String serviceName, Service service) {
         serviceMap.put(serviceName, service);
         return this;
@@ -251,7 +282,7 @@ public class ReignMaker {
         }
 
         // build
-        s = new Reign(zkClient, pathScheme, pathCache, canonicalIdMaker);
+        s = new Reign(zkClient, pathScheme, canonicalIdMaker, zkTestServer);
         s.registerServices(serviceMap);
 
         return s;
