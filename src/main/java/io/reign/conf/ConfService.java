@@ -17,6 +17,7 @@ import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
 import io.reign.PathType;
+import io.reign.mesg.ParsedRequestMessage;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 import io.reign.mesg.ResponseStatus;
@@ -335,15 +336,9 @@ public class ConfService extends AbstractService {
             }
 
             // get meta
-            String meta = null;
-            String resource = null;
-            int hashLastIndex = resourceLine.lastIndexOf("#");
-            if (hashLastIndex != -1) {
-                meta = resourceLine.substring(hashLastIndex + 1);
-                resource = resourceLine.substring(0, hashLastIndex);
-            } else {
-                resource = resourceLine;
-            }
+            ParsedRequestMessage parsedRequestMessage = new ParsedRequestMessage(requestMessage);
+            String meta = parsedRequestMessage.getMeta();
+            String resource = parsedRequestMessage.getResource();
 
             // get resource; strip beginning and ending slashes "/"
             if (resource.startsWith("/")) {
