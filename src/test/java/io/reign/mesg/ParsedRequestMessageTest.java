@@ -51,6 +51,30 @@ public class ParsedRequestMessageTest {
 
     }
 
+    @Test
+    public void testRestMessage() throws Exception {
+        ParsedRequestMessage parsed = null;
+
+        parsed = parsedRequestMessage("/cluster1/serviceA?meta=wow&key1=value1");
+        assertTrue("Wrong meta:  " + parsed.getMeta(), "wow".equals(parsed.getMeta()));
+        assertTrue("Wrong parameter value:  " + parsed.getQueryParameterValue("key1"),
+                "value1".equals(parsed.getQueryParameterValue("key1")));
+        assertTrue("Wrong resource:  " + parsed.getResource(), "/cluster1/serviceA".equals(parsed.getResource()));
+
+        parsed = parsedRequestMessage("/cluster1/serviceA?meta=wow&key1=value1#meta");
+        assertTrue("Wrong meta:  " + parsed.getMeta(), "meta".equals(parsed.getMeta()));
+        assertTrue("Wrong parameter value:  " + parsed.getQueryParameterValue("key1"),
+                "value1".equals(parsed.getQueryParameterValue("key1")));
+        assertTrue("Wrong resource:  " + parsed.getResource(), "/cluster1/serviceA".equals(parsed.getResource()));
+
+        parsed = parsedRequestMessage("/cluster1/serviceA#meta?meta=wow&key1=value1");
+        assertTrue("Wrong meta:  " + parsed.getMeta(), "meta?meta=wow&key1=value1".equals(parsed.getMeta()));
+        assertTrue("Wrong parameter value:  " + parsed.getQueryParameterValue("key1"),
+                parsed.getQueryParameterValue("key1") == null);
+        assertTrue("Wrong resource:  " + parsed.getResource(), "/cluster1/serviceA".equals(parsed.getResource()));
+
+    }
+
     ParsedRequestMessage parsedRequestMessage(String message) {
         SimpleRequestMessage requestMessage = new SimpleRequestMessage("test", message);
         return new ParsedRequestMessage(requestMessage);
