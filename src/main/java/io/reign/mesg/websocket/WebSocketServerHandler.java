@@ -20,6 +20,7 @@ import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
 import io.reign.presence.PresenceService;
 import io.reign.util.IdUtil;
+import io.reign.util.JacksonUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,6 +41,7 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.WriteCompletionEvent;
 import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
+import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
@@ -326,9 +328,11 @@ public class WebSocketServerHandler extends ExecutionHandler {
 
                 ChannelBuffer content = null;
                 String contentType = null;
-                if (uri.startsWith("/api") || uri.startsWith("api")) {
+                int apiIndex = uri.indexOf("api/");
+                if (apiIndex > 0) {
+
                     contentType = "application/javascript";
-                    content = loadRestApi(uri, req);
+                    content = loadRestApi(uri.substring(apiIndex + 4), req);
 
                     if (content != null) {
                         HttpResponse res = new DefaultHttpResponse(HTTP_1_1, OK);
@@ -503,7 +507,49 @@ public class WebSocketServerHandler extends ExecutionHandler {
         e.getChannel().close();
     }
 
-    private ChannelBuffer loadRestApi(String uri, HttpRequest req) {
+    private ChannelBuffer loadRestApi(String apiResource, HttpRequest req) {
+        try {
+            StringBuilder requestTextBuffer = new StringBuilder(apiResource);
+            int firstSlashIndex = requestTextBuffer.indexOf("/");
+            if (firstSlashIndex != -1) {
+                requestTextBuffer.setCharAt(firstSlashIndex, ':');
+            }
+            if (req.getMethod() == HttpMethod.POST) {
+                ChannelBuffer contentBuffer = req.getContent();
+                if (contentBuffer.hasArray()) {
+                    byte[] contentBytes = contentBuffer.array();
+                    requestTextBuffer.append("\n");
+
+                    requestTextBuffer.append(new String(contentBytes, "UTF-8"));
+
+                }
+            }
+
+            String requestText = requestTextBuffer.toString();
+            logger.debug("Received REST API call:  {}", requestText);
+
+            RequestMessage requestMessage = getMessageProtocol().fromTextRequest(requestText);
+            if (requestMessage != null) {
+                Service targetService = getServiceDirectory().getService(requestMessage.getTargetService());
+
+                // default to null service
+                if (targetService == null) {
+                    targetService = getServiceDirectory().getService("null");
+                }
+
+                ResponseMessage responseMessage = targetService.handleMessage(requestMessage);
+
+                String textContent = JacksonUtil.getObjectMapper().writeValueAsString(responseMessage);
+
+                return ChannelBuffers.copiedBuffer(textContent, CharsetUtil.UTF_8);
+
+            } else {
+                logger.warn("Received poorly formed message:  request='{}'", requestText);
+            }// if
+        } catch (Exception e1) {
+            logger.error("Error processing REST API request:  " + e1, e1);
+
+        }
         return null;
     }
 
