@@ -34,11 +34,14 @@ public class DefaultMessageProtocol implements MessageProtocol {
     public RequestMessage fromTextRequest(String textRequest) {
         try {
             String[] requestTokens = null;
-            int colonIndex = textRequest.indexOf(':');
-            if (colonIndex != -1) {
+            int serviceDelimiterIndex = textRequest.indexOf(':');
+            if (serviceDelimiterIndex == -1) {
+                serviceDelimiterIndex = textRequest.indexOf('/');
+            }
+            if (serviceDelimiterIndex != -1) {
                 requestTokens = new String[2];
-                requestTokens[0] = textRequest.substring(0, colonIndex);
-                requestTokens[1] = textRequest.substring(colonIndex + 1);
+                requestTokens[0] = textRequest.substring(0, serviceDelimiterIndex);
+                requestTokens[1] = textRequest.substring(serviceDelimiterIndex + 1);
 
             }
             if (requestTokens != null) {
