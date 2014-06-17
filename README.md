@@ -35,12 +35,16 @@ Quick Start
 
 ### Prerequisites
 
-Have a running ZooKeeper cluster.  For a quick guide on how to set up ZooKeeper on OS X, try 
+Ideally, have a running ZooKeeper cluster.  For a quick guide on how to set up ZooKeeper on OS X, try 
 http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-minutes-or-less/
 
-
+Reign can also be started in bootstrap mode where it will spin up an in-process ZooKeeper -- this should only be used for testing/development.
 
 ### Initialize and start up examples
+        /** init and start using in-process ZooKeeper on port 12181 **/
+        Reign reign = Reign.maker().zkClientTestMode(12181, 30000).get();
+        reign.start()
+
         /**
          * init and start with core services -- connecting to ZooKeeper on localhost at port 2181 with 30 second
          * ZooKeeper session timeout
