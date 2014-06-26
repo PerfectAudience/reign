@@ -216,29 +216,8 @@ public class MetricsService extends AbstractService {
      * Get metrics data for given service.
      */
     public MetricsData getServiceMetrics(String clusterId, String serviceId) {
-
-        // PathScheme pathScheme = getContext().getPathScheme();
-        // String dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId,
-        // serviceId));
-        // Stat stat = new Stat();
-        // byte[] bytes = getContext().getZkClient().getData(dataPath, true, stat);
-        // // String metricsDataJson = new String(bytes, UTF_8);
-        // // metricsDataJson.replaceAll("\n", "");
-        //
-        // logger.debug("XXX:  stat.ctime = {}", stat.getCtime());
-        //
-        // MetricsData metricsData = null;
-        // if (bytes != null) {
-        // metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
-        // metricsData.setClusterId(clusterId);
-        // metricsData.setServiceId(serviceId);
-        // metricsData.setLastUpdatedTimestamp(stat.getMtime());
-        // }
-
         MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, null);
-
         return metricsData;
-
     }
 
     /**
@@ -641,6 +620,8 @@ public class MetricsService extends AbstractService {
                                 dataNodes.size() + 1, 1.0f);
                         int dataNodeCount = 0;
                         int dataNodeInWindowCount = 0;
+                        Integer intervalLength = null;
+                        TimeUnit intervalLengthUnit = null;
                         for (String dataNode : dataNodes) {
 
                             dataNodeCount++;
@@ -671,6 +652,9 @@ public class MetricsService extends AbstractService {
                                 continue;
 
                             }
+
+                            intervalLength = metricsData.getIntervalLength();
+                            intervalLengthUnit = metricsData.getIntervalLengthUnit();
 
                             // aggregate service stats for data nodes that within current rotation interval
                             logger.trace("Aggregating data node:  path={}; millisToExpiry={}", dataPath, millisToExpiry);
@@ -819,6 +803,8 @@ public class MetricsService extends AbstractService {
                         serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
                         serviceMetricsData.setClusterId(clusterId);
                         serviceMetricsData.setServiceId(serviceId);
+                        serviceMetricsData.setIntervalLength(intervalLength);
+                        serviceMetricsData.setIntervalLengthUnit(intervalLengthUnit);
                         serviceMetricsData.setLastUpdatedTimestamp(System.currentTimeMillis());
 
                         // write to ZK
