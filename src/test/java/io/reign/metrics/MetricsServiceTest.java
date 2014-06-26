@@ -165,8 +165,8 @@ public class MetricsServiceTest {
         TimerData timer2 = metricsData.getTimer("timer2");
         assertTrue(timer1.getCount() == 1);
         assertTrue(timer2.getCount() == 2);
-        assertTrue(Math.round(timer1.getMax()) == 100);
-        assertTrue(Math.round(timer2.getMax()) == 200);
+        assertTrue("Unexpected value:  +" + timer1.getMax(), Math.floor(timer1.getMax()) - 100 < 5);
+        assertTrue("Unexpected value:  +" + timer2.getMax(), Math.floor(timer2.getMax()) - 200 < 5);
 
         // histograms
         HistogramData histo1 = metricsData.getHistogram("histo1");
@@ -222,8 +222,10 @@ public class MetricsServiceTest {
         TimerData timer2 = metricsData.getTimer("timer2");
         assertTrue(timer1.getCount() == 2);
         assertTrue(timer2.getCount() == 4);
-        assertTrue(Math.round(timer1.getMax()) == 100);
-        assertTrue(Math.round(timer2.getMax()) == 200);
+
+        // check thresholds instead of exact values since these are estimations
+        assertTrue(Math.floor(timer1.getMax()) - 100 < 5);
+        assertTrue(Math.floor(timer2.getMax()) - 200 < 5);
 
         // histograms
         HistogramData histo1 = metricsData.getHistogram("histo1");
