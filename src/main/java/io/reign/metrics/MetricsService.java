@@ -177,7 +177,7 @@ public class MetricsService extends AbstractService {
                         if (exportMeta.dataPath == null) {
                             PathScheme pathScheme = getContext().getPathScheme();
                             String dataPathPrefix = pathScheme.getAbsolutePath(PathType.METRICS,
-                                    pathScheme.joinTokens(clusterId, serviceId, nodeId));
+                                    pathScheme.joinTokens(clusterId, serviceId, nodeId)).replace("\"", "'");
 
                             // update node and get new path
                             exportMeta.dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext()
