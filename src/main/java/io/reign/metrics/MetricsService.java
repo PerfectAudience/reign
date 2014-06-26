@@ -209,7 +209,7 @@ public class MetricsService extends AbstractService {
                 }
 
             }
-        }, 0, updateIntervalSeconds, TimeUnit.SECONDS);
+        }, 0, updateIntervalSeconds, updateIntervalTimeUnit);
     }
 
     /**
