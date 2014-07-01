@@ -568,7 +568,7 @@ public class MetricsService extends AbstractService {
     public class AggregationRunnable implements Runnable {
         @Override
         public void run() {
-            long startTimestamp = System.nanoTime();
+            long startTimeNanos = System.nanoTime();
 
             logger.trace("AggregationRunnable starting:  hashCode={}", this.hashCode());
 
@@ -595,8 +595,14 @@ public class MetricsService extends AbstractService {
                         memberServiceIds.add(serviceId);
                     }
                 }
-                for (String serviceId : memberServiceIds) {
+
+                // go through member service list in deterministic order so locks are acquired in the same order across
+                // nodes
+                Collections.sort(memberServiceIds);
+                for (int i = 0; i < memberServiceIds.size(); i++) {
                     long currentTimestamp = System.currentTimeMillis();
+
+                    String serviceId = memberServiceIds.get(i);
 
                     logger.trace("Finding data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
 
@@ -820,26 +826,23 @@ public class MetricsService extends AbstractService {
                                 serviceMetricsDataString.getBytes(UTF_8), getContext().getDefaultZkAclList(),
                                 CreateMode.PERSISTENT, -1);
 
-                        // sleep to hold lock before next interval so that updates don't happen more frequently with
-                        // more nodes in
-                        // service
-                        try {
-                            long elapsedMillis = (System.nanoTime() - startTimestamp) / 1000000;
-                            long sleepIntervalMillis = updateIntervalMillis - elapsedMillis;
-                            if (sleepIntervalMillis < 0) {
-                                sleepIntervalMillis = updateIntervalMillis;
+                        // sleep to hold lock before next interval so that updates don't happen too frequently with
+                        // more nodes in service
+                        if (i == memberServiceIds.size() - 1) {
+                            try {
+                                long elapsedMillis = (System.nanoTime() - startTimeNanos) / 1000000;
+                                long sleepIntervalMillis = (updateIntervalMillis - elapsedMillis) / 2;
+                                if (sleepIntervalMillis < 0) {
+                                    sleepIntervalMillis = updateIntervalMillis;
+                                }
+                                logger.debug(
+                                        "AggregationRunnable SLEEPING btw. services:  sleepIntervalMillis={}; memberServiceIds.size={}",
+                                        sleepIntervalMillis, memberServiceIds.size());
+                                Thread.sleep(sleepIntervalMillis);
+
+                            } catch (InterruptedException e) {
+                                logger.warn("Interrupted while sleeping at end of aggregation:  " + e, e);
                             }
-
-                            // divide by number of services this node is a member of so that in total we sleep the
-                            // updateIntervalMillis
-                            sleepIntervalMillis = sleepIntervalMillis / memberServiceIds.size();
-                            logger.debug(
-                                    "AggregationRunnable SLEEPING btw. services:  sleepIntervalMillis={}; memberServiceIds.size={}",
-                                    sleepIntervalMillis, memberServiceIds.size());
-                            Thread.sleep(sleepIntervalMillis);
-
-                        } catch (InterruptedException e) {
-                            logger.warn("Interrupted while sleeping at end of aggregation:  " + e, e);
                         }
 
                     } catch (KeeperException e) {
