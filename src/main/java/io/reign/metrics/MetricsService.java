@@ -568,6 +568,8 @@ public class MetricsService extends AbstractService {
     public class AggregationRunnable implements Runnable {
         @Override
         public void run() {
+            long startTimestamp = System.nanoTime();
+
             logger.trace("AggregationRunnable starting:  hashCode={}", this.hashCode());
 
             // list all services in cluster
@@ -585,16 +587,18 @@ public class MetricsService extends AbstractService {
                     continue;
                 }
 
-                List<String> serviceIds = presenceService.getServices(clusterId);
-                for (String serviceId : serviceIds) {
-                    logger.trace("Finding data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
-
-                    // only proceed if in service
-                    if (!presenceService.isMemberOf(clusterId, serviceId)) {
-                        continue;
+                List<String> allServiceIds = presenceService.getServices(clusterId);
+                List<String> memberServiceIds = new ArrayList<String>(allServiceIds.size());
+                for (String serviceId : allServiceIds) {
+                    // only aggregate if node is in service
+                    if (presenceService.isMemberOf(clusterId, serviceId)) {
+                        memberServiceIds.add(serviceId);
                     }
-
+                }
+                for (String serviceId : memberServiceIds) {
                     long currentTimestamp = System.currentTimeMillis();
+
+                    logger.trace("Finding data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
 
                     // get lock for a service
                     DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
@@ -815,6 +819,28 @@ public class MetricsService extends AbstractService {
                         zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(), dataPath,
                                 serviceMetricsDataString.getBytes(UTF_8), getContext().getDefaultZkAclList(),
                                 CreateMode.PERSISTENT, -1);
+
+                        // sleep to hold lock before next interval so that updates don't happen more frequently with
+                        // more nodes in
+                        // service
+                        try {
+                            long elapsedMillis = (System.nanoTime() - startTimestamp) / 1000000;
+                            long sleepIntervalMillis = updateIntervalMillis - elapsedMillis;
+                            if (sleepIntervalMillis < 0) {
+                                sleepIntervalMillis = updateIntervalMillis;
+                            }
+
+                            // divide by number of services this node is a member of so that in total we sleep the
+                            // updateIntervalMillis
+                            sleepIntervalMillis = sleepIntervalMillis / memberServiceIds.size();
+                            logger.debug(
+                                    "AggregationRunnable SLEEPING btw. services:  sleepIntervalMillis={}; memberServiceIds.size={}",
+                                    sleepIntervalMillis, memberServiceIds.size());
+                            Thread.sleep(sleepIntervalMillis);
+
+                        } catch (InterruptedException e) {
+                            logger.warn("Interrupted while sleeping at end of aggregation:  " + e, e);
+                        }
 
                     } catch (KeeperException e) {
                         if (e.code() != KeeperException.Code.NONODE) {
