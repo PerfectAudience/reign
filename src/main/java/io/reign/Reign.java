@@ -1,25 +1,21 @@
 /*
- Copyright 2013 Yen Pai ypai@kompany.org
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ * Copyright 2013 Yen Pai ypai@kompany.org
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package io.reign;
 
 import io.reign.presence.PresenceService;
-import io.reign.zk.PathCache;
-import io.reign.zk.SimplePathCache;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.curator.test.TestingServer;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
@@ -67,8 +64,6 @@ public class Reign implements Watcher {
 
     private PathScheme pathScheme;
 
-    private PathCache pathCache;
-
     private volatile boolean started = false;
     private volatile boolean shutdown = false;
 
@@ -83,6 +78,8 @@ public class Reign implements Watcher {
 
     private final ObserverManager observerManager;
 
+    private TestingServer zkTestServer;
+
     public static ReignMaker maker() {
         return new ReignMaker();
     }
@@ -90,33 +87,19 @@ public class Reign implements Watcher {
     // public Reign() {
     // }
 
-    public Reign(ZkClient zkClient, PathScheme pathScheme, PathCache pathCache, NodeIdProvider nodeIdProvider) {
+    public Reign(ZkClient zkClient, PathScheme pathScheme, NodeIdProvider nodeIdProvider, TestingServer zkTestServer) {
 
         this.zkClient = zkClient;
 
         this.pathScheme = pathScheme;
 
-        this.pathCache = pathCache;
-
         this.nodeIdProvider = nodeIdProvider;
 
         observerManager = new ObserverManager(zkClient);
 
-    }
+        this.zkTestServer = zkTestServer;
 
-    // public synchronized CanonicalId getCanonicalId() {
-    // if (!started) {
-    // throw new IllegalStateException("Cannot get canonicalId before framework is started!");
-    // }
-    // return this.nodeIdProvider.get();
-    // }
-    //
-    // public synchronized String getCanonicalIdPathToken() {
-    // if (!started) {
-    // throw new IllegalStateException("Cannot get canonicalId before framework is started!");
-    // }
-    // return this.nodeIdProvider.get().toString();
-    // }
+    }
 
     public synchronized NodeIdProvider getCanonicalIdProvider() {
         if (!started) {
@@ -191,16 +174,16 @@ public class Reign implements Watcher {
         this.pathScheme = pathScheme;
     }
 
-    public PathCache getPathCache() {
-        return pathCache;
-    }
-
-    public synchronized void setPathCache(SimplePathCache pathCache) {
-        if (started) {
-            throw new IllegalStateException("Cannot set pathCache once started!");
-        }
-        this.pathCache = pathCache;
-    }
+    // public PathCache getPathCache() {
+    // return pathCache;
+    // }
+    //
+    // public synchronized void setPathCache(SimplePathCache pathCache) {
+    // if (started) {
+    // throw new IllegalStateException("Cannot set pathCache once started!");
+    // }
+    // this.pathCache = pathCache;
+    // }
 
     public int getThreadPoolSize() {
         return threadPoolSize;
@@ -362,10 +345,10 @@ public class Reign implements Watcher {
         // register self as watcher
         this.zkClient.register(this);
 
-        // pathCache should be first in list if it is a Watcher
-        if (pathCache instanceof Watcher) {
-            this.watcherList.add(0, (Watcher) pathCache);
-        }
+        // // pathCache should be first in list if it is a Watcher
+        // if (pathCache instanceof Watcher) {
+        // this.watcherList.add(0, (Watcher) pathCache);
+        // }
 
         // /** init executor **/
         // logger.info("START:  initializing executor");
@@ -424,13 +407,23 @@ public class Reign implements Watcher {
         logger.info("SHUTDOWN:  stopping observer manager");
         observerManager.destroy();
 
-        /** init path cache **/
-        logger.info("SHUTDOWN:  stopping pathCache...");
-        pathCache.destroy();
+        // /** init path cache **/
+        // logger.info("SHUTDOWN:  stopping pathCache...");
+        // pathCache.destroy();
 
         /** clean up zk client **/
         logger.info("SHUTDOWN:  closing Zookeeper client");
         this.zkClient.close();
+
+        /** shutdown test zk server, if there **/
+        if (this.zkTestServer != null) {
+            logger.info("SHUTDOWN:  stopping test Zookeeper server");
+            try {
+                this.zkTestServer.stop();
+            } catch (IOException e) {
+                logger.error("SHUTDOWN:  error shutting down test ZooKeeper:  " + e, e);
+            }
+        }
 
         logger.info("SHUTDOWN:  DONE");
     }
@@ -439,8 +432,8 @@ public class Reign implements Watcher {
         if (started) {
             throw new IllegalStateException("Cannot register services once started!");
         }
-        if (zkClient == null || pathCache == null) {
-            throw new IllegalStateException("Cannot register services before zkClient, pathCache have been populated!");
+        if (zkClient == null) {
+            throw new IllegalStateException("Cannot register services before zkClient is initialized!");
         }
     }
 

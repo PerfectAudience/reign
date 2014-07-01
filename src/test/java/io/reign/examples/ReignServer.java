@@ -10,7 +10,7 @@ public class ReignServer {
 
     public static void main(String[] args) throws Exception {
         /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).get();
+        Reign reign = Reign.maker().zkClientTestMode(12181, 30000).pathCache(1024, 8).get();
         reign.start();
 
         /** let server run **/

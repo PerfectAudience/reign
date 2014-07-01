@@ -1,17 +1,14 @@
 /*
- Copyright 2013 Yen Pai ypai@reign.io
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ * Copyright 2013 Yen Pai ypai@reign.io
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package io.reign.metrics;
@@ -180,7 +177,7 @@ public class MetricsService extends AbstractService {
                         if (exportMeta.dataPath == null) {
                             PathScheme pathScheme = getContext().getPathScheme();
                             String dataPathPrefix = pathScheme.getAbsolutePath(PathType.METRICS,
-                                    pathScheme.joinTokens(clusterId, serviceId, nodeId));
+                                    pathScheme.joinTokens(clusterId, serviceId, nodeId)).replace("\"", "'");
 
                             // update node and get new path
                             exportMeta.dataPath = zkClientUtil.updatePath(getContext().getZkClient(), getContext()
@@ -212,36 +209,15 @@ public class MetricsService extends AbstractService {
                 }
 
             }
-        }, 0, updateIntervalSeconds, TimeUnit.SECONDS);
+        }, 0, updateIntervalSeconds, updateIntervalTimeUnit);
     }
 
     /**
      * Get metrics data for given service.
      */
     public MetricsData getServiceMetrics(String clusterId, String serviceId) {
-
-        // PathScheme pathScheme = getContext().getPathScheme();
-        // String dataPath = pathScheme.getAbsolutePath(PathType.METRICS, pathScheme.joinTokens(clusterId,
-        // serviceId));
-        // Stat stat = new Stat();
-        // byte[] bytes = getContext().getZkClient().getData(dataPath, true, stat);
-        // // String metricsDataJson = new String(bytes, UTF_8);
-        // // metricsDataJson.replaceAll("\n", "");
-        //
-        // logger.debug("XXX:  stat.ctime = {}", stat.getCtime());
-        //
-        // MetricsData metricsData = null;
-        // if (bytes != null) {
-        // metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
-        // metricsData.setClusterId(clusterId);
-        // metricsData.setServiceId(serviceId);
-        // metricsData.setLastUpdatedTimestamp(stat.getMtime());
-        // }
-
         MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, null);
-
         return metricsData;
-
     }
 
     /**
@@ -592,6 +568,8 @@ public class MetricsService extends AbstractService {
     public class AggregationRunnable implements Runnable {
         @Override
         public void run() {
+            long startTimeNanos = System.nanoTime();
+
             logger.trace("AggregationRunnable starting:  hashCode={}", this.hashCode());
 
             // list all services in cluster
@@ -609,231 +587,264 @@ public class MetricsService extends AbstractService {
                     continue;
                 }
 
-                List<String> serviceIds = presenceService.getServices(clusterId);
-                for (String serviceId : serviceIds) {
-                    logger.trace("Finding data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
-
-                    // only proceed if in service
-                    if (!presenceService.isMemberOf(clusterId, serviceId)) {
-                        continue;
+                List<String> allServiceIds = presenceService.getServices(clusterId);
+                List<String> memberServiceIds = new ArrayList<String>(allServiceIds.size());
+                for (String serviceId : allServiceIds) {
+                    // only aggregate if node is in service
+                    if (presenceService.isMemberOf(clusterId, serviceId)) {
+                        memberServiceIds.add(serviceId);
                     }
+                }
 
+                // go through member service list in deterministic order so locks are acquired in the same order across
+                // nodes
+                Collections.sort(memberServiceIds);
+                for (int i = 0; i < memberServiceIds.size(); i++) {
                     long currentTimestamp = System.currentTimeMillis();
+
+                    String serviceId = memberServiceIds.get(i);
+
+                    logger.trace("Finding data nodes:  clusterId={}; serviceId={}", clusterId, serviceId);
 
                     // get lock for a service
                     DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
                             + serviceId);
+                    lock.lock();
                     try {
-                        if (lock.tryLock()) {
-                            // get all data nodes for a service
-                            String dataParentPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                                    pathScheme.joinTokens(clusterId, serviceId));
-                            List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
-                            /** iterate through service data nodes and gather up data to aggregate **/
-                            Map<String, List<CounterData>> counterMap = new HashMap<String, List<CounterData>>(
-                                    dataNodes.size() + 1, 1.0f);
-                            Map<String, List<GaugeData>> gaugeMap = new HashMap<String, List<GaugeData>>(
-                                    dataNodes.size() + 1, 1.0f);
-                            Map<String, List<HistogramData>> histogramMap = new HashMap<String, List<HistogramData>>(
-                                    dataNodes.size() + 1, 1.0f);
-                            Map<String, List<MeterData>> meterMap = new HashMap<String, List<MeterData>>(
-                                    dataNodes.size() + 1, 1.0f);
-                            Map<String, List<TimerData>> timerMap = new HashMap<String, List<TimerData>>(
-                                    dataNodes.size() + 1, 1.0f);
-                            int dataNodeCount = 0;
-                            int dataNodeInWindowCount = 0;
-                            for (String dataNode : dataNodes) {
+                        // get all data nodes for a service
+                        String dataParentPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                                pathScheme.joinTokens(clusterId, serviceId));
+                        List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
-                                dataNodeCount++;
+                        /** iterate through service data nodes and gather up data to aggregate **/
+                        Map<String, List<CounterData>> counterMap = new HashMap<String, List<CounterData>>(
+                                dataNodes.size() + 1, 1.0f);
+                        Map<String, List<GaugeData>> gaugeMap = new HashMap<String, List<GaugeData>>(
+                                dataNodes.size() + 1, 1.0f);
+                        Map<String, List<HistogramData>> histogramMap = new HashMap<String, List<HistogramData>>(
+                                dataNodes.size() + 1, 1.0f);
+                        Map<String, List<MeterData>> meterMap = new HashMap<String, List<MeterData>>(
+                                dataNodes.size() + 1, 1.0f);
+                        Map<String, List<TimerData>> timerMap = new HashMap<String, List<TimerData>>(
+                                dataNodes.size() + 1, 1.0f);
+                        int dataNodeCount = 0;
+                        int dataNodeInWindowCount = 0;
+                        Integer intervalLength = null;
+                        TimeUnit intervalLengthUnit = null;
+                        for (String dataNode : dataNodes) {
 
-                                logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
-                                        serviceId, dataNode);
+                            dataNodeCount++;
 
-                                String dataPath = null;
-                                MetricsData metricsData = null;
+                            logger.trace("Found data node:  clusterId={}; serviceId={}; nodeId={}", clusterId,
+                                    serviceId, dataNode);
 
-                                dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                                        pathScheme.joinTokens(clusterId, serviceId, dataNode));
+                            String dataPath = null;
+                            MetricsData metricsData = null;
 
-                                try {
-                                    metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
-                                    if (metricsData == null) {
-                                        continue;
-                                    }
-                                } catch (Exception e) {
-                                    logger.warn("Error trying to aggregate data directory for service:  clusterId="
-                                            + clusterId + "; serviceId=" + serviceId + ":  " + e, e);
+                            dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                                    pathScheme.joinTokens(clusterId, serviceId, dataNode));
+
+                            try {
+                                metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+                                if (metricsData == null) {
                                     continue;
                                 }
+                            } catch (Exception e) {
+                                logger.warn("Error trying to aggregate data directory for service:  clusterId="
+                                        + clusterId + "; serviceId=" + serviceId + ":  " + e, e);
+                                continue;
+                            }
 
-                                // skip data node if not within interval
-                                long millisToExpiry = millisToExpiry(metricsData, currentTimestamp);
-                                if (millisToExpiry <= 0) {
-                                    continue;
+                            // skip data node if not within interval
+                            long millisToExpiry = millisToExpiry(metricsData, currentTimestamp);
+                            if (millisToExpiry <= 0) {
+                                continue;
 
-                                }
+                            }
 
-                                // aggregate service stats for data nodes that within current rotation interval
-                                logger.trace("Aggregating data node:  path={}; millisToExpiry={}", dataPath,
-                                        millisToExpiry);
+                            intervalLength = metricsData.getIntervalLength();
+                            intervalLengthUnit = metricsData.getIntervalLengthUnit();
 
-                                // increment node count
-                                dataNodeInWindowCount++;
+                            // aggregate service stats for data nodes that within current rotation interval
+                            logger.trace("Aggregating data node:  path={}; millisToExpiry={}", dataPath, millisToExpiry);
 
-                                // counters
-                                Map<String, CounterData> counters = metricsData.getCounters();
-                                for (String key : counters.keySet()) {
-                                    CounterData counter = counters.get(key);
-                                    List<CounterData> counterList = counterMap.get(key);
-                                    if (counterList == null) {
-                                        counterList = new ArrayList<CounterData>(dataNodes.size());
-                                        counterMap.put(key, counterList);
-                                    }
-                                    counterList.add(counter);
-                                }
-
-                                // gauges
-                                Map<String, GaugeData> gauges = metricsData.getGauges();
-                                for (String key : gauges.keySet()) {
-                                    GaugeData gauge = gauges.get(key);
-                                    List<GaugeData> gaugeList = gaugeMap.get(key);
-                                    if (gaugeList == null) {
-                                        gaugeList = new ArrayList<GaugeData>(dataNodes.size());
-                                        gaugeMap.put(key, gaugeList);
-                                    }
-                                    gaugeList.add(gauge);
-                                }
-
-                                // histogram
-                                Map<String, HistogramData> histograms = metricsData.getHistograms();
-                                for (String key : histograms.keySet()) {
-                                    HistogramData histogram = histograms.get(key);
-                                    List<HistogramData> histogramList = histogramMap.get(key);
-                                    if (histogramList == null) {
-                                        histogramList = new ArrayList<HistogramData>(dataNodes.size());
-                                        histogramMap.put(key, histogramList);
-                                    }
-                                    histogramList.add(histogram);
-                                }
-
-                                // meters
-                                Map<String, MeterData> meters = metricsData.getMeters();
-                                for (String key : meters.keySet()) {
-                                    MeterData meter = meters.get(key);
-                                    List<MeterData> meterList = meterMap.get(key);
-                                    if (meterList == null) {
-                                        meterList = new ArrayList<MeterData>(dataNodes.size());
-                                        meterMap.put(key, meterList);
-                                    }
-                                    meterList.add(meter);
-                                }
-
-                                // timers
-                                Map<String, TimerData> timers = metricsData.getTimers();
-                                for (String key : timers.keySet()) {
-                                    TimerData timer = timers.get(key);
-                                    List<TimerData> meterList = timerMap.get(key);
-                                    if (meterList == null) {
-                                        meterList = new ArrayList<TimerData>(dataNodes.size());
-                                        timerMap.put(key, meterList);
-                                    }
-                                    meterList.add(timer);
-                                }
-
-                            }// for dataNodes
-
-                            /** aggregate data and write to ZK **/
-                            MetricsData serviceMetricsData = new MetricsData();
+                            // increment node count
+                            dataNodeInWindowCount++;
 
                             // counters
-                            Map<String, CounterData> counters = new HashMap<String, CounterData>(counterMap.size() + 1,
-                                    1.0f);
-                            for (String key : counterMap.keySet()) {
+                            Map<String, CounterData> counters = metricsData.getCounters();
+                            for (String key : counters.keySet()) {
+                                CounterData counter = counters.get(key);
                                 List<CounterData> counterList = counterMap.get(key);
-                                // if (counterList.size() != dataNodeCount) {
-                                // logger.warn(
-                                // "counterList size does not match nodeCount:  counterList.size={}; nodeCount={}",
-                                // counterList.size(), dataNodeCount);
-                                // }
-                                CounterData counterData = CounterData.merge(counterList);
-                                counters.put(key, counterData);
+                                if (counterList == null) {
+                                    counterList = new ArrayList<CounterData>(dataNodes.size());
+                                    counterMap.put(key, counterList);
+                                }
+                                counterList.add(counter);
                             }
-                            serviceMetricsData.setCounters(counters);
 
                             // gauges
-                            Map<String, GaugeData> gauges = new HashMap<String, GaugeData>(gaugeMap.size() + 1, 1.0f);
-                            for (String key : gaugeMap.keySet()) {
+                            Map<String, GaugeData> gauges = metricsData.getGauges();
+                            for (String key : gauges.keySet()) {
+                                GaugeData gauge = gauges.get(key);
                                 List<GaugeData> gaugeList = gaugeMap.get(key);
-                                // if (gaugeList.size() != dataNodeCount) {
-                                // logger.warn(
-                                // "gaugeList size does not match nodeCount:  gaugeList.size={}; nodeCount={}",
-                                // gaugeList.size(), dataNodeCount);
-                                // }
-                                GaugeData gaugeData = GaugeData.merge(gaugeList);
-                                gauges.put(key, gaugeData);
+                                if (gaugeList == null) {
+                                    gaugeList = new ArrayList<GaugeData>(dataNodes.size());
+                                    gaugeMap.put(key, gaugeList);
+                                }
+                                gaugeList.add(gauge);
                             }
-                            serviceMetricsData.setGauges(gauges);
 
-                            // histograms
-                            Map<String, HistogramData> histograms = new HashMap<String, HistogramData>(
-                                    histogramMap.size() + 1, 1.0f);
-                            for (String key : histogramMap.keySet()) {
+                            // histogram
+                            Map<String, HistogramData> histograms = metricsData.getHistograms();
+                            for (String key : histograms.keySet()) {
+                                HistogramData histogram = histograms.get(key);
                                 List<HistogramData> histogramList = histogramMap.get(key);
-                                // if (histogramList.size() != dataNodeCount) {
-                                // logger.warn(
-                                // "histogramList size does not match nodeCount:  histogramList.size={}; nodeCount={}",
-                                // histogramList.size(), dataNodeCount);
-                                // }
-                                HistogramData histogramData = HistogramData.merge(histogramList);
-                                histograms.put(key, histogramData);
+                                if (histogramList == null) {
+                                    histogramList = new ArrayList<HistogramData>(dataNodes.size());
+                                    histogramMap.put(key, histogramList);
+                                }
+                                histogramList.add(histogram);
                             }
-                            serviceMetricsData.setHistograms(histograms);
 
                             // meters
-                            Map<String, MeterData> meters = new HashMap<String, MeterData>(meterMap.size() + 1, 1.0f);
-                            for (String key : meterMap.keySet()) {
+                            Map<String, MeterData> meters = metricsData.getMeters();
+                            for (String key : meters.keySet()) {
+                                MeterData meter = meters.get(key);
                                 List<MeterData> meterList = meterMap.get(key);
-                                // if (meterList.size() != dataNodeCount) {
-                                // logger.warn(
-                                // "meterList size does not match nodeCount:  meterList.size={}; nodeCount={}",
-                                // meterList.size(), dataNodeCount);
-                                // }
-                                MeterData meterData = MeterData.merge(meterList);
-                                meters.put(key, meterData);
+                                if (meterList == null) {
+                                    meterList = new ArrayList<MeterData>(dataNodes.size());
+                                    meterMap.put(key, meterList);
+                                }
+                                meterList.add(meter);
                             }
-                            serviceMetricsData.setMeters(meters);
 
                             // timers
-                            Map<String, TimerData> timers = new HashMap<String, TimerData>(timerMap.size() + 1, 1.0f);
-                            for (String key : timerMap.keySet()) {
-                                List<TimerData> timerList = timerMap.get(key);
-                                // if (timerList.size() != dataNodeCount) {
-                                // logger.warn(
-                                // "timerList size does not match nodeCount:  timerList.size={}; nodeCount={}",
-                                // timerList.size(), dataNodeCount);
-                                // }
-                                TimerData timerData = TimerData.merge(timerList);
-                                timers.put(key, timerData);
+                            Map<String, TimerData> timers = metricsData.getTimers();
+                            for (String key : timers.keySet()) {
+                                TimerData timer = timers.get(key);
+                                List<TimerData> meterList = timerMap.get(key);
+                                if (meterList == null) {
+                                    meterList = new ArrayList<TimerData>(dataNodes.size());
+                                    timerMap.put(key, meterList);
+                                }
+                                meterList.add(timer);
                             }
-                            serviceMetricsData.setTimers(timers);
 
-                            serviceMetricsData.setDataNodeCount(dataNodeCount);
-                            serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
-                            serviceMetricsData.setClusterId(clusterId);
-                            serviceMetricsData.setServiceId(serviceId);
-                            serviceMetricsData.setLastUpdatedTimestamp(System.currentTimeMillis());
+                        }// for dataNodes
 
-                            // write to ZK
-                            String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                                    pathScheme.joinTokens(clusterId, serviceId));
-                            String serviceMetricsDataString = JacksonUtil.getObjectMapper().writeValueAsString(
-                                    serviceMetricsData);
-                            zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(), dataPath,
-                                    serviceMetricsDataString.getBytes(UTF_8), getContext().getDefaultZkAclList(),
-                                    CreateMode.PERSISTENT, -1);
+                        /** aggregate data and write to ZK **/
+                        MetricsData serviceMetricsData = new MetricsData();
 
-                        }// if try lock
+                        // counters
+                        Map<String, CounterData> counters = new HashMap<String, CounterData>(counterMap.size() + 1,
+                                1.0f);
+                        for (String key : counterMap.keySet()) {
+                            List<CounterData> counterList = counterMap.get(key);
+                            // if (counterList.size() != dataNodeCount) {
+                            // logger.warn(
+                            // "counterList size does not match nodeCount:  counterList.size={}; nodeCount={}",
+                            // counterList.size(), dataNodeCount);
+                            // }
+                            CounterData counterData = CounterData.merge(counterList);
+                            counters.put(key, counterData);
+                        }
+                        serviceMetricsData.setCounters(counters);
+
+                        // gauges
+                        Map<String, GaugeData> gauges = new HashMap<String, GaugeData>(gaugeMap.size() + 1, 1.0f);
+                        for (String key : gaugeMap.keySet()) {
+                            List<GaugeData> gaugeList = gaugeMap.get(key);
+                            // if (gaugeList.size() != dataNodeCount) {
+                            // logger.warn(
+                            // "gaugeList size does not match nodeCount:  gaugeList.size={}; nodeCount={}",
+                            // gaugeList.size(), dataNodeCount);
+                            // }
+                            GaugeData gaugeData = GaugeData.merge(gaugeList);
+                            gauges.put(key, gaugeData);
+                        }
+                        serviceMetricsData.setGauges(gauges);
+
+                        // histograms
+                        Map<String, HistogramData> histograms = new HashMap<String, HistogramData>(
+                                histogramMap.size() + 1, 1.0f);
+                        for (String key : histogramMap.keySet()) {
+                            List<HistogramData> histogramList = histogramMap.get(key);
+                            // if (histogramList.size() != dataNodeCount) {
+                            // logger.warn(
+                            // "histogramList size does not match nodeCount:  histogramList.size={}; nodeCount={}",
+                            // histogramList.size(), dataNodeCount);
+                            // }
+                            HistogramData histogramData = HistogramData.merge(histogramList);
+                            histograms.put(key, histogramData);
+                        }
+                        serviceMetricsData.setHistograms(histograms);
+
+                        // meters
+                        Map<String, MeterData> meters = new HashMap<String, MeterData>(meterMap.size() + 1, 1.0f);
+                        for (String key : meterMap.keySet()) {
+                            List<MeterData> meterList = meterMap.get(key);
+                            // if (meterList.size() != dataNodeCount) {
+                            // logger.warn(
+                            // "meterList size does not match nodeCount:  meterList.size={}; nodeCount={}",
+                            // meterList.size(), dataNodeCount);
+                            // }
+                            MeterData meterData = MeterData.merge(meterList);
+                            meters.put(key, meterData);
+                        }
+                        serviceMetricsData.setMeters(meters);
+
+                        // timers
+                        Map<String, TimerData> timers = new HashMap<String, TimerData>(timerMap.size() + 1, 1.0f);
+                        for (String key : timerMap.keySet()) {
+                            List<TimerData> timerList = timerMap.get(key);
+                            // if (timerList.size() != dataNodeCount) {
+                            // logger.warn(
+                            // "timerList size does not match nodeCount:  timerList.size={}; nodeCount={}",
+                            // timerList.size(), dataNodeCount);
+                            // }
+                            TimerData timerData = TimerData.merge(timerList);
+                            timers.put(key, timerData);
+                        }
+                        serviceMetricsData.setTimers(timers);
+
+                        serviceMetricsData.setDataNodeCount(dataNodeCount);
+                        serviceMetricsData.setDataNodeInWindowCount(dataNodeInWindowCount);
+                        serviceMetricsData.setClusterId(clusterId);
+                        serviceMetricsData.setServiceId(serviceId);
+                        serviceMetricsData.setIntervalLength(intervalLength);
+                        serviceMetricsData.setIntervalLengthUnit(intervalLengthUnit);
+                        serviceMetricsData.setLastUpdatedTimestamp(System.currentTimeMillis());
+
+                        // write to ZK
+                        String dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                                pathScheme.joinTokens(clusterId, serviceId));
+                        String serviceMetricsDataString = JacksonUtil.getObjectMapper().writeValueAsString(
+                                serviceMetricsData);
+                        zkClientUtil.updatePath(getContext().getZkClient(), getContext().getPathScheme(), dataPath,
+                                serviceMetricsDataString.getBytes(UTF_8), getContext().getDefaultZkAclList(),
+                                CreateMode.PERSISTENT, -1);
+
+                        // sleep to hold lock before next interval so that updates don't happen too frequently with
+                        // more nodes in service
+                        if (i == memberServiceIds.size() - 1) {
+                            try {
+                                long elapsedMillis = (System.nanoTime() - startTimeNanos) / 1000000;
+                                long sleepIntervalMillis = (updateIntervalMillis - elapsedMillis) / 2;
+                                if (sleepIntervalMillis < 0) {
+                                    sleepIntervalMillis = updateIntervalMillis;
+                                }
+                                logger.debug(
+                                        "AggregationRunnable SLEEPING btw. services:  sleepIntervalMillis={}; memberServiceIds.size={}",
+                                        sleepIntervalMillis, memberServiceIds.size());
+                                Thread.sleep(sleepIntervalMillis);
+
+                            } catch (InterruptedException e) {
+                                logger.warn("Interrupted while sleeping at end of aggregation:  " + e, e);
+                            }
+                        }
+
                     } catch (KeeperException e) {
                         if (e.code() != KeeperException.Code.NONODE) {
                             logger.warn("Error trying to aggregate data directory for service:  clusterId=" + clusterId
@@ -889,46 +900,47 @@ public class MetricsService extends AbstractService {
                     // get lock for a service
                     DistributedLock lock = coordinationService.getLock("reign", "metrics-" + clusterId + "-"
                             + serviceId);
+                    lock.lock();
                     String dataPath = null;
                     try {
-                        if (lock.tryLock()) {
-                            // get all data nodes for a service
-                            String dataParentPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                                    pathScheme.joinTokens(clusterId, serviceId));
-                            List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
-                            // remove all nodes that are older than rotation interval
-                            for (String dataNode : dataNodes) {
-                                try {
-                                    logger.trace("Checking data node expiry:  clusterId={}; serviceId={}; nodeId={}",
-                                            clusterId, serviceId, dataNode);
-                                    dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
-                                            pathScheme.joinTokens(clusterId, serviceId, dataNode));
-                                    MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
-                                    if (metricsData == null) {
-                                        logger.warn("Removing unrecognized/corrupted/deprecated data node:  path={}",
-                                                dataPath);
-                                        zkClient.delete(dataPath, -1);
-                                        continue;
-                                    }
+                        // get all data nodes for a service
+                        String dataParentPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                                pathScheme.joinTokens(clusterId, serviceId));
+                        List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
-                                    // keep last day's worth of data
-                                    long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - 86400000);
-                                    if (millisToExpiry <= 0) {
-                                        logger.info("Removing expired data node:  path={}; millisToExpiry={}",
-                                                dataPath, millisToExpiry);
-                                        zkClient.delete(dataPath, -1);
-                                    } else {
-                                        logger.trace("Data node is not yet expired:  path={}; millisToExpiry={}",
-                                                dataPath, millisToExpiry);
-                                    }
-                                } catch (Exception e) {
-                                    logger.warn("Error trying to clean up data directory for service:  clusterId="
-                                            + clusterId + "; serviceId=" + serviceId + "; dataPath=" + dataPath + ":  "
-                                            + e, e);
-                                } // try
-                            }// for
-                        }// if
+                        // remove all nodes that are older than rotation interval
+                        for (String dataNode : dataNodes) {
+                            try {
+                                logger.trace("Checking data node expiry:  clusterId={}; serviceId={}; nodeId={}",
+                                        clusterId, serviceId, dataNode);
+                                dataPath = pathScheme.getAbsolutePath(PathType.METRICS,
+                                        pathScheme.joinTokens(clusterId, serviceId, dataNode));
+                                MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
+                                if (metricsData == null) {
+                                    logger.warn("Removing unrecognized/corrupted/deprecated data node:  path={}",
+                                            dataPath);
+                                    zkClient.delete(dataPath, -1);
+                                    continue;
+                                }
+
+                                // keep last day's worth of data
+                                long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - 86400000);
+                                if (millisToExpiry <= 0) {
+                                    logger.info("Removing expired data node:  path={}; millisToExpiry={}", dataPath,
+                                            millisToExpiry);
+                                    zkClient.delete(dataPath, -1);
+                                } else {
+                                    logger.trace("Data node is not yet expired:  path={}; millisToExpiry={}", dataPath,
+                                            millisToExpiry);
+                                }
+                            } catch (Exception e) {
+                                logger.warn(
+                                        "Error trying to clean up data directory for service:  clusterId=" + clusterId
+                                                + "; serviceId=" + serviceId + "; dataPath=" + dataPath + ":  " + e, e);
+                            } // try
+                        }// for
+
                     } catch (KeeperException e) {
                         if (e.code() != KeeperException.Code.NONODE) {
                             logger.warn("Error trying to clean up data directory for service:  clusterId=" + clusterId

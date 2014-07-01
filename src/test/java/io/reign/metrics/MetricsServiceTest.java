@@ -139,13 +139,14 @@ public class MetricsServiceTest {
         MetricsData metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
         while (metricsData == null) {
             metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
+            Thread.sleep(1000);
         }
 
         // counters
         CounterData counter1Data = metricsData.getCounter("counter1");
         CounterData counter2Data = metricsData.getCounter("counter2");
-        assertTrue(counter1Data.getCount() == 1L);
-        assertTrue(counter2Data.getCount() == 2L);
+        assertTrue("Unexpected value:  " + counter1Data.getCount(), counter1Data.getCount() == 1L);
+        assertTrue("Unexpected value:  " + counter2Data.getCount(), counter2Data.getCount() == 2L);
 
         // gauges
         GaugeData gauge1 = metricsData.getGauge("gauge1");
@@ -164,8 +165,8 @@ public class MetricsServiceTest {
         TimerData timer2 = metricsData.getTimer("timer2");
         assertTrue(timer1.getCount() == 1);
         assertTrue(timer2.getCount() == 2);
-        assertTrue(Math.round(timer1.getMax()) == 100);
-        assertTrue(Math.round(timer2.getMax()) == 200);
+        assertTrue("Unexpected value:  +" + timer1.getMax(), Math.floor(timer1.getMax()) - 100 < 5);
+        assertTrue("Unexpected value:  +" + timer2.getMax(), Math.floor(timer2.getMax()) - 200 < 5);
 
         // histograms
         HistogramData histo1 = metricsData.getHistogram("histo1");
@@ -221,8 +222,10 @@ public class MetricsServiceTest {
         TimerData timer2 = metricsData.getTimer("timer2");
         assertTrue(timer1.getCount() == 2);
         assertTrue(timer2.getCount() == 4);
-        assertTrue(Math.round(timer1.getMax()) == 100);
-        assertTrue(Math.round(timer2.getMax()) == 200);
+
+        // check thresholds instead of exact values since these are estimations
+        assertTrue(Math.floor(timer1.getMax()) - 100 < 5);
+        assertTrue(Math.floor(timer2.getMax()) - 200 < 5);
 
         // histograms
         HistogramData histo1 = metricsData.getHistogram("histo1");
