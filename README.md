@@ -179,7 +179,7 @@ List nodes comprising "service2":
         // Use read-only utility class that self updates using an internal observer:  
         // eventually consistent with latest configuration values in ZooKeeper
         ReignContext context = reign.getContext();
-        UpdatingConf<String,String> updatingConf = new UpdatingConf<String,String>(context, "test", "service1/test1.conf");
+        UpdatingConf<String,String> updatingConf = new UpdatingConf<String,String>("test", "service1/test1.conf", context);
         
         // will be null initially
         String value1 = updatingConf.get("key1");
@@ -190,6 +190,9 @@ List nodes comprising "service2":
         
         // value for "key1" will eventually be visible
         String checkingValue1Again = updatingConf.get("key1");
+        
+        // call destroy when done with object:  does NOT affect config values set in ZooKeeper
+        updatingConf.destroy();
         
 
 ### Messaging between nodes
