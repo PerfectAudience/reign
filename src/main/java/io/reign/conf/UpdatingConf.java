@@ -35,7 +35,7 @@ public class UpdatingConf<K, V> implements Map<K, V> {
     private ConfObserver<Map<K, V>> observer;
     private volatile Map<K, V> conf;
 
-    public UpdatingConf(ReignContext context, String clusterId, String relativePath) {
+    public UpdatingConf(String clusterId, String relativePath, ReignContext context) {
         this.clusterId = clusterId;
         this.relativePath = relativePath;
         this.context = context;

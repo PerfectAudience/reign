@@ -28,7 +28,7 @@ public class UpdatingConfTest {
             ReignContext context = MasterTestSuite.getReign().getContext();
 
             // create self-updating Conf object, should be empty initially
-            conf = new UpdatingConf(context, "test", "service1/test1.conf");
+            conf = new UpdatingConf("test", "service1/test1.conf", context);
             assertTrue(conf.get("key1") == null);
             assertTrue(conf.size() == 0);
 
