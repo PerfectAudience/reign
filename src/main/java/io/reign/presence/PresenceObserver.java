@@ -55,8 +55,8 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     @Override
     public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList) {
         if (serviceId != null) {
-            ServiceInfo updated = new ServiceInfo(clusterId, serviceId, updatedChildList);
-            ServiceInfo previous = new ServiceInfo(clusterId, serviceId, previousChildList);
+            ServiceInfo updated = new StaticServiceInfo(clusterId, serviceId, updatedChildList);
+            ServiceInfo previous = new StaticServiceInfo(clusterId, serviceId, previousChildList);
             updated((T) updated, (T) previous);
         } else if (clusterId != null) {
             updated((T) updatedChildList, (T) previousChildList);
@@ -67,9 +67,9 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
         if (nodeId != null) {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(updatedData);
-            NodeInfo updated = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);
+            NodeInfo updated = new StaticNodeInfo(clusterId, serviceId, nodeId, attributeMap);
             Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
-            NodeInfo previous = new NodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
+            NodeInfo previous = new StaticNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
             updated((T) updated, (T) previous);
         }
     }
@@ -78,11 +78,11 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
         if (nodeId != null) {
             Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
-            NodeInfo previous = new NodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
+            NodeInfo previous = new StaticNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
             updated(null, (T) previous);
 
         } else if (serviceId != null) {
-            ServiceInfo previous = new ServiceInfo(clusterId, serviceId, previousChildList);
+            ServiceInfo previous = new StaticServiceInfo(clusterId, serviceId, previousChildList);
             updated(null, (T) previous);
 
         }
@@ -92,12 +92,12 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     public void nodeCreated(byte[] data, List<String> childList) {
         if (nodeId != null) {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(data);
-            NodeInfo updated = new NodeInfo(clusterId, serviceId, nodeId, attributeMap);
+            NodeInfo updated = new StaticNodeInfo(clusterId, serviceId, nodeId, attributeMap);
             updated((T) updated, null);
 
         } else if (serviceId != null) {
             if (childList != null && childList.size() > 0) {
-                ServiceInfo updated = new ServiceInfo(clusterId, serviceId, childList);
+                ServiceInfo updated = new StaticServiceInfo(clusterId, serviceId, childList);
                 updated((T) updated, null);
             }
         }

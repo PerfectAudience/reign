@@ -349,7 +349,7 @@ public class PresenceService extends AbstractService {
         /** build service info **/
         ServiceInfo result = null;
         if (!error) {
-            result = new ServiceInfo(clusterId, serviceId, children);
+            result = new StaticServiceInfo(clusterId, serviceId, children);
         }
 
         return result;
@@ -440,8 +440,9 @@ public class PresenceService extends AbstractService {
         NodeInfo result = null;
         if (!error) {
             try {
-                result = new NodeInfo(clusterId, serviceId, getContext().getNodeIdFromZk(new ZkNodeId(nodeId, null)),
-                        bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
+                result = new StaticNodeInfo(clusterId, serviceId, getContext().getNodeIdFromZk(
+                        new ZkNodeId(nodeId, null)), bytes != null ? nodeAttributeSerializer.deserialize(bytes)
+                        : Collections.EMPTY_MAP);
             } catch (Exception e) {
                 throw new IllegalStateException("lookupNodeInfo():  error trying to fetch node info:  path=" + path
                         + ":  " + e, e);
@@ -478,8 +479,8 @@ public class PresenceService extends AbstractService {
         announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
 
         // update announcement if node data is different
-        NodeInfo nodeInfo = new NodeInfo(clusterId, serviceId,
-                getContext().getNodeIdFromZk(new ZkNodeId(nodeId, null)), attributeMap);
+        NodeInfo nodeInfo = new StaticNodeInfo(clusterId, serviceId, getContext().getNodeIdFromZk(
+                new ZkNodeId(nodeId, null)), attributeMap);
         // if (!nodeInfo.equals(announcement.getNodeInfo())) {
         announcement.setNodeInfo(nodeInfo);
         announcement.setLastUpdated(-1);
