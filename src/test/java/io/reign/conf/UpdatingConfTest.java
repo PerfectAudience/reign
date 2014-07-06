@@ -36,7 +36,7 @@ public class UpdatingConfTest {
             confService.putConf("test", "service1/test1.conf",
                     Structs.<String, String> map().kv("key1", "value1").kv("key2", "value2"));
 
-            // wait up to 30 seconds total for asserts to pass
+            // wait up to 30 seconds total for updates 
             for (int i = 0; i < 10; i++) {
                 Thread.sleep(3000);
                 if (conf.size() == 2) {
