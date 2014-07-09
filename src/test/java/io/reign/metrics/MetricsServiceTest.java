@@ -72,7 +72,7 @@ public class MetricsServiceTest {
 
         // wait for update
         synchronized (calledCount) {
-            calledCount.wait(metricsService.getUpdateIntervalMillis() * 2);
+            calledCount.wait(metricsService.getUpdateIntervalMillis() * 4);
         }
         assertTrue("Expected 1, got " + calledCount.get(), calledCount.get() == 1);
 
@@ -82,7 +82,7 @@ public class MetricsServiceTest {
 
         // wait for update
         synchronized (calledCount) {
-            calledCount.wait((metricsService.getUpdateIntervalMillis() * 2) + 1000);
+            calledCount.wait(metricsService.getUpdateIntervalMillis() * 4);
         }
         assertTrue("calledCount should be >1, but is " + calledCount.get(), calledCount.get() > 1);
         assertTrue("latest.observerTestCounter should be " + (previousValue + 1) + ", but is "

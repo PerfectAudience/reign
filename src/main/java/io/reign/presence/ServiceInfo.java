@@ -16,52 +16,18 @@
 
 package io.reign.presence;
 
-import io.reign.util.NodeIdListSerializer;
-
-import java.util.Collections;
 import java.util.List;
-
-import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 /**
  * 
  * @author ypai
  * 
  */
-public class ServiceInfo {
+public interface ServiceInfo {
 
-    private final String clusterId;
+    public String getClusterId();
 
-    private final String serviceId;
+    public String getServiceId();
 
-    @JsonSerialize(using = NodeIdListSerializer.class)
-    private List<String> nodeIdList;
-
-    public ServiceInfo(String clusterId, String serviceId, List<String> nodeIdList) {
-        if (clusterId == null || serviceId == null) {
-            throw new IllegalArgumentException("clusterId and/or serviceId cannot be null!");
-        }
-
-        this.clusterId = clusterId;
-        this.serviceId = serviceId;
-
-        if (nodeIdList != null) {
-            this.nodeIdList = nodeIdList;
-        } else {
-            this.nodeIdList = Collections.EMPTY_LIST;
-        }
-    }
-
-    public String getClusterId() {
-        return clusterId;
-    }
-
-    public String getServiceId() {
-        return serviceId;
-    }
-
-    public List<String> getNodeIdList() {
-        return Collections.unmodifiableList(nodeIdList);
-    }
-
+    public List<String> getNodeIdList();
 }

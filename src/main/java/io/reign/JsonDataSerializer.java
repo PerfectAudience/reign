@@ -16,13 +16,8 @@
 
 package io.reign;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-
 import io.reign.util.JacksonUtil;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
@@ -34,28 +29,32 @@ import org.codehaus.jackson.type.TypeReference;
  */
 public class JsonDataSerializer<T> implements DataSerializer<T> {
 
-    /**
-     * Reusable Jackson JSON mapper
-     */
-    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
+	/**
+	 * Reusable Jackson JSON mapper
+	 */
+	private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
 
-    @Override
-    public byte[] serialize(T data) throws RuntimeException {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(data).getBytes("UTF-8");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+	@Override
+	public byte[] serialize(T data) throws RuntimeException {
+		try {
+			return OBJECT_MAPPER.writeValueAsString(data).getBytes("UTF-8");
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-    @Override
-    public T deserialize(byte[] bytes) throws RuntimeException {
-        try {
-            return OBJECT_MAPPER.readValue(bytes, 0, bytes.length, new TypeReference<T>() {
-            });
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+	@Override
+	public T deserialize(byte[] bytes) throws RuntimeException {
+		try {
+			if (bytes == null) {
+				return null;
+			}
+			return OBJECT_MAPPER.readValue(bytes, 0, bytes.length,
+					new TypeReference<T>() {
+					});
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 }
