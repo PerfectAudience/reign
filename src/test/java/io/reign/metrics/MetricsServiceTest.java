@@ -72,7 +72,7 @@ public class MetricsServiceTest {
 
         // wait for update
         synchronized (calledCount) {
-            calledCount.wait(metricsService.getUpdateIntervalMillis() * 2);
+            calledCount.wait((metricsService.getUpdateIntervalMillis() * 2) + 1000);
         }
         assertTrue("Expected 1, got " + calledCount.get(), calledCount.get() == 1);
 
