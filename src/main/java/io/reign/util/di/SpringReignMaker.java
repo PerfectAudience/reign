@@ -122,7 +122,7 @@ public class SpringReignMaker extends ReignMaker {
     }
 
     /**
-     * Call using Spring "init-method" when initializing bean.
+     * Call using Spring "destroy-method" when initializing bean.
      */
     public void destroy() {
         reign.stop();
