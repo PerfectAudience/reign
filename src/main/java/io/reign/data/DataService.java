@@ -40,201 +40,227 @@ import org.slf4j.LoggerFactory;
  */
 public class DataService extends AbstractService {
 
-    private static final Logger logger = LoggerFactory.getLogger(DataService.class);
+	private static final Logger logger = LoggerFactory
+			.getLogger(DataService.class);
 
-    /** process task queue every 2 seconds by default */
-    public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
+	/** process task queue every 2 seconds by default */
+	public static final int DEFAULT_EXECUTION_INTERVAL_MILLIS = 2000;
 
-    private static final String DATA_PATH_SUFFIX = "$";
-    private static final String MAP_PATH_SUFFIX = "{}";
-    private static final String LIST_PATH_SUFFIX = "[]";
+	private static final String DATA_PATH_SUFFIX = "$";
+	private static final String MAP_PATH_SUFFIX = "{}";
+	private static final String LIST_PATH_SUFFIX = "[]";
 
-    private final TranscodingScheme transcodingScheme;
+	private final TranscodingScheme transcodingScheme;
 
-    private ScheduledThreadPoolExecutor executorService;
+	private ScheduledThreadPoolExecutor executorService;
 
-    public DataService() {
-        this(new SimpleTranscodingScheme());
-    }
+	public DataService() {
+		this(new KryoTranscodingScheme());
+	}
 
-    public DataService(TranscodingScheme transcodingScheme) {
-        this.transcodingScheme = transcodingScheme;
-    }
+	public DataService(TranscodingScheme transcodingScheme) {
+		this.transcodingScheme = transcodingScheme;
+	}
 
-    public <V> MultiData<V> getMulti(String clusterId, String dataPath) {
-        return getMulti(clusterId, dataPath, true, getContext().getDefaultZkAclList());
-    }
+	public <V> MultiData<V> getMulti(String clusterId, String dataPath) {
+		return getMulti(clusterId, dataPath, true, getContext()
+				.getDefaultZkAclList());
+	}
 
-    public <V> MultiData<V> getMulti(String clusterId, String dataPath, boolean processSafe, List<ACL> aclList) {
-        dataPath = dataPath + DATA_PATH_SUFFIX;
+	public <V> MultiData<V> getMulti(String clusterId, String dataPath,
+			boolean processSafe, List<ACL> aclList) {
+		dataPath = dataPath + DATA_PATH_SUFFIX;
 
-        DistributedReadWriteLock readWriteLock = null;
-        if (processSafe) {
-            readWriteLock = getReadWriteLock(clusterId, dataPath);
-        }
+		DistributedReadWriteLock readWriteLock = null;
+		if (processSafe) {
+			readWriteLock = getReadWriteLock(clusterId, dataPath);
+		}
 
-        PathScheme pathScheme = getPathScheme();
-        String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
+		PathScheme pathScheme = getPathScheme();
+		String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA,
+				pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiData<V>(absoluteBasePath, readWriteLock, aclList, transcodingScheme, getContext());
-    }
+		return new ZkMultiData<V>(absoluteBasePath, readWriteLock, aclList,
+				transcodingScheme, getContext());
+	}
 
-    public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath) {
-        return getMultiMap(clusterId, dataPath, true, getContext().getDefaultZkAclList());
-    }
+	public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath) {
+		return getMultiMap(clusterId, dataPath, true, getContext()
+				.getDefaultZkAclList());
+	}
 
-    public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath, boolean processSafe, List<ACL> aclList) {
-        dataPath = dataPath + MAP_PATH_SUFFIX;
+	public <K> MultiMapData<K> getMultiMap(String clusterId, String dataPath,
+			boolean processSafe, List<ACL> aclList) {
+		dataPath = dataPath + MAP_PATH_SUFFIX;
 
-        logger.trace("Getting multimap:  clusterId={}; dataPath={}", dataPath);
+		logger.trace("Getting multimap:  clusterId={}; dataPath={}", dataPath);
 
-        DistributedReadWriteLock readWriteLock = null;
-        if (processSafe) {
-            readWriteLock = getReadWriteLock(clusterId, dataPath);
-        }
+		DistributedReadWriteLock readWriteLock = null;
+		if (processSafe) {
+			readWriteLock = getReadWriteLock(clusterId, dataPath);
+		}
 
-        logger.trace("Got read/write lock...");
+		logger.trace("Got read/write lock...");
 
-        PathScheme pathScheme = getPathScheme();
-        String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
+		PathScheme pathScheme = getPathScheme();
+		String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA,
+				pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkMultiMapData<K>(absoluteBasePath, readWriteLock, aclList, transcodingScheme, getContext());
-    }
+		return new ZkMultiMapData<K>(absoluteBasePath, readWriteLock, aclList,
+				transcodingScheme, getContext());
+	}
 
-    public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath) {
-        return getLinkedList(clusterId, dataPath, getContext().getDefaultZkAclList());
-    }
+	public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath) {
+		return getLinkedList(clusterId, dataPath, getContext()
+				.getDefaultZkAclList());
+	}
 
-    public <V> LinkedListData<V> getLinkedList(String clusterId, String dataPath, List<ACL> aclList) {
+	public <V> LinkedListData<V> getLinkedList(String clusterId,
+			String dataPath, List<ACL> aclList) {
 
-        dataPath = dataPath + LIST_PATH_SUFFIX;
+		dataPath = dataPath + LIST_PATH_SUFFIX;
 
-        DistributedReadWriteLock readWriteLock = getReadWriteLock(clusterId, dataPath);
+		DistributedReadWriteLock readWriteLock = getReadWriteLock(clusterId,
+				dataPath);
 
-        PathScheme pathScheme = getPathScheme();
-        String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA, pathScheme.joinTokens(clusterId, dataPath));
+		PathScheme pathScheme = getPathScheme();
+		String absoluteBasePath = pathScheme.getAbsolutePath(PathType.DATA,
+				pathScheme.joinTokens(clusterId, dataPath));
 
-        return new ZkLinkedListData<V>(absoluteBasePath, readWriteLock, aclList, transcodingScheme, getContext());
-    }
+		return new ZkLinkedListData<V>(absoluteBasePath, readWriteLock,
+				aclList, transcodingScheme, getContext());
+	}
 
-    public <V> QueueData<V> getQueue(String clusterId, String dataPath) {
-        return getQueue(clusterId, dataPath, getContext().getDefaultZkAclList());
-    }
+	public <V> QueueData<V> getQueue(String clusterId, String dataPath) {
+		return getQueue(clusterId, dataPath, getContext().getDefaultZkAclList());
+	}
 
-    public <V> QueueData<V> getQueue(String clusterId, String dataPath, List<ACL> aclList) {
-        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, aclList);
+	public <V> QueueData<V> getQueue(String clusterId, String dataPath,
+			List<ACL> aclList) {
+		LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath,
+				aclList);
 
-        return new ZkQueueData<V>(linkedListData);
-    }
+		return new ZkQueueData<V>(linkedListData);
+	}
 
-    public <V> StackData<V> getStack(String clusterId, String dataPath) {
-        return getStack(clusterId, dataPath, getContext().getDefaultZkAclList());
-    }
+	public <V> StackData<V> getStack(String clusterId, String dataPath) {
+		return getStack(clusterId, dataPath, getContext().getDefaultZkAclList());
+	}
 
-    public <V> StackData<V> getStack(String clusterId, String dataPath, List<ACL> aclList) {
-        LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath, aclList);
+	public <V> StackData<V> getStack(String clusterId, String dataPath,
+			List<ACL> aclList) {
+		LinkedListData<V> linkedListData = getLinkedList(clusterId, dataPath,
+				aclList);
 
-        return new ZkStackData<V>(linkedListData);
-    }
+		return new ZkStackData<V>(linkedListData);
+	}
 
-    DistributedReadWriteLock getReadWriteLock(String clusterId, String dataPath) {
-        logger.trace("Getting read/write lock:  clusterId={}; dataPath={}", clusterId, dataPath);
-        CoordinationService coordinationService = getContext().getService("coord");
-        DistributedReadWriteLock readWriteLock = coordinationService.getReadWriteLock(clusterId, dataPath);
-        return readWriteLock;
-    }
+	DistributedReadWriteLock getReadWriteLock(String clusterId, String dataPath) {
+		logger.trace("Getting read/write lock:  clusterId={}; dataPath={}",
+				clusterId, dataPath);
+		CoordinationService coordinationService = getContext().getService(
+				"coord");
+		DistributedReadWriteLock readWriteLock = coordinationService
+				.getReadWriteLock(clusterId, dataPath);
+		return readWriteLock;
+	}
 
-    @Override
-    public void init() {
-        executorService = new ScheduledThreadPoolExecutor(1);
-        Runnable adminRunnable = new AdminRunnable();
-        executorService.scheduleAtFixedRate(adminRunnable, 600000, 600000, TimeUnit.MILLISECONDS);
-    }
+	@Override
+	public void init() {
+		executorService = new ScheduledThreadPoolExecutor(1);
+		Runnable adminRunnable = new AdminRunnable();
+		executorService.scheduleAtFixedRate(adminRunnable, 600000, 600000,
+				TimeUnit.MILLISECONDS);
+	}
 
-    @Override
-    public void destroy() {
-        executorService.shutdown();
-    }
+	@Override
+	public void destroy() {
+		executorService.shutdown();
+	}
 
-    @Override
-    public ResponseMessage handleMessage(RequestMessage requestMessage) {
+	@Override
+	public ResponseMessage handleMessage(RequestMessage requestMessage) {
 
-        try {
-            if (logger.isTraceEnabled()) {
-                logger.trace("Received message:  request='{}:{}'", requestMessage.getTargetService(),
-                        requestMessage.getBody());
-            }
+		try {
+			if (logger.isTraceEnabled()) {
+				logger.trace("Received message:  request='{}:{}'",
+						requestMessage.getTargetService(),
+						requestMessage.getBody());
+			}
 
-            /** preprocess request **/
-            String requestResource = (String) requestMessage.getBody();
-            String resource = requestResource;
+			/** preprocess request **/
+			String requestResource = (String) requestMessage.getBody();
+			String resource = requestResource;
 
-            // strip beginning and ending slashes "/"
-            if (resource.startsWith("/")) {
-                resource = resource.substring(1);
-            }
-            if (resource.endsWith("/")) {
-                resource = resource.substring(0, resource.length() - 1);
-            }
+			// strip beginning and ending slashes "/"
+			if (resource.startsWith("/")) {
+				resource = resource.substring(1);
+			}
+			if (resource.endsWith("/")) {
+				resource = resource.substring(0, resource.length() - 1);
+			}
 
-            /** get response **/
-            ResponseMessage responseMessage = null;
+			/** get response **/
+			ResponseMessage responseMessage = null;
 
-            // if base path, just return available clusters
-            if (resource.length() == 0) {
-                // list available clusters
-                List<String> clusterList = getZkClient().getChildren(getPathScheme().getAbsolutePath(PathType.DATA),
-                        false);
-                responseMessage = new SimpleResponseMessage();
-                responseMessage.setBody(clusterList);
+			// if base path, just return available clusters
+			if (resource.length() == 0) {
+				// list available clusters
+				List<String> clusterList = getZkClient().getChildren(
+						getPathScheme().getAbsolutePath(PathType.DATA), false);
+				responseMessage = new SimpleResponseMessage();
+				responseMessage.setBody(clusterList);
 
-            } else {
-                String[] tokens = getPathScheme().tokenizePath(resource);
-                // logger.debug("tokens.length={}", tokens.length);
+			} else {
+				String[] tokens = getPathScheme().tokenizePath(resource);
+				// logger.debug("tokens.length={}", tokens.length);
 
-                if (tokens.length >= 1) {
-                    PathScheme pathScheme = getPathScheme();
+				if (tokens.length >= 1) {
+					PathScheme pathScheme = getPathScheme();
 
-                    String path = pathScheme.getAbsolutePath(PathType.DATA);
-                    for (String token : tokens) {
-                        path = pathScheme.joinPaths(path, token);
-                    }
+					String path = pathScheme.getAbsolutePath(PathType.DATA);
+					for (String token : tokens) {
+						path = pathScheme.joinPaths(path, token);
+					}
 
-                    // list data
-                    List<String> dataList = getZkClient().getChildren(path, false);
+					// list data
+					List<String> dataList = getZkClient().getChildren(path,
+							false);
 
-                    responseMessage = new SimpleResponseMessage();
-                    responseMessage.setBody(dataList);
-                    if (dataList == null) {
-                        responseMessage.setComment("Not found:  " + requestResource);
-                    }
+					responseMessage = new SimpleResponseMessage();
+					responseMessage.setBody(dataList);
+					if (dataList == null) {
+						responseMessage.setComment("Not found:  "
+								+ requestResource);
+					}
 
-                }
-            }
+				}
+			}
 
-            responseMessage.setId(requestMessage.getId());
+			responseMessage.setId(requestMessage.getId());
 
-            return responseMessage;
+			return responseMessage;
 
-        } catch (Exception e) {
-            logger.error("" + e, e);
-        }
+		} catch (Exception e) {
+			logger.error("" + e, e);
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    /**
-     * TODO: implement
-     * 
-     * @author ypai
-     * 
-     */
-    public class AdminRunnable implements Runnable {
-        @Override
-        public void run() {
-            /** groom data **/
-            // get lock on path, check data point TTLs, and clean up data nodes as necessary
-        }
-    }
+	/**
+	 * TODO: implement
+	 * 
+	 * @author ypai
+	 * 
+	 */
+	public class AdminRunnable implements Runnable {
+		@Override
+		public void run() {
+			/** groom data **/
+			// get lock on path, check data point TTLs, and clean up data nodes
+			// as necessary
+		}
+	}
 
 }
