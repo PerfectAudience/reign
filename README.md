@@ -40,6 +40,19 @@ http://blog.kompany.org/2013/02/23/setting-up-apache-zookeeper-on-os-x-in-five-m
 
 Reign can also be started in bootstrap mode where it will spin up an in-process ZooKeeper -- this should only be used for testing/development.
 
+### Inclusion in Maven projects
+
+Reign can be included in a Maven project with the following POM file snippet.  Using classifier "shaded" will use a jar that hides most of Reign's dependencies from your project:  this may help with dependency conflicts in more complex projects and is the preferred way of integrating Reign.
+
+        <dependency>
+            <groupId>io</groupId>
+            <artifactId>reign</artifactId>
+            <version>REIGN_VERSION</version>
+            
+            <!-- "shaded" classifier available as of 0.2.15 -->
+            <classifier>shaded</classifier>
+        </dependency>        
+
 ### Initialize and start up examples
         /** init and start using in-process ZooKeeper on port 12181 **/
         Reign reign = Reign.maker().zkClientTestMode(12181, 30000).get();
