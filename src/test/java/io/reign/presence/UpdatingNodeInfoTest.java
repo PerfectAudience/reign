@@ -39,12 +39,11 @@ public class UpdatingNodeInfoTest {
 			// time
 			presenceService.announce("clusterABC", "serviceABC", true);
 
-			int i = 0;
-			while (nodeInfo.getNodeId() == null) {
-				Thread.sleep(1000);
-				if (++i >= 5) {
+			for (int i = 0; i < presenceService.getHeartbeatIntervalMillis() / 1000 * 4; i++) {
+				if (nodeInfo.getNodeId() != null) {
 					break;
 				}
+				Thread.sleep(1000);
 			}
 
 			assertTrue("clusterABC".equals(nodeInfo.getClusterId()));

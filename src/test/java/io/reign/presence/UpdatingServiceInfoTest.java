@@ -38,11 +38,11 @@ public class UpdatingServiceInfoTest {
 			presenceService.announce("clusterA", "serviceA", true);
 
 			// wait up to 30 seconds total for updates
-			for (int i = 0; i < 10; i++) {
-				Thread.sleep(3000);
+			for (int i = 0; i < presenceService.getHeartbeatIntervalMillis() / 1000 * 4; i++) {
 				if (serviceInfo.getNodeIdList().size() == 1) {
 					break;
 				}
+				Thread.sleep(1000);
 			}
 
 			assertTrue("clusterA".equals(serviceInfo.getClusterId()));
