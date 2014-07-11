@@ -584,7 +584,8 @@ public class MetricsService extends AbstractService {
 			for (String clusterId : clusterIds) {
 
 				// only proceed if in cluster
-				if (!presenceService.isMemberOf(clusterId)) {
+				if (!presenceService.isMemberOf(clusterId)
+				        || clusterId.equals(getContext().getPathScheme().getFrameworkClusterId())) {
 					continue;
 				}
 
@@ -893,7 +894,8 @@ public class MetricsService extends AbstractService {
 			for (String clusterId : clusterIds) {
 
 				// only proceed if in cluster
-				if (!presenceService.isMemberOf(clusterId)) {
+				if (!presenceService.isMemberOf(clusterId)
+				        || clusterId.equals(getContext().getPathScheme().getFrameworkClusterId())) {
 					continue;
 				}
 
