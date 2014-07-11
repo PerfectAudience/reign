@@ -18,58 +18,22 @@ package io.reign.presence;
 
 import io.reign.NodeId;
 
-import java.util.Collections;
 import java.util.Map;
-
-import org.codehaus.jackson.annotate.JsonRawValue;
 
 /**
  * 
  * @author ypai
  * 
  */
-public class NodeInfo {
+public interface NodeInfo {
 
-    private Map<String, String> attributeMap;
-    private final String clusterId;
-    private final String serviceId;
+    public Object getAttribute(String key);
 
-    @JsonRawValue
-    private final NodeId nodeId;
+    public Map<String, String> getAttributeMap();
 
-    public NodeInfo(String clusterId, String serviceId, NodeId nodeId, Map<String, String> attributeMap) {
-        if (clusterId == null && serviceId == null && nodeId == null) {
-            throw new IllegalArgumentException("clusterId, serviceId, nodeId cannot be null!");
-        }
+    public String getClusterId();
 
-        this.clusterId = clusterId;
-        this.serviceId = serviceId;
-        this.nodeId = nodeId;
+    public String getServiceId();
 
-        if (attributeMap != null) {
-            this.attributeMap = attributeMap;
-        } else {
-            this.attributeMap = Collections.EMPTY_MAP;
-        }
-    }
-
-    public Object getAttribute(String key) {
-        return attributeMap.get(key);
-    }
-
-    public Map<String, String> getAttributeMap() {
-        return Collections.unmodifiableMap(attributeMap);
-    }
-
-    public String getClusterId() {
-        return clusterId;
-    }
-
-    public String getServiceId() {
-        return serviceId;
-    }
-
-    public NodeId getNodeId() {
-        return nodeId;
-    }
+    public NodeId getNodeId();
 }

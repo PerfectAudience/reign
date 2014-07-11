@@ -13,6 +13,8 @@
 
 package io.reign;
 
+import io.reign.util.JacksonUtil;
+
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
@@ -144,24 +146,18 @@ public class DefaultPathScheme implements PathScheme {
         return (!StringUtils.isBlank(path) && !path.endsWith("/")) || "/".equals(path);
     }
 
-    // @Override
-    // public CanonicalId parseCanonicalId(String canonicalId) {
-    // try {
-    // return JacksonUtil.getObjectMapperInstance().readValue(canonicalId,
-    // new TypeReference<DefaultCanonicalId>() {
-    // });
-    // } catch (Exception e) {
-    // throw new IllegalArgumentException("Could not parse '" + canonicalId + "':  " + e, e);
-    // }
-    // }
-    //
-    // @Override
-    // public String toPathToken(CanonicalId canonicalId) {
-    // try {
-    // return JacksonUtil.getObjectMapperInstance().writeValueAsString(canonicalId);
-    // } catch (Exception e) {
-    // throw new IllegalArgumentException(e);
-    // }
-    // }
+    @Override
+    public String toPathToken(NodeId nodeId) {
+        try {
+            String pathToken = JacksonUtil.getObjectMapper().writeValueAsString(nodeId);
+            if (isValidToken(pathToken)) {
+                return pathToken;
+            } else {
+                throw new IllegalStateException("Value does not convert to valid path token:  pathToken=" + pathToken);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
 }

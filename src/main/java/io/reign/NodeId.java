@@ -17,28 +17,29 @@
 package io.reign;
 
 /**
+ * equals() should be overridden properly.
  * 
  * @author ypai
  * 
  */
 public interface NodeId {
 
-    // public CanonicalId port(Integer port);
+	// public CanonicalId port(Integer port);
 
-    public String getProcessId();
+	public String getProcessId();
 
-    // public void setProcessId(String processId);
+	// public void setProcessId(String processId);
 
-    public String getIpAddress();
+	public String getIpAddress();
 
-    // public void setIpAddress(String ipAddress);
+	// public void setIpAddress(String ipAddress);
 
-    public String getHost();
+	public String getHost();
 
-    // public void setHost(String host);
+	// public void setHost(String host);
 
-    public Integer getMessagingPort();
+	public Integer getMessagingPort();
 
-    // public void setMessagingPort(Integer messagingPort);
+	// public void setMessagingPort(Integer messagingPort);
 
 }
