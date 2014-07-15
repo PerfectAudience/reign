@@ -17,52 +17,52 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 
 public class MetricsServiceExample {
-    private static final Logger logger = LoggerFactory.getLogger(MetricsServiceExample.class);
+	private static final Logger logger = LoggerFactory.getLogger(MetricsServiceExample.class);
 
-    public static void main(String[] args) throws Exception {
-        // logger.info("MetricsData JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(new MetricsData()));
+	public static void main(String[] args) throws Exception {
+		// logger.info("MetricsData JSON = {}", JacksonUtil.getObjectMapper().writeValueAsString(new MetricsData()));
 
-        ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(1);
+		ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(1);
 
-        /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).get();
-        reign.start();
+		/** init and start reign using builder **/
+		Reign reign = Reign.maker().zkClientTestMode(2181, 30000).pathCache(1024, 8).get();
+		reign.start();
 
-        PresenceService presenceService = reign.getService("presence");
-        presenceService.announce("clusterA", "serviceA", true);
+		PresenceService presenceService = reign.getService("presence");
+		presenceService.announce("clusterA", "serviceA", true);
 
-        MetricsService metricsService = reign.getService("metrics");
+		MetricsService metricsService = reign.getService("metrics");
 
-        final RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(120, TimeUnit.SECONDS);
-        Counter counter1 = registryManager.get().counter(MetricRegistry.name("counter1"));
-        Counter counter2 = registryManager.get().counter(MetricRegistry.name("counter2"));
-        counter1.inc();
-        counter2.inc(3);
+		final RotatingMetricRegistryManager registryManager = new RotatingMetricRegistryManager(120, TimeUnit.SECONDS);
+		Counter counter1 = registryManager.get().counter(MetricRegistry.name("counter1"));
+		Counter counter2 = registryManager.get().counter(MetricRegistry.name("counter2"));
+		counter1.inc();
+		counter2.inc(3);
 
-        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 2, TimeUnit.SECONDS);
+		metricsService.scheduleExport("clusterA", "serviceA", registryManager, 2, TimeUnit.SECONDS);
 
-        MetricsData metricsData = null;
-        while ((metricsData = metricsService.getMyMetrics("clusterA", "serviceA")) == null) {
-            Thread.sleep(1000);
-        }
+		MetricsData metricsData = null;
+		while ((metricsData = metricsService.getMyMetrics("clusterA", "serviceA")) == null) {
+			Thread.sleep(1000);
+		}
 
-        logger.debug("counter1={}", metricsData.getCounter("counter1").getCount());
+		logger.debug("counter1={}", metricsData.getCounter("counter1").getCount());
 
-        executorService.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                Counter c1 = registryManager.get().counter(MetricRegistry.name("c1"));
-                Counter c2 = registryManager.get().counter(MetricRegistry.name("c2"));
-                c1.inc();
-                c2.inc(3);
+		executorService.scheduleAtFixedRate(new Runnable() {
+			@Override
+			public void run() {
+				Counter c1 = registryManager.get().counter(MetricRegistry.name("c1"));
+				Counter c2 = registryManager.get().counter(MetricRegistry.name("c2"));
+				c1.inc();
+				c2.inc(3);
 
-            }
-        }, 0, 1, TimeUnit.SECONDS);
+			}
+		}, 0, 1, TimeUnit.SECONDS);
 
-        Thread.sleep(35000);
-        Counter counter3 = registryManager.get().counter(MetricRegistry.name(MetricsService.class, "counter3"));
-        counter3.inc(5);
+		Thread.sleep(35000);
+		Counter counter3 = registryManager.get().counter(MetricRegistry.name(MetricsService.class, "counter3"));
+		counter3.inc(5);
 
-        Thread.sleep(600000);
-    }
+		Thread.sleep(600000);
+	}
 }
