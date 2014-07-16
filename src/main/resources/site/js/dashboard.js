@@ -22,6 +22,7 @@ $(function() {
     	// handle selection of cluster
     	
     	var previousClusterId = selectedClusterId();
+    	hideAllClusterData();
     	hideAllServiceData();     	
     	
     	var clusterId = $(this).text().trim();
@@ -34,9 +35,7 @@ $(function() {
      	send("presence:/"+previousClusterId+"#observe-stop > 1");
      	
     	send("presence:/"+clusterId+" > 1");
-    	send("presence:/"+clusterId+"#observe > 1");
-    	
-    	$('#service-list').collapse('show');
+    	send("presence:/"+clusterId+"#observe > 1");    	    	
     	
     });
     
@@ -203,6 +202,14 @@ $(function() {
 				}
 				
 				$('#service-list').html(serviceHtml);
+				
+				if( serviceList.length>0 ) {
+					$('#service-list-label').removeClass('hidden');
+				    $('#service-list').collapse('show');
+		        } else {
+		        	$('#service-list-label').addClass('hidden');
+		        	$('#service-list').collapse('hide');
+		        }
 				
 				// if there is a hash location, attempt to show it
 				handleHash('service');
@@ -415,6 +422,10 @@ $(function() {
 	function hideAllServiceData() {
 		$('.metric-list').hide();
 		$('#service-node-list').hide();
+	}
+	
+	function hideAllClusterData() {		
+
 	}
 	
 	function handleRequest(html, requestId) {
