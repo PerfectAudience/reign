@@ -4,6 +4,20 @@ $(function() {
 	var socket;
 	var requestIdSequence = 0;	
 	
+	$('#service-list').on('show.bs.collapse', function() {
+		$('#service-list-label .glyphicon').addClass('glyphicon-chevron-down').removeClass('glyphicon-chevron-left');
+	});
+	$('#service-list').on('hide.bs.collapse', function() {
+		$('#service-list-label .glyphicon').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-left');
+	});	
+	
+	$('#coordination-list').on('show.bs.collapse', function() {
+		$('#coordination-list-label .glyphicon').addClass('glyphicon-chevron-down').removeClass('glyphicon-chevron-left');
+	});	
+	$('#coordination-list').on('hide.bs.collapse', function() {
+		$('#coordination-list-label .glyphicon').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-left');
+	});
+	
     $("#cluster-id-menu .dropdown-menu").on('click', 'li a', function() {
     	// handle selection of cluster
     	
@@ -21,6 +35,8 @@ $(function() {
      	
     	send("presence:/"+clusterId+" > 1");
     	send("presence:/"+clusterId+"#observe > 1");
+    	
+    	$('#service-list').collapse('show');
     	
     });
     
@@ -476,6 +492,7 @@ $(function() {
 	
 	connectWebSocket($('#connectHost').val());
 	
+
 	
 	
 });

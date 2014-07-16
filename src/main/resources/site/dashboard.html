@@ -62,15 +62,17 @@
 
     <div class="container-fluid">
       <div class="row">
-        <div class="col-sm-3 col-md-2 sidebar"> 
-          <ul id="service-list" class="nav nav-sidebar">
-            
+        <div id="nav-sidebar-accordion" class="col-sm-3 col-md-2 sidebar">
+        
+          <h4><a id="service-list-label" href="#service-list" data-toggle="collapse" class="collapse-label">Services &nbsp;<span class="glyphicon glyphicon-chevron-right"></span></a></h4>
+          <ul id="service-list" class="nav nav-sidebar collapse">	            
           </ul>
-         
-          <ul class="nav nav-sidebar">
-            <li><a href="">Barriers</a></li>
-            <li><a href="">Locks</a></li>            
-            <li><a href="">Semaphores</a></li>
+          <hr/>
+          <h4><a id="coordination-list-label" href="#coordination-list" data-toggle="collapse" class="hidden collapse-label">Coordination &nbsp;<span class="glyphicon glyphicon-chevron-right"></span></a></h4>
+          <ul id="coordination-list" class="hidden nav nav-sidebar collapse">
+            <li><a href="#barriers">Barriers</a></li>
+            <li><a href="#locks">Locks</a></li>            
+            <li><a href="#semaphores">Semaphores</a></li>
           </ul>
  
         </div>
