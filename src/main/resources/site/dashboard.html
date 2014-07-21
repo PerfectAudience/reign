@@ -39,7 +39,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="http://github.com/ypai/reign" target="_new">Reign</a>
+          <a class="navbar-brand" href="http://github.com/ypai/reign" target="_new">Reign&nbsp;&nbsp;&nbsp;</a>
         </div>
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav navbar-left">
@@ -64,19 +64,36 @@
       <div class="row">
         <div id="nav-sidebar-accordion" class="col-sm-3 col-md-2 sidebar">
         
-          <h4><a id="service-list-label" href="#service-list" data-toggle="collapse" class="hidden collapse-label">Services &nbsp;<span class="glyphicon"></span></a></h4>
+          <h4><a id="service-list-label" href="#service-list" data-toggle="collapse" class="hidden collapse-label">Services &nbsp;<span class="glyphicon glyphicon-chevron-left"></span></a></h4>
           <ul id="service-list" class="nav nav-sidebar collapse">	            
           </ul>
           <hr/>
-          <h4><a id="coordination-list-label" href="#coordination-list" data-toggle="collapse" class="hidden collapse-label">Coordination &nbsp;<span class="glyphicon"></span></a></h4>
+          <h4><a id="coordination-list-label" href="#coordination-list" data-toggle="collapse" class="hidden collapse-label">Coordination &nbsp;<span class="glyphicon glyphicon-chevron-left"></span></a></h4>
           <ul id="coordination-list" class="hidden nav nav-sidebar collapse">
-            <li><a href="#barriers">Barriers</a></li>
-            <li><a href="#locks">Locks</a></li>            
-            <li><a href="#semaphores">Semaphores</a></li>
+            <li><a href="#barrier" coordEntity="barrier" onclick="return false;">Barriers</a></li>
+            <li><a href="#lock" coordEntity="lock" onclick="return false;">Locks</a></li>            
+            <li><a href="#semaphore" coordEntity="semaphore" onclick="return false;">Semaphores</a></li>
           </ul>
- 
         </div>
-        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">          
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main"> 
+                
+          <div id="lock-list" class="hidden">
+	          <h3 class="sub-header">Locks<span class="service-name pull-right text-muted"></span></h3>
+	          <div class="table-responsive">
+	            <table class="table table-striped">
+	              <thead>
+	                <tr>
+	                  <th>Name</th>
+	                </tr>
+	              </thead>
+	              <tbody id="lock-list-data">
+	
+	              </tbody>
+	            </table>
+	          </div>
+          </div>
+          <br/>&nbsp;<br/>                  
+                 
           <div id="service-node-list" class="hidden">
 	          <h3 class="sub-header">Nodes<span class="service-name pull-right text-muted"></span></h3>
 	          <div class="table-responsive">
@@ -189,7 +206,9 @@
 	            </table>
 	          </div>
           </div>  
-          <br/>&nbsp;<br/>                
+          <br/>&nbsp;<br/>  
+          
+                      
           
         </div>
       </div>
