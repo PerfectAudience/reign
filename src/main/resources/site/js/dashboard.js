@@ -4,10 +4,25 @@ $(function() {
 	var socket;
 	var requestIdSequence = 0;	
 	
+	$('#service-list').on('show.bs.collapse', function() {
+		$('#service-list-label .glyphicon').addClass('glyphicon-chevron-down').removeClass('glyphicon-chevron-left');
+	});
+	$('#service-list').on('hide.bs.collapse', function() {
+		$('#service-list-label .glyphicon').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-left');
+	});	
+	
+	$('#coordination-list').on('show.bs.collapse', function() {
+		$('#coordination-list-label .glyphicon').addClass('glyphicon-chevron-down').removeClass('glyphicon-chevron-left');
+	});	
+	$('#coordination-list').on('hide.bs.collapse', function() {
+		$('#coordination-list-label .glyphicon').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-left');
+	});
+	
     $("#cluster-id-menu .dropdown-menu").on('click', 'li a', function() {
     	// handle selection of cluster
     	
     	var previousClusterId = selectedClusterId();
+    	hideAllClusterData();
     	hideAllServiceData();     	
     	
     	var clusterId = $(this).text().trim();
@@ -20,13 +35,15 @@ $(function() {
      	send("presence:/"+previousClusterId+"#observe-stop > 1");
      	
     	send("presence:/"+clusterId+" > 1");
-    	send("presence:/"+clusterId+"#observe > 1");
+    	send("presence:/"+clusterId+"#observe > 1");   
+    	
+//    	$("#coordination-list-label").removeClass('hidden');
+//    	$('#coordination-list').removeClass('hidden');
     	
     });
     
     $("#service-list").on('click', 'li a.cluster-service-info', function() {
-    	// handle selection of service
-    	
+    	// handle selection of service    	
     	hideAllServiceData();
     	
     	var clusterId = $("#cluster-id").text().trim();
@@ -51,7 +68,25 @@ $(function() {
     	send("metrics:/"+clusterIdServiceId+" > 2");
     	send("metrics:/"+clusterIdServiceId+"#observe > 5");
     });    
+    
+    $("#coordination-list").on('click', 'li a', function() {
+    	// handle selection of coordination data    	
+    	hideAllCoordinationData();    	   
+    	
+    	var clusterId = $("#cluster-id").text().trim();
+    	var coordEntity = $(this).attr("coordEntity").trim();
+    	
+    	location.hash = clusterId+"/"+coordEntity;
+    	
+    	console.log("Sending:  coord:/"+clusterId+"/"+coordEntity+" > 100");    	
+    	
+    	send("coord:/"+clusterId+"/"+coordEntity+" > 100");
+    });      
 
+    function hideAllCoordinationData() {
+    	
+    }
+    
 	if (!window.WebSocket) {
 		window.WebSocket = window.MozWebSocket;
 	}
@@ -166,13 +201,14 @@ $(function() {
 				$('#'+clusterIdServiceId+'-node-count').html(nodeIdList.length);
 				
 			} else if( (response.id && response.id==2) ) {
-				// metrics
+				// metrics update
 				renderMetrics( response.body.clusterId, response.body.serviceId, response.body );
                 
 		    } else if( (response.id && response.id==4) ) {
-                                renderNodeList(response.body.clusterId, response.body.serviceId, response.body.nodeIdList);
-                                updateServiceNodeCount(response.body.clusterId, response.body.serviceId, response.body.nodeIdList.length);
-		    	
+		    	// service node update
+                renderNodeList(response.body.clusterId, response.body.serviceId, response.body.nodeIdList);
+                updateServiceNodeCount(response.body.clusterId, response.body.serviceId, response.body.nodeIdList.length);
+	
 		    } else if( (response.id && response.id==1) ) {		    
 				// service list
 				var serviceList  = response.body;
@@ -187,6 +223,14 @@ $(function() {
 				}
 				
 				$('#service-list').html(serviceHtml);
+				
+				if( serviceList.length>0 ) {
+					$('#service-list-label').removeClass('hidden');
+				    $('#service-list').collapse('show');
+		        } else {
+		        	$('#service-list-label').addClass('hidden');
+		        	$('#service-list').collapse('hide');
+		        }
 				
 				// if there is a hash location, attempt to show it
 				handleHash('service');
@@ -207,6 +251,25 @@ $(function() {
 				
 				// if there is a hash location, attempt to show it
 				handleHash('cluster');
+				
+			} else if(response.id && response.id==100) {
+				console.log("Coord:  "+html);
+				
+				var lockList  = response.body;
+				lockList.sort();
+				
+				var html = '';
+				var clusterId = $("#cluster-id").text().trim();
+				for (var i = 0; i < lockList.length; i++) { 
+				    html += '<tr><td><a href="#'+(clusterId+'/lock/'+lockList[i])+'">'+lockList[i]+'</a></td></tr>';
+				}
+				
+				console.log(html);
+				$('#lock-list-data').html(html);
+				
+				if( lockList.length>0 ) {
+					$('#lock-list').removeClass('hidden');
+				}
 			}
 			
 		} else if( response.event ) {
@@ -401,6 +464,10 @@ $(function() {
 		$('#service-node-list').hide();
 	}
 	
+	function hideAllClusterData() {		
+
+	}
+	
 	function handleRequest(html, requestId) {
 		//console.log(html);	
 	}
@@ -476,6 +543,7 @@ $(function() {
 	
 	connectWebSocket($('#connectHost').val());
 	
+
 	
 	
 });

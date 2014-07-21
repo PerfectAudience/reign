@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Reign : Terminal</title>
+
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="en">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="">
+<meta name="author" content="">
+
+<link href="bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet">
+<link href="bootstrap/2.3.2/css/bootstrap-responsive.min.css" rel="stylesheet">
+
+<link href="css/terminal.css" rel="stylesheet">
+
+<style>
+body {
+	padding-top: 60px;
+	/* 60px to make the container go all the way to the bottom of the topbar */
+}
+</style>
+
+<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+<!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+    <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+<![endif]-->
+
+</head>
+
+<body>
+
+	<div class="navbar navbar-inverse navbar-fixed-top">
+		<div class="navbar-inner">
+			<div class="container">
+				<button type="button" class="btn btn-navbar" data-toggle="collapse"
+					data-target=".nav-collapse">
+					<span class="icon-bar"></span> <span class="icon-bar"></span> <span
+						class="icon-bar"></span>
+				</button>
+				<a class="brand" href="http://github.com/ypai/reign" target="_new">Reign</a>
+				<div class="nav-collapse collapse">
+					<ul class="nav" id="nav">
+						<li><a href="#terminal" data-toggle="tab">Terminal</a></li>
+						<li><a href="#help" data-toggle="tab">Terminal Guide</a></li>
+						<li><a href="dash">Dashboard</a></li>
+					</ul>			
+				</div>
+				<!--/.nav-collapse -->
+			</div>
+		</div>
+	</div>
+
+	<div class="container">
+
+		<div class="tab-content">
+
+			<div class="tab-pane" id="terminal">
+				<h1 class="text-info">Terminal</h1>
+				Use the terminal to query a Reign node directly.
+				<p>&nbsp;</p>
+
+				<form onsubmit="return false;">
+					<div class="controls controls-row">
+						<input type="text" id="connectHost" name="connectHost"
+							onkeypress="return checkKey(event);" value="${HOST}"
+							class="span10" /> <input class="btn span2" type="button"
+							value="Connect" onclick="connectWebSocket();" />
+					</div>
+
+					<div class="controls controls-row">
+						<textarea rows="3" type="text" id="sendInput" name="sendInput"
+							onkeypress="return checkKey(event);"
+							placeholder="presence:/[clusterId]/[serviceId]/[nodeId]"
+							class="span10"></textarea>
+						<input class="btn span2" type="button" value="Send"
+							onclick="send($('#sendInput').val());" />
+					</div>
+				</form>
+
+				<hr />
+				<div id="responseText" class="fill"></div>
+			</div>
+
+
+			<div class="tab-pane" id="help">
+				<h1 class="text-info">Terminal Guide</h1>
+				<hr />
+
+				<h3>General API Format</h3>
+
+				<p>
+					Core API calls are REST-ful in style and generally follow the form:<br />
+					<code>
+						[TARGET_SERVICE]:[RESOURCE]?[KEY1]=[VAL2]&amp;[KEY2]=[VAL2]...#[META_COMMAND]
+						&gt; [OPTIONAL_REQUEST_ID][NEW_LINE]<br /> [OPTIONAL_MESSAGE_BODY]
+					</code>
+				</p>
+				<p>Most calls have been designed in a familiar HTTP REST style.</p>
+				<hr />
+
+
+				<h3>Presence Service</h3>
+				<p>
+					Route API calls to the Presence Service by prefixing with
+					<code>presence:</code>
+				</p>
+				<h4>List clusters:</h4>
+				<code>presence:/</code>
+				<h4>List services in cluster:</h4>
+				<code>presence:/[CLUSTER_ID]</code>
+				<h4>List nodes in service:</h4>
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]</code>
+				<h4>Get info about a service node:</h4>
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]</code>				
+				<h4>Observe changes in service:</h4>
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe</code><br/>
+				<code>presence:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe-stop</code>				
+				<hr />
+
+				<h3>Metrics Service</h3>
+				<p>
+					Route API calls to the Presence Service by prefixing with
+					<code>metrics:</code>
+				</p>	
+				<h4>List clusters:</h4>
+				<code>metrics:/</code>
+				<h4>List services in cluster:</h4>
+				<code>metrics:/[CLUSTER_ID]</code>
+				<h4>Get service metrics:</h4>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]</code>		
+				<h4>Get individual data nodes (trailing slash):</h4>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]/</code>									
+				<h4>Observe changes in service metrics:</h4>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe</code><br/>
+				<code>metrics:/[CLUSTER_ID]/[SERVICE_ID]/[NODE_ID]#observe-stop</code>	
+				<hr />
+				
+				<h3>Configuration Service</h3>
+				<p>
+					Route API calls to the Configuration Service by prefixing with
+					<code>conf:</code>
+				</p>
+				<p>
+					Serializer to use is based on "file extension" part of path --
+					required for all configuration paths:<br /> ".properties" =
+					properties serializer</br> ".js" or ".json" = JSON serializer<br />
+				</p>
+				<h4>List available clusters</h4>
+				<code>conf:/</code>
+
+				<h4>List configurations in this cluster namespace</h4>
+				<code>
+					conf:/[CLUSTER_ID]<br />
+				</code>
+
+				<h4>List available configurations or examine configuration
+					contents</h4>
+				<code>
+					conf:/[CLUSTER_ID]/[PATH]<br />
+				</code>
+
+				<p>If path does not end in an extension, just do a listing. If
+					path has extension, return contents using correct deserializer.</p>
+
+				<h4>Set or replace with new config</h4>
+				<code>
+					conf:/[CLUSTER_ID]/[PATH]#put[NEW_LINE]<br /> key1=value1[NEW_LINE]<br />
+					key2=value2[NEW_LINE]<br />
+				</code>
+
+				<h4>Update existing or add new configuration</h4>
+				<code>
+					conf:/[CLUSTER_ID]/[PATH]#update[NEW_LINE]<br />
+					key=value[NEW_LINE]<br /> +key=value[NEW_LINE]<br /> -key[NEW_LINE]<br />
+				</code>
+
+				<p>
+					"-" means remove this property.<br /> 
+					"+" in front of the key means only set this property if it does not already exist.<br />
+					No prefix in front of a key means set this property to the given value.<br />
+				</p>
+
+
+				<h4>Delete config at path</h4>
+				<code>conf:/[CLUSTER_ID]/[PATH]#delete</code>
+
+
+				<hr />
+
+				<h3>Coordination Service</h3>
+				<p>
+					Route API calls to the Coordination Service by prefixing with
+					<code>coord:</code>
+				</p>
+				<p>&nbsp;</p>
+				<hr />
+
+				<h3>Data Service</h3>
+				<p>
+					Route API calls to the Coordination Service by prefixing with
+					<code>data:</code>
+				</p>
+				<p>&nbsp;</p>
+				<hr />
+
+				<h3>Messaging Service</h3>
+				<p>
+					Route API calls to the Messaging Service by prefixing with
+					<code>mesg:</code>
+				</p>
+				<h4>Send message to all connected clients and don't wait for
+					response (goes to null service)</h4>
+				<code>
+					mesg:/reign/client#ff<br /> {"body":"Hello World"}<br />
+				</code>
+				<hr />
+
+			</div>
+
+		</div>
+
+	</div>
+	<!-- /container -->
+
+	<!-- javascript ================================================== -->
+	<!-- Placed at the end of the document so the pages load faster -->
+	<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+	<script type="text/javascript" src="bootstrap/2.3.2/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="js/jquery.gracefulWebSocket.js"></script>
+
+	<script>
+		// show first tab
+		$('#nav li:eq(0) a').tab('show');
+	</script>
+
+	<script type="text/javascript">
+		var socket;
+		var requestIdSequence = 0;
+
+		if (!window.WebSocket) {
+			window.WebSocket = window.MozWebSocket;
+		}
+
+		function send(message) {
+			if (!window.WebSocket) {
+				return;
+			}			
+			var requestId = 0;
+			var idDelimiterIndex = message.indexOf(">");
+			if (idDelimiterIndex < 0) {
+				requestId = ++requestIdSequence;
+				message = message + " > " + requestIdSequence;
+			} else {
+				var newlineIndex = message.indexOf("\n", idDelimiterIndex);
+				if( newlineIndex < 0 ) {
+					requestId = message.substring(idDelimiterIndex+1);
+			    } else {
+			    	requestId = message.substring(idDelimiterIndex+1, newlineIndex);
+			    }
+				requestId = requestId.trim();
+			}
+			if( !socket || socket.readyState==socket.CLOSED ) {
+				connectWebSocket();	
+				
+				// add additional event handling
+				var currentOnOpen = socket.onopen;
+				socket.onopen = function(event) {
+					currentOnOpen(event);
+					renderRequest('responseText', message);
+					socket.send(message);
+				};
+				return;
+			}
+			if ( socket.readyState==WebSocket.CLOSED || socket.readyState==WebSocket.CLOSING) {							
+				renderErrorMessage('responseText',
+						'Web Socket connection error:&nbsp; '
+								+ $('#connectHost').val());				
+			} else {
+				renderRequest('responseText', message, requestId);
+				socket.send(message);
+			}
+		} // send
+
+		function connectWebSocket() {			
+			// close socket if already open
+			if (socket && socket.readyState!=socket.CLOSED && socket.readyState!=socket.CLOSING ) {
+				socket.close();
+				socket = null;
+		    }
+			
+			// open web socket if possible in browser
+			if (window.WebSocket) {
+				var socketUri = $('#connectHost').val();
+				var newSocket = null;
+				try {
+					newSocket = new WebSocket(socketUri);
+				} catch( err ) {
+					renderErrorMessage('responseText',
+							'Web Socket connection error:&nbsp; '
+									+ err.message);
+					return;
+				}
+				newSocket.onmessage = function(event) {
+					var statusIndex = -1;
+					var id = 0;
+					if (event.data) {
+						statusIndex = event.data.indexOf("status");
+					}
+					if (statusIndex < 0) {
+						renderIncomingMessage('responseText', event.data);
+					} else {
+						renderResponse('responseText', event.data);
+					}
+				};
+				newSocket.onopen = function(event) {
+					renderControlMessage('responseText', 'Web Socket opened:  '
+							+ socketUri);
+				};
+				newSocket.onclose = function(event) {
+					renderControlMessage('responseText',
+							'Web Socket closed:&nbsp; '
+									+ socketUri);
+				};
+				newSocket.onerror = function(event) {
+					renderErrorMessage('responseText',
+							'Web Socket connection error:&nbsp; '
+									+ socketUri);
+				};
+				socket = newSocket;
+			} else {
+				alert("Your browser does not support Web Socket.");
+			}
+			
+		} // connectWebSocket
+
+		function renderResponse(divElementId, html) {
+			var response = eval( '(' + html + ')' );
+			var currentValue = requestIdSequence;
+			if( response.id ) {
+				currentValue = response.id;
+			}
+			$('#termResultContent' + currentValue).append(
+					$('<div>' + html + '</div>').hide().fadeIn('fast'));
+		}
+
+		function renderRequest(divElementId, html, requestId) {
+			var currentValue = requestIdSequence;
+			if( requestId ) {
+				currentValue = requestId;
+			}
+			if( $('#termResult'+currentValue).length>0 ) {
+				$('#termResult'+currentValue).remove();
+			}		
+			$('#' + divElementId)
+					.prepend(
+							$('<div id="termResult'+currentValue+'"><div><pre id="termResultContent'+currentValue+'"><div class="text-success">'
+											+ html + '</div></pre></div></div>')
+									.hide().fadeIn('fast'));
+			cleanTerminal();
+		}
+
+		function renderIncomingMessage(divElementId, html) {
+			var currentValue = requestIdSequence;
+			$('#' + divElementId)
+					.prepend(
+							$('<div id="termResult'+currentValue+'I"><div><pre id="termResultContent'+currentValue+'I"><div class="text-warning strong">'
+											+ html + '</div></pre></div></div>')
+									.hide().fadeIn('fast'));
+			cleanTerminal();
+		}
+
+		function renderControlMessage(divElementId, html) {
+			var currentValue = requestIdSequence;
+			$('#' + divElementId)
+					.prepend(
+							$('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-info">&#8227;&nbsp;'
+											+ html + '</div></pre></div></div>')
+									.hide().fadeIn('fast'));
+			cleanTerminal();
+		}
+
+		function renderErrorMessage(divElementId, html) {
+			var currentValue = requestIdSequence;
+			$('#' + divElementId)
+					.prepend(
+							$('<div id="termResult'+currentValue+'C"><div><pre id="termResultContent'+currentValue+'C"><div class="text-error">&#8227;&nbsp;'
+											+ html + '</div></pre></div></div>')
+									.hide().fadeIn('fast'));
+			cleanTerminal();
+		}
+
+		function cleanTerminal() {
+			// remove earlier items
+			var cleanerStartIndex = requestIdSequence - 20;
+			var found = $('#termResult' + cleanerStartIndex).length > 0
+					|| $('#termResult' + cleanerStartIndex + 'C').length > 0
+					|| $('#termResult' + cleanerStartIndex + 'I').length > 0;
+			while (cleanerStartIndex >= 0 && found) {
+				$('#termResult' + cleanerStartIndex).fadeOut('slow',
+						function() {
+							$('#termResult' + cleanerStartIndex).remove();
+						});
+				$('#termResult' + cleanerStartIndex + 'C')
+						.fadeOut(
+								'slow',
+								function() {
+									$('#termResult' + cleanerStartIndex + 'C')
+											.remove();
+								});
+				$('#termResult' + cleanerStartIndex + 'I')
+						.fadeOut(
+								'slow',
+								function() {
+									$('#termResult' + cleanerStartIndex + 'I')
+											.remove();
+								});
+				cleanerStartIndex--;
+				found = $('#termResult' + cleanerStartIndex).length > 0
+						|| $('#termResult' + cleanerStartIndex + 'C').length > 0
+						|| $('#termResult' + cleanerStartIndex + 'I').length > 0;
+			}
+		}
+
+		function checkKey(e) {	
+			if (e && e.keyCode == 13 && $('#connectHost').is(":focus")) {
+				connectWebSocket();
+			}
+			if (e && e.keyCode == 13 && $('#sendInput').is(":focus")
+					&& (!$('#sendInput').val().match("^.+?#.*") || $('#sendInput').val().match("\n$"))) {
+				var extraNewLine = $('#sendInput').val().match("\n$");
+				var mesg = $('#sendInput').val();
+				if( extraNewLine ) {
+					mesg = $.trim(mesg);
+					$('#sendInput').val(mesg)
+				}
+				send(mesg);
+				return false;
+			}
+		}
+
+		connectWebSocket();
+	</script>
+
+
+</body>
+</html>
+
