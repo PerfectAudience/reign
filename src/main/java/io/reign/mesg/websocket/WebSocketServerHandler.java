@@ -374,8 +374,10 @@ public class WebSocketServerHandler extends ExecutionHandler {
 						contentType = "text/css";
 					} else if (uri.endsWith(".js")) {
 						contentType = "application/javascript";
-					} else {
+					} else if (uri.endsWith(".html") || uri.endsWith("/") || uri.length() == 0) {
 						contentType = "text/html; charset=UTF-8";
+					} else {
+						contentType = "application/octet-stream";
 					}
 					content = loadWebResource(uri, contentType, webSocketUri(req));
 
