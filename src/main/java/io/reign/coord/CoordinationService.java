@@ -307,6 +307,7 @@ public class CoordinationService extends AbstractService {
 
 	public ResponseMessage handleMessage(RequestMessage requestMessage) {
 		ResponseMessage responseMessage = new SimpleResponseMessage();
+		responseMessage.setId(requestMessage.getId());
 
 		try {
 			if (logger.isTraceEnabled()) {
