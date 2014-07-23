@@ -32,8 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Contains basic functionality for creating Lock/Semaphore functionality using
- * ZooKeeper.
+ * Contains basic functionality for creating Lock/Semaphore functionality using ZooKeeper.
  * 
  * @author ypai
  * 
@@ -189,7 +188,7 @@ class ZkReservationManager {
 							lockReservationWatcher = new ZkLockWatcher(entityPath, lockReservationPath);
 						}
 
-						// set lock on the reservation ahead of this one
+						// set watch on the reservation ahead of this one
 						zkClient.exists(reservationAheadPath, lockReservationWatcher);
 
 						// wait for notification
