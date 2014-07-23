@@ -388,7 +388,7 @@ public class CoordinationService extends AbstractService {
 		@Override
 		public void run() {
 			/** get exclusive leader lock to perform maintenance duties **/
-			DistributedLock adminLock = getLock("reign", "admin", getDefaultZkAclList());
+			DistributedLock adminLock = getLock("reign", "coord-reaper", getDefaultZkAclList());
 			adminLock.lock();
 			logger.info("Performing administrative maintenance...");
 			try {
