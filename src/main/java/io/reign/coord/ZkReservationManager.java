@@ -147,6 +147,10 @@ class ZkReservationManager {
 					// sort child list
 					Collections.sort(lockReservationList, lockReservationComparator);
 
+					logger.debug(
+					        "Checking acquisition status:  entityPath={}; lockReservation={}; lockReservationList={}",
+					        entityPath, lockReservation, lockReservationList);
+
 					// loop through children and see if we have the lock
 					String reservationAheadPath = null;
 					boolean exclusiveReservationEncountered = false;
@@ -423,7 +427,7 @@ class ZkReservationManager {
 		if (reservationPath == null) {
 			// likely already deleted
 			logger.trace("Trying to delete ZK reservation node with invalid path:  path={}", reservationPath);
-			return false;
+			return true;
 		}// if
 
 		try {
