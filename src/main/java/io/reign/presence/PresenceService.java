@@ -850,7 +850,8 @@ public class PresenceService extends AbstractService {
 					List<String> clusterIdList = getZkClient().getChildren(
 					        getPathScheme().getAbsolutePath(PathType.PRESENCE), false);
 					for (String clusterId : clusterIdList) {
-						if (!isMemberOf(clusterId)) {
+						if (!isMemberOf(clusterId)
+						        || clusterId.equals(getContext().getPathScheme().getFrameworkClusterId())) {
 							continue;
 						}
 
@@ -863,7 +864,9 @@ public class PresenceService extends AbstractService {
 
 							DistributedLock adminLock = coordinationService.getLock("reign", "presence-zombie-checker-"
 							        + clusterId + "-" + serviceId);
-							adminLock.lock();
+							if (!adminLock.tryLock()) {
+								continue;
+							}
 							try {
 
 								// service path
