@@ -389,26 +389,27 @@ public class CoordinationService extends AbstractService {
 		public void run() {
 			/** get exclusive leader lock to perform maintenance duties **/
 			DistributedLock adminLock = getLock("reign", "coord-reaper", getDefaultZkAclList());
-			adminLock.lock();
 			logger.info("Performing administrative maintenance...");
 			try {
-				/** semaphore maintenance **/
-				// list semaphores
+				if (adminLock.tryLock()) {
+					/** semaphore maintenance **/
+					// list semaphores
 
-				// acquire lock on a semaphore
+					// acquire lock on a semaphore
 
-				// revoke any permits that have exceeded the limit
+					// revoke any permits that have exceeded the limit
 
-				/** lock maintenance **/
-				// list locks
+					/** lock maintenance **/
+					// list locks
 
-				// get exclusive lock on a given lock to perform long held lock
-				// checking
+					// get exclusive lock on a given lock to perform long held lock
+					// checking
 
-				// traverse lock tree and remove any long held locks that exceed
-				// threshold
+					// traverse lock tree and remove any long held locks that exceed
+					// threshold
 
-				/** barrier maintenance **/
+					/** barrier maintenance **/
+				}
 			} finally {
 				adminLock.unlock();
 				adminLock.destroy();
