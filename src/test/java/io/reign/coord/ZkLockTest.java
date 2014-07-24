@@ -20,7 +20,7 @@ public class ZkLockTest {
 	@Before
 	public void setUp() throws Exception {
 		coordinationService = MasterTestSuite.getReign().getService("coord");
-		executorService = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+		executorService = new ThreadPoolExecutor(5, 5, 60, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
 	}
 
@@ -103,62 +103,32 @@ public class ZkLockTest {
 	}
 
 	@Test
-	public void testDistributedLock() throws Exception {
+	public void testLock() throws Exception {
 
 		// use StringBuffer because it is synchronized and thread-safe
 		final AtomicInteger count = new AtomicInteger(0);
 
-		// threads to simulate multiple processes
-		final Runnable t1 = new Runnable() {
-			@Override
-			public void run() {
-				DistributedLock lock = coordinationService.getLock("clusterA", "test-lock-1");
-				lock.lock();
-				try {
-					int current = count.get();
-					Thread.sleep((int) (10000 * Math.random()) + 15000);
-					count.set(current + 1);
-				} catch (Exception e) {
-				} finally {
-					lock.unlock();
-					lock.destroy();
-				}
-			}
-		};
-		Runnable t2 = new Runnable() {
-			@Override
-			public void run() {
-				DistributedLock lock = coordinationService.getLock("clusterA", "test-lock-1");
-				lock.lock();
-				try {
-					int current = count.get();
-					Thread.sleep((int) (10000 * Math.random()));
-					count.set(current + 1);
-				} catch (Exception e) {
-				} finally {
-					lock.unlock();
-					lock.destroy();
-				}
-			}
-		};
-		Runnable t3 = new Runnable() {
-			@Override
-			public void run() {
-				DistributedLock lock = coordinationService.getLock("clusterA", "test-lock-1");
-				lock.lock();
-				try {
-					int current = count.get();
-					Thread.sleep((int) (10000 * Math.random()));
-					count.set(current + 1);
-				} catch (Exception e) {
-				} finally {
-					lock.unlock();
-					lock.destroy();
-				}
-			}
-		};
 		final AtomicBoolean t4DidNotAcquire = new AtomicBoolean(false);
-		Runnable t4 = new Runnable() {
+
+		int simultaneousRunnables = 20;
+		for (int i = 0; i < 20; i++) {
+			executorService.submit(new Runnable() {
+				@Override
+				public void run() {
+					DistributedLock lock = coordinationService.getLock("clusterA", "test-lock-1");
+					lock.lock();
+					try {
+						int current = count.get();
+						count.set(current + 1);
+					} catch (Exception e) {
+					} finally {
+						lock.unlock();
+						lock.destroy();
+					}
+				}
+			});
+		}
+		executorService.submit(new Runnable() {
 			@Override
 			public void run() {
 				DistributedLock lock = coordinationService.getLock("clusterA", "test-lock-1");
@@ -168,7 +138,7 @@ public class ZkLockTest {
 				}
 				try {
 					int current = count.get();
-					Thread.sleep((int) (10000 * Math.random()));
+					// Thread.sleep((int) (10000 * Math.random()));
 					count.set(current + 1);
 				} catch (Exception e) {
 				} finally {
@@ -176,18 +146,14 @@ public class ZkLockTest {
 					lock.destroy();
 				}
 			}
-		};
+		});
 
-		executorService.submit(t1);
-		executorService.submit(t2);
-		executorService.submit(t3);
-		executorService.submit(t4);
-		while (executorService.getCompletedTaskCount() < 4) {
+		while (executorService.getCompletedTaskCount() < simultaneousRunnables + 1) {
 			Thread.sleep(1000);
 		}
 
 		assertTrue(t4DidNotAcquire.get());
-		assertTrue("Unexpected value:  " + count.get(), count.get() == 3);
+		assertTrue("Unexpected value:  " + count.get(), count.get() == simultaneousRunnables);
 
 	}
 }
