@@ -25,67 +25,45 @@ import java.util.List;
  */
 public abstract class ConfObserver<T> extends AbstractObserver {
 
-    private String clusterId = null;
-    private String serviceId = null;
-    private String nodeId = null;
+	private String clusterId = null;
+	private String serviceId = null;
+	private String nodeId = null;
 
-    // private Map<String, DataSerializer> dataSerializerMap = null;
+	public abstract void updated(T updated, T existing);
 
-    public abstract void updated(T updated, T existing);
+	void setClusterId(String clusterId) {
+		this.clusterId = clusterId;
+	}
 
-    // Map<String, DataSerializer> getDataSerializerMap() {
-    // return dataSerializerMap;
-    // }
-    //
-    // void setDataSerializerMap(Map<String, DataSerializer> dataSerializerMap) {
-    // this.dataSerializerMap = dataSerializerMap;
-    // }
+	void setServiceId(String serviceId) {
+		this.serviceId = serviceId;
+	}
 
-    void setClusterId(String clusterId) {
-        this.clusterId = clusterId;
-    }
+	void setNodeId(String nodeId) {
+		this.nodeId = nodeId;
+	}
 
-    void setServiceId(String serviceId) {
-        this.serviceId = serviceId;
-    }
+	@Override
+	public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
+		updated(toConf(updatedData), toConf(previousData));
+	}
 
-    void setNodeId(String nodeId) {
-        this.nodeId = nodeId;
-    }
+	@Override
+	public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
+		updated(null, toConf(previousData));
+	}
 
-    // String getClusterId() {
-    // return clusterId;
-    // }
-    //
-    // String getServiceId() {
-    // return serviceId;
-    // }
-    //
-    // String getNodeId() {
-    // return nodeId;
-    // }
+	@Override
+	public void nodeCreated(byte[] data, List<String> childList) {
+		updated(toConf(data), null);
+	}
 
-    @Override
-    public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
-        updated(toConf(updatedData), toConf(previousData));
-    }
-
-    @Override
-    public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
-        updated(null, toConf(previousData));
-    }
-
-    @Override
-    public void nodeCreated(byte[] data, List<String> childList) {
-        updated(toConf(data), null);
-    }
-
-    T toConf(byte[] data) {
-        if (data == null || data.length == 0) {
-            return null;
-        }
-        DataSerializer<T> transcoder = ConfService.DEFAULT_CONF_SERIALIZER;
-        return transcoder.deserialize(data);
-    }
+	T toConf(byte[] data) {
+		if (data == null || data.length == 0) {
+			return null;
+		}
+		DataSerializer<T> transcoder = ConfService.DEFAULT_CONF_SERIALIZER;
+		return transcoder.deserialize(data);
+	}
 
 }
