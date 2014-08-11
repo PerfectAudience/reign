@@ -40,203 +40,208 @@ import com.codahale.metrics.Timer;
  */
 public class RotatingMetricRegistryManager implements MetricRegistryManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(RotatingMetricRegistryManager.class);
+	private static final Logger logger = LoggerFactory.getLogger(RotatingMetricRegistryManager.class);
 
-    private final MetricRegistry metricRegistry;
-    private volatile long lastRotatedTimestamp = 0L;
+	private final MetricRegistry metricRegistry;
+	private volatile long lastRotatedTimestamp = 0L;
 
-    private final int rotationInterval;
-    private final TimeUnit rotationTimeUnit;
-    private final long rotationIntervalMillis;
-    private List<MetricRegistryManagerCallback> callbackList = Collections.EMPTY_LIST;
+	private final int rotationInterval;
+	private final TimeUnit rotationTimeUnit;
+	private final long rotationIntervalMillis;
+	private List<MetricRegistryManagerCallback> callbackList = Collections.EMPTY_LIST;
 
-    public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit) {
-        this.rotationInterval = rotationInterval;
-        this.rotationTimeUnit = rotationTimeUnit;
-        rotationIntervalMillis = rotationTimeUnit.toMillis(rotationInterval);
+	public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit) {
+		this(new MetricRegistry(), rotationInterval, rotationTimeUnit);
 
-        metricRegistry = new MetricRegistry();
-        lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
-                System.currentTimeMillis());
+	}
 
-    }
+	public RotatingMetricRegistryManager(MetricRegistry metricRegistry, int rotationInterval, TimeUnit rotationTimeUnit) {
+		this.rotationInterval = rotationInterval;
+		this.rotationTimeUnit = rotationTimeUnit;
+		rotationIntervalMillis = rotationTimeUnit.toMillis(rotationInterval);
 
-    public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
-            MetricRegistryManagerCallback callback) {
-        this(rotationInterval, rotationTimeUnit);
-        registerCallback(callback);
-    }
+		this.metricRegistry = metricRegistry;
+		lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
+		        System.currentTimeMillis());
 
-    public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
-            List<MetricRegistryManagerCallback> callbackList) {
-        this(rotationInterval, rotationTimeUnit);
-        this.callbackList = callbackList;
-    }
+	}
 
-    @Override
-    public void registerCallback(MetricRegistryManagerCallback callback) {
-        synchronized (callbackList) {
-            if (callbackList == Collections.EMPTY_LIST) {
-                callbackList = new ArrayList<MetricRegistryManagerCallback>();
-            }
-            if (callbackList.contains(callback)) {
-                return;
-            }
-            callbackList.add(callback);
-        }
-    }
+	public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
+	        MetricRegistryManagerCallback callback) {
+		this(rotationInterval, rotationTimeUnit);
+		registerCallback(callback);
+	}
 
-    @Override
-    public void removeCallback(MetricRegistryManagerCallback callback) {
-        synchronized (callbackList) {
-            if (callbackList == Collections.EMPTY_LIST) {
-                return;
-            }
-            callbackList.remove(callback);
-        }
-    }
+	public RotatingMetricRegistryManager(int rotationInterval, TimeUnit rotationTimeUnit,
+	        List<MetricRegistryManagerCallback> callbackList) {
+		this(rotationInterval, rotationTimeUnit);
+		this.callbackList = callbackList;
+	}
 
-    @Override
-    public void removeAllCallbacks() {
-        synchronized (callbackList) {
-            if (callbackList == Collections.EMPTY_LIST) {
-                return;
-            }
-            callbackList.clear();
-        }
-    }
+	@Override
+	public void registerCallback(MetricRegistryManagerCallback callback) {
+		synchronized (callbackList) {
+			if (callbackList == Collections.EMPTY_LIST) {
+				callbackList = new ArrayList<MetricRegistryManagerCallback>();
+			}
+			if (callbackList.contains(callback)) {
+				return;
+			}
+			callbackList.add(callback);
+		}
+	}
 
-    @Override
-    public Counter counter(String name) {
-        return this.metricRegistry.counter(name);
-    }
+	@Override
+	public void removeCallback(MetricRegistryManagerCallback callback) {
+		synchronized (callbackList) {
+			if (callbackList == Collections.EMPTY_LIST) {
+				return;
+			}
+			callbackList.remove(callback);
+		}
+	}
 
-    @Override
-    public Meter meter(String name) {
-        return this.metricRegistry.meter(name);
-    }
+	@Override
+	public void removeAllCallbacks() {
+		synchronized (callbackList) {
+			if (callbackList == Collections.EMPTY_LIST) {
+				return;
+			}
+			callbackList.clear();
+		}
+	}
 
-    @Override
-    public Timer timer(String name) {
-        return this.metricRegistry.timer(name);
-    }
+	@Override
+	public Counter counter(String name) {
+		return this.metricRegistry.counter(name);
+	}
 
-    @Override
-    public Histogram histogram(String name) {
-        return this.metricRegistry.histogram(name);
-    }
+	@Override
+	public Meter meter(String name) {
+		return this.metricRegistry.meter(name);
+	}
 
-    @Override
-    public Gauge gauge(String name, Gauge gauge) {
-        this.metricRegistry.register(name, gauge);
-        return gauge;
-    }
+	@Override
+	public Timer timer(String name) {
+		return this.metricRegistry.timer(name);
+	}
 
-    @Override
-    public MetricRegistry get() {
-        return this.metricRegistry;
-    }
+	@Override
+	public Histogram histogram(String name) {
+		return this.metricRegistry.histogram(name);
+	}
 
-    @Override
-    public int getRotationInterval() {
-        return this.rotationInterval;
-    }
+	@Override
+	public Gauge gauge(String name, Gauge gauge) {
+		this.metricRegistry.register(name, gauge);
+		return gauge;
+	}
 
-    @Override
-    public TimeUnit getRotationTimeUnit() {
-        return this.rotationTimeUnit;
-    }
+	@Override
+	public MetricRegistry get() {
+		return this.metricRegistry;
+	}
 
-    @Override
-    public long getLastRotatedTimestamp() {
-        return this.lastRotatedTimestamp;
-    }
+	@Override
+	public int getRotationInterval() {
+		return this.rotationInterval;
+	}
 
-    @Override
-    public synchronized MetricRegistry rotateAsNecessary() {
-        MetricRegistry outputMetricRegistry = this.metricRegistry;
+	@Override
+	public TimeUnit getRotationTimeUnit() {
+		return this.rotationTimeUnit;
+	}
 
-        long currentTimestamp = System.currentTimeMillis();
-        if (currentTimestamp - lastRotatedTimestamp > rotationIntervalMillis) {
+	@Override
+	public long getLastRotatedTimestamp() {
+		return this.lastRotatedTimestamp;
+	}
 
-            logger.debug(
-                    "Rotating MetricRegistry:  currentTimestamp={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",
-                    currentTimestamp, lastRotatedTimestamp, rotationIntervalMillis, lastRotatedTimestamp);
+	@Override
+	public synchronized MetricRegistry rotateAsNecessary() {
+		MetricRegistry outputMetricRegistry = this.metricRegistry;
 
-            // migrate metrics to outputMetricRegistry to ensure caller is able to flush persist current state
-            outputMetricRegistry = new MetricRegistry();
+		long currentTimestamp = System.currentTimeMillis();
+		if (currentTimestamp - lastRotatedTimestamp > rotationIntervalMillis) {
 
-            // reset metrics
-            Map<String, Metric> metricMap = this.metricRegistry.getMetrics();
-            Set<String> keys = metricMap.keySet();
-            for (String key : keys) {
-                String metricName = key;
-                Metric metric = metricMap.get(metricName);
+			logger.debug(
+			        "Rotating MetricRegistry:  currentTimestamp={}; lastRotatedTimestamp={}; rotationIntervalMillis={}; lastRotatedTimestamp={}",
+			        currentTimestamp, lastRotatedTimestamp, rotationIntervalMillis, lastRotatedTimestamp);
 
-                if (metric instanceof RotatingMetric) {
-                    Metric oldValue = ((RotatingMetric) metric).rotate();
-                    outputMetricRegistry.register(metricName, oldValue);
+			// migrate metrics to outputMetricRegistry to ensure caller is able to flush persist current state
+			outputMetricRegistry = new MetricRegistry();
 
-                } else if (metric instanceof Counter) {
-                    Counter counter = (Counter) metric;
+			// reset metrics
+			Map<String, Metric> metricMap = this.metricRegistry.getMetrics();
+			Set<String> keys = metricMap.keySet();
+			for (String key : keys) {
+				String metricName = key;
+				Metric metric = metricMap.get(metricName);
 
-                    // add counter with current value to outputMetricRegistry
-                    long count = counter.getCount();
-                    Counter counterCopy = outputMetricRegistry.counter(metricName);
-                    counterCopy.inc(count);
+				if (metric instanceof RotatingMetric) {
+					Metric oldValue = ((RotatingMetric) metric).rotate();
+					outputMetricRegistry.register(metricName, oldValue);
 
-                    // decrement "live" counter with count
-                    counter.dec(count);
-                } else if (metric instanceof Gauge) {
-                    // save old one to copy that will be returned
-                    outputMetricRegistry.register(metricName, metric);
+				} else if (metric instanceof Counter) {
+					Counter counter = (Counter) metric;
 
-                    // we don't rotate gauges unless they are marked RotatingMetric
+					// add counter with current value to outputMetricRegistry
+					long count = counter.getCount();
+					Counter counterCopy = outputMetricRegistry.counter(metricName);
+					counterCopy.inc(count);
 
-                } else if (metric instanceof Histogram) {
-                    // save old one to copy that will be returned
-                    outputMetricRegistry.register(metricName, metric);
+					// decrement "live" counter with count
+					counter.dec(count);
+				} else if (metric instanceof Gauge) {
+					// save old one to copy that will be returned
+					outputMetricRegistry.register(metricName, metric);
 
-                    // rotate in new
-                    if (!metricRegistry.remove(metricName)) {
-                        logger.warn("Metric was not removed:  metricName={}", metricName);
-                    }
-                    metricRegistry.histogram(metricName);
+					// we don't rotate gauges unless they are marked RotatingMetric
 
-                } else if (metric instanceof Meter) {
-                    // save old one to copy that will be returned
-                    outputMetricRegistry.register(metricName, metric);
+				} else if (metric instanceof Histogram) {
+					// save old one to copy that will be returned
+					outputMetricRegistry.register(metricName, metric);
 
-                    // rotate in new
-                    if (!metricRegistry.remove(metricName)) {
-                        logger.warn("Metric was not removed:  metricName={}", metricName);
-                    }
-                    metricRegistry.meter(metricName);
+					// rotate in new
+					if (!metricRegistry.remove(metricName)) {
+						logger.warn("Metric was not removed:  metricName={}", metricName);
+					}
+					metricRegistry.histogram(metricName);
 
-                } else if (metric instanceof Timer) {
-                    // save old one to copy that will be returned
-                    outputMetricRegistry.register(metricName, metric);
+				} else if (metric instanceof Meter) {
+					// save old one to copy that will be returned
+					outputMetricRegistry.register(metricName, metric);
 
-                    // rotate in new
-                    if (!metricRegistry.remove(metricName)) {
-                        logger.warn("Metric was not removed:  metricName={}", metricName);
-                    }
-                    metricRegistry.timer(metricName);
-                }
-            }// for
+					// rotate in new
+					if (!metricRegistry.remove(metricName)) {
+						logger.warn("Metric was not removed:  metricName={}", metricName);
+					}
+					metricRegistry.meter(metricName);
 
-            // set rotated timestamp
-            this.lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
-                    currentTimestamp);
+				} else if (metric instanceof Timer) {
+					// save old one to copy that will be returned
+					outputMetricRegistry.register(metricName, metric);
 
-            synchronized (callbackList) {
-                for (MetricRegistryManagerCallback callback : callbackList) {
-                    callback.rotated(metricRegistry, outputMetricRegistry);
-                }
-            }
+					// rotate in new
+					if (!metricRegistry.remove(metricName)) {
+						logger.warn("Metric was not removed:  metricName={}", metricName);
+					}
+					metricRegistry.timer(metricName);
+				}
+			}// for
 
-        }
+			// set rotated timestamp
+			this.lastRotatedTimestamp = TimeUnitUtil.getNormalizedIntervalStartTimestamp(rotationIntervalMillis,
+			        currentTimestamp);
 
-        return outputMetricRegistry;
-    }
+			synchronized (callbackList) {
+				for (MetricRegistryManagerCallback callback : callbackList) {
+					callback.rotated(metricRegistry, outputMetricRegistry);
+				}
+			}
+
+		}
+
+		return outputMetricRegistry;
+	}
 }
