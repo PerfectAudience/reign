@@ -40,6 +40,8 @@ $(function() {
 //    	$("#coordination-list-label").removeClass('hidden');
 //    	$('#coordination-list').removeClass('hidden');
     	
+    	$('.nav-sidebar-divider').removeClass('hidden');
+    	
     });
     
     $("#service-list").on('click', 'li a.cluster-service-info', function() {
