@@ -78,12 +78,15 @@ public class Reign implements Watcher {
 
 	private TestingServer zkTestServer;
 
+	/** executed on completion of start() */
+	private Runnable startHook;
+
+	/** executed on completion of stop() */
+	private Runnable stopHook;
+
 	public static ReignMaker maker() {
 		return new ReignMaker();
 	}
-
-	// public Reign() {
-	// }
 
 	public Reign(ZkClient zkClient, PathScheme pathScheme, NodeIdProvider nodeIdProvider, TestingServer zkTestServer) {
 
@@ -97,6 +100,20 @@ public class Reign implements Watcher {
 
 		this.zkTestServer = zkTestServer;
 
+	}
+
+	public synchronized void setStartHook(Runnable startHook) {
+		if (started) {
+			throw new IllegalStateException("Cannot set after framework is started!");
+		}
+		this.startHook = startHook;
+	}
+
+	public synchronized void setStopHook(Runnable stopHook) {
+		if (started) {
+			throw new IllegalStateException("Cannot set after framework is started!");
+		}
+		this.stopHook = stopHook;
 	}
 
 	public synchronized NodeIdProvider getCanonicalIdProvider() {
@@ -332,30 +349,6 @@ public class Reign implements Watcher {
 		// register self as watcher
 		this.zkClient.register(this);
 
-		// // pathCache should be first in list if it is a Watcher
-		// if (pathCache instanceof Watcher) {
-		// this.watcherList.add(0, (Watcher) pathCache);
-		// }
-
-		// /** init executor **/
-		// logger.info("START:  initializing executor");
-		// this.executorService = this.createExecutorService();
-
-		// /** start services running **/
-		// logger.info("START:  schedule service tasks");
-		// for (String serviceName : serviceMap.keySet()) {
-		// ServiceWrapper serviceWrapper = serviceMap.get(serviceName);
-		// logger.debug("Checking service:  {}", serviceWrapper.getService().getClass().getName());
-		//
-		// // execute if not a continuously running service and not shutdown
-		// if (!this.shutdown && serviceWrapper.isSubmittable()) {
-		// logger.debug("Submitting service:  {}", serviceWrapper.getService().getClass().getName());
-		// Future<?> future = executorService.scheduleWithFixedDelay(serviceWrapper, serviceWrapper
-		// .getIntervalMillis(), serviceWrapper.getIntervalMillis(), TimeUnit.MILLISECONDS);
-		// futureMap.put(serviceName, future);
-		// }// if
-		// }// for
-
 		started = true;
 
 		/** notify any waiters **/
@@ -372,6 +365,11 @@ public class Reign implements Watcher {
 		} else {
 			logger.warn("START:  did not announce node availability:  (presenceService==null)={}",
 			        presenceService == null);
+		}
+
+		// run start hook
+		if (this.startHook != null) {
+			startHook.run();
 		}
 	}
 
@@ -413,6 +411,11 @@ public class Reign implements Watcher {
 		}
 
 		logger.info("SHUTDOWN:  DONE");
+
+		// run stop hook
+		if (this.stopHook != null) {
+			stopHook.run();
+		}
 	}
 
 	private void throwExceptionIfNotOkayToRegister() {
