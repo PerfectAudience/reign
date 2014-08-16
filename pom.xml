@@ -6,7 +6,7 @@
 	<artifactId>reign</artifactId>
 	<packaging>jar</packaging>
 	<name>Reign Framework</name>
-	<version>0.2.17-SNAPSHOT</version>
+	<version>0.2.17</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
