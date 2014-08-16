@@ -939,8 +939,8 @@ public class MetricsService extends AbstractService {
 									continue;
 								}
 
-								// keep last day's worth of data
-								long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - 86400000);
+								// keep last few hours worth of data
+								long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - (86400000 / 6));
 
 								// delete data that is older than some threshold
 								boolean dataTooOld = currentTimestamp - metricsData.getIntervalStartTimestamp() > 86400000;
