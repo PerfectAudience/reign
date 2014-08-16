@@ -210,7 +210,7 @@ public class MetricsService extends AbstractService {
 				}
 
 			}
-		}, 0, updateIntervalSeconds, updateIntervalTimeUnit);
+		}, 0, updateIntervalSeconds, TimeUnit.SECONDS);
 	}
 
 	/**
@@ -623,8 +623,7 @@ public class MetricsService extends AbstractService {
 						List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
 						/**
-						 * iterate through service data nodes and gather up data
-						 * to aggregate
+						 * iterate through service data nodes and gather up data to aggregate
 						 **/
 						Map<String, List<CounterData>> counterMap = new HashMap<String, List<CounterData>>(
 						        dataNodes.size() + 1, 1.0f);
