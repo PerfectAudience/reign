@@ -67,7 +67,7 @@ public class MetricsService extends AbstractService {
 
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-	public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 5000;
+	public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
 
 	/** interval btw. aggregations at service level */
 	private volatile int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
@@ -210,7 +210,7 @@ public class MetricsService extends AbstractService {
 				}
 
 			}
-		}, 0, updateIntervalSeconds, updateIntervalTimeUnit);
+		}, 0, updateIntervalSeconds, TimeUnit.SECONDS);
 	}
 
 	/**
@@ -623,8 +623,7 @@ public class MetricsService extends AbstractService {
 						List<String> dataNodes = zkClient.getChildren(dataParentPath, false);
 
 						/**
-						 * iterate through service data nodes and gather up data
-						 * to aggregate
+						 * iterate through service data nodes and gather up data to aggregate
 						 **/
 						Map<String, List<CounterData>> counterMap = new HashMap<String, List<CounterData>>(
 						        dataNodes.size() + 1, 1.0f);
@@ -940,8 +939,8 @@ public class MetricsService extends AbstractService {
 									continue;
 								}
 
-								// keep last day's worth of data
-								long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - 86400000);
+								// keep last few hours worth of data
+								long millisToExpiry = millisToExpiry(metricsData, currentTimestamp - (86400000 / 6));
 
 								// delete data that is older than some threshold
 								boolean dataTooOld = currentTimestamp - metricsData.getIntervalStartTimestamp() > 86400000;
