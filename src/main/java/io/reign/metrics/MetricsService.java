@@ -67,7 +67,7 @@ public class MetricsService extends AbstractService {
 
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-	public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 5000;
+	public static final int DEFAULT_UPDATE_INTERVAL_MILLIS = 15000;
 
 	/** interval btw. aggregations at service level */
 	private volatile int updateIntervalMillis = DEFAULT_UPDATE_INTERVAL_MILLIS;
