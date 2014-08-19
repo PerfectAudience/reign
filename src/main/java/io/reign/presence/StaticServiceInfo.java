@@ -16,12 +16,8 @@
 
 package io.reign.presence;
 
-import io.reign.util.NodeIdListSerializer;
-
 import java.util.Collections;
 import java.util.List;
-
-import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 /**
  * 
@@ -30,38 +26,41 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
  */
 public class StaticServiceInfo implements ServiceInfo {
 
-    private final String clusterId;
+	private final String clusterId;
 
-    private final String serviceId;
+	private final String serviceId;
 
-    @JsonSerialize(using = NodeIdListSerializer.class)
-    private List<String> nodeIdList;
+	// @JsonSerialize(using = NodeIdListSerializer.class)
+	private List<String> nodeIdList;
 
-    public StaticServiceInfo(String clusterId, String serviceId, List<String> nodeIdList) {
-        if (clusterId == null || serviceId == null) {
-            throw new IllegalArgumentException("clusterId and/or serviceId cannot be null!");
-        }
+	public StaticServiceInfo(String clusterId, String serviceId, List<String> nodeIdList) {
+		if (clusterId == null || serviceId == null) {
+			throw new IllegalArgumentException("clusterId and/or serviceId cannot be null!");
+		}
 
-        this.clusterId = clusterId;
-        this.serviceId = serviceId;
+		this.clusterId = clusterId;
+		this.serviceId = serviceId;
 
-        if (nodeIdList != null) {
-            this.nodeIdList = Collections.unmodifiableList(nodeIdList);
-        } else {
-            this.nodeIdList = Collections.EMPTY_LIST;
-        }
-    }
+		if (nodeIdList != null) {
+			this.nodeIdList = Collections.unmodifiableList(nodeIdList);
+		} else {
+			this.nodeIdList = Collections.EMPTY_LIST;
+		}
+	}
 
-    public String getClusterId() {
-        return clusterId;
-    }
+	@Override
+	public String getClusterId() {
+		return clusterId;
+	}
 
-    public String getServiceId() {
-        return serviceId;
-    }
+	@Override
+	public String getServiceId() {
+		return serviceId;
+	}
 
-    public List<String> getNodeIdList() {
-        return nodeIdList;
-    }
+	@Override
+	public List<String> getNodeIdList() {
+		return nodeIdList;
+	}
 
 }
