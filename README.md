@@ -217,13 +217,6 @@ List nodes comprising "service2":
         // wait indefinitely for at least one node in "service1" to become available
         presenceService.waitUntilAvailable("examples", "service1", -1);
 
-        // send message to a single node in the "service1" service in the "examples" cluster;
-        // in this example, we are just messaging ourselves
-        CanonicalId canonicalId = reign.getCanonicalId();
-        String canonicalIdString = reign.getPathScheme().toPathToken(canonicalId);
-        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", canonicalIdString,
-                new SimpleRequestMessage("presence", "/"));
-
         // broadcast a message to all nodes belonging to the "service1" service in the examples cluster
         Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
                 new SimpleRequestMessage("presence", "/examples"));
