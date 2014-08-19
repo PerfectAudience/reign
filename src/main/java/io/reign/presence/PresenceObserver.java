@@ -19,7 +19,8 @@ package io.reign.presence;
 import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.NodeId;
+import io.reign.NodeInfo;
+import io.reign.StaticServiceNodeInfo;
 
 import java.util.List;
 import java.util.Map;
@@ -32,75 +33,75 @@ import java.util.Map;
  */
 public abstract class PresenceObserver<T> extends AbstractObserver {
 
-    private static final DataSerializer<Map<String, String>> nodeAttributeSerializer = new JsonDataSerializer<Map<String, String>>();
+	private static final DataSerializer<Map<String, String>> nodeAttributeSerializer = new JsonDataSerializer<Map<String, String>>();
 
-    private String clusterId = null;
-    private String serviceId = null;
-    private NodeId nodeId = null;
+	private String clusterId = null;
+	private String serviceId = null;
+	private String nodeId = null;
 
-    public abstract void updated(T updated, T previous);
+	public abstract void updated(T updated, T previous);
 
-    void setClusterId(String clusterId) {
-        this.clusterId = clusterId;
-    }
+	void setClusterId(String clusterId) {
+		this.clusterId = clusterId;
+	}
 
-    void setServiceId(String serviceId) {
-        this.serviceId = serviceId;
-    }
+	void setServiceId(String serviceId) {
+		this.serviceId = serviceId;
+	}
 
-    void setNodeId(NodeId nodeId) {
-        this.nodeId = nodeId;
-    }
+	void setNodeId(String nodeId) {
+		this.nodeId = nodeId;
+	}
 
-    @Override
-    public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList) {
-        if (serviceId != null) {
-            ServiceInfo updated = new StaticServiceInfo(clusterId, serviceId, updatedChildList);
-            ServiceInfo previous = new StaticServiceInfo(clusterId, serviceId, previousChildList);
-            updated((T) updated, (T) previous);
-        } else if (clusterId != null) {
-            updated((T) updatedChildList, (T) previousChildList);
-        }
-    }
+	@Override
+	public void nodeChildrenChanged(List<String> updatedChildList, List<String> previousChildList) {
+		if (serviceId != null) {
+			ServiceInfo updated = new StaticServiceInfo(clusterId, serviceId, updatedChildList);
+			ServiceInfo previous = new StaticServiceInfo(clusterId, serviceId, previousChildList);
+			updated((T) updated, (T) previous);
+		} else if (clusterId != null) {
+			updated((T) updatedChildList, (T) previousChildList);
+		}
+	}
 
-    @Override
-    public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
-        if (nodeId != null) {
-            Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(updatedData);
-            NodeInfo updated = new StaticNodeInfo(clusterId, serviceId, nodeId, attributeMap);
-            Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
-            NodeInfo previous = new StaticNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
-            updated((T) updated, (T) previous);
-        }
-    }
+	@Override
+	public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
+		if (nodeId != null) {
+			Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(updatedData);
+			NodeInfo updated = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, attributeMap);
+			Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
+			NodeInfo previous = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
+			updated((T) updated, (T) previous);
+		}
+	}
 
-    @Override
-    public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
-        if (nodeId != null) {
-            Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
-            NodeInfo previous = new StaticNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
-            updated(null, (T) previous);
+	@Override
+	public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
+		if (nodeId != null) {
+			Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
+			NodeInfo previous = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
+			updated(null, (T) previous);
 
-        } else if (serviceId != null) {
-            ServiceInfo previous = new StaticServiceInfo(clusterId, serviceId, previousChildList);
-            updated(null, (T) previous);
+		} else if (serviceId != null) {
+			ServiceInfo previous = new StaticServiceInfo(clusterId, serviceId, previousChildList);
+			updated(null, (T) previous);
 
-        }
-    }
+		}
+	}
 
-    @Override
-    public void nodeCreated(byte[] data, List<String> childList) {
-        if (nodeId != null) {
-            Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(data);
-            NodeInfo updated = new StaticNodeInfo(clusterId, serviceId, nodeId, attributeMap);
-            updated((T) updated, null);
+	@Override
+	public void nodeCreated(byte[] data, List<String> childList) {
+		if (nodeId != null) {
+			Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(data);
+			NodeInfo updated = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, attributeMap);
+			updated((T) updated, null);
 
-        } else if (serviceId != null) {
-            if (childList != null && childList.size() > 0) {
-                ServiceInfo updated = new StaticServiceInfo(clusterId, serviceId, childList);
-                updated((T) updated, null);
-            }
-        }
-    }
+		} else if (serviceId != null) {
+			if (childList != null && childList.size() > 0) {
+				ServiceInfo updated = new StaticServiceInfo(clusterId, serviceId, childList);
+				updated((T) updated, null);
+			}
+		}
+	}
 
 }

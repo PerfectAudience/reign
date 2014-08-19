@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Yen Pai ypai@kompany.org
+ * Copyright 2013, 2014 Yen Pai ypai@kompany.org
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -116,7 +116,7 @@ public class Reign implements Watcher {
 		this.stopHook = stopHook;
 	}
 
-	public synchronized NodeIdProvider getCanonicalIdProvider() {
+	public synchronized NodeIdProvider getNodeIdProvider() {
 		if (!started) {
 			throw new IllegalStateException("Cannot get provider before framework is started!");
 		}
@@ -278,14 +278,15 @@ public class Reign implements Watcher {
 			}
 
 			@Override
-			public NodeId getNodeId() {
+			public String getNodeId() {
 				return nodeIdProvider.get();
 			}
 
-			@Override
-			public ZkNodeId getZkNodeId() {
-				return nodeIdProvider.forZk();
-			}
+			//
+			// @Override
+			// public ZkNodeId getZkNodeId() {
+			// return nodeIdProvider.forZk();
+			// }
 
 			@Override
 			public ZkClient getZkClient() {
@@ -312,10 +313,10 @@ public class Reign implements Watcher {
 				return observerManager;
 			}
 
-			@Override
-			public NodeId getNodeIdFromZk(ZkNodeId zkNodeId) {
-				return nodeIdProvider.fromZk(zkNodeId);
-			}
+			// @Override
+			// public NodeId getNodeIdFromZk(ZkNodeId zkNodeId) {
+			// return nodeIdProvider.fromZk(zkNodeId);
+			// }
 
 			// @Override
 			// public NodeIdProvider getNodeIdProvider() {

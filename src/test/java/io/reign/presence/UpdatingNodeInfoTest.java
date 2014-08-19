@@ -27,11 +27,10 @@ public class UpdatingNodeInfoTest {
 			PathScheme pathScheme = context.getPathScheme();
 
 			// create self-updating Conf object, should be empty initially
-			nodeInfo = new UpdatingNodeInfo("clusterABC", "serviceABC",
-					context.getNodeId(), context);
-			assertTrue(nodeInfo.getClusterId() == null);
-			assertTrue(nodeInfo.getServiceId() == null);
-			assertTrue(nodeInfo.getNodeId() == null);
+			nodeInfo = new UpdatingNodeInfo("clusterABC", "serviceABC", context.getNodeId(), context);
+			assertTrue("clusterABC".equals(nodeInfo.getClusterId()));
+			assertTrue("serviceABC".equals(nodeInfo.getServiceId()));
+			assertTrue(context.getNodeId().equals(nodeInfo.getNodeId()));
 			assertTrue(nodeInfo.getAttribute("key1") == null);
 			assertTrue(nodeInfo.getAttributeMap() == null);
 
@@ -48,8 +47,7 @@ public class UpdatingNodeInfoTest {
 
 			assertTrue("clusterABC".equals(nodeInfo.getClusterId()));
 			assertTrue("serviceABC".equals(nodeInfo.getServiceId()));
-			assertTrue(nodeInfo.getNodeId().toString()
-					.equals(context.getNodeId().toString()));
+			assertTrue(nodeInfo.getNodeId().toString().equals(context.getNodeId().toString()));
 
 		} finally {
 			nodeInfo.destroy();
@@ -62,13 +60,11 @@ public class UpdatingNodeInfoTest {
 
 		ReignContext context = MasterTestSuite.getReign().getContext();
 		ObserverManager observerManager = context.getObserverManager();
-		String path = context.getPathScheme().getAbsolutePath(
-				PathType.PRESENCE, "clusterA", "serviceB",
-				context.getNodeId().toString());
+		String path = context.getPathScheme().getAbsolutePath(PathType.PRESENCE, "clusterA", "serviceB",
+		        context.getNodeId().toString());
 
 		// create self-updating Conf object, observer should be registered
-		nodeInfo = new UpdatingNodeInfo("clusterA", "serviceB",
-				context.getNodeId(), context);
+		nodeInfo = new UpdatingNodeInfo("clusterA", "serviceB", context.getNodeId(), context);
 		assertTrue(observerManager.getReadOnlyObserverSet(path).size() == 1);
 
 		// destroy object, observer should be removed

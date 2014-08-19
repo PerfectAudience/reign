@@ -1,5 +1,5 @@
 /*
- Copyright 2013 Yen Pai ypai@reign.io
+ Copyright 2013,2014 Yen Pai ypai@reign.io
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,29 +17,17 @@
 package io.reign;
 
 /**
- * equals() should be overridden properly.
  * 
  * @author ypai
- * 
+ *
  */
-public interface NodeId {
+public interface NodeAddress {
 
-	// public CanonicalId port(Integer port);
-
-	public String getProcessId();
-
-	// public void setProcessId(String processId);
+	public String getNodeId();
 
 	public String getIpAddress();
 
-	// public void setIpAddress(String ipAddress);
-
 	public String getHost();
 
-	// public void setHost(String host);
-
 	public Integer getMessagingPort();
-
-	// public void setMessagingPort(Integer messagingPort);
-
 }

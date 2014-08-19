@@ -16,7 +16,7 @@
 
 package io.reign.mesg;
 
-import io.reign.NodeId;
+import io.reign.NodeAddress;
 
 /**
  * No-op callback for fire and forget scenarios.
@@ -26,9 +26,9 @@ import io.reign.NodeId;
  */
 public class NullMessagingCallback implements MessagingCallback {
 
-    @Override
-    public void response(String clusterId, String serviceId, NodeId nodeId, ResponseMessage responseMessage) {
+	@Override
+	public void response(String clusterId, String serviceId, NodeAddress nodeInfo, ResponseMessage responseMessage) {
 
-    }
+	}
 
 }

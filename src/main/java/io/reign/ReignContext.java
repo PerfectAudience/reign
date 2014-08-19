@@ -28,31 +28,31 @@ import org.apache.zookeeper.data.ACL;
  */
 public interface ReignContext {
 
-    public <T extends Service> T getService(String serviceName);
+	public <T extends Service> T getService(String serviceName);
 
-    // /**
-    // *
-    // * @return NEW instance of CanonicalId
-    // */
-    // public CanonicalId getCanonicalId();
+	// /**
+	// *
+	// * @return NEW instance of CanonicalId
+	// */
+	// public CanonicalId getCanonicalId();
 
-    // public String getCanonicalIdPathToken();
+	// public String getCanonicalIdPathToken();
 
-    // public NodeIdProvider getNodeIdProvider();
+	// public NodeIdProvider getNodeIdProvider();
 
-    public NodeId getNodeId();
+	public String getNodeId();
 
-    public ZkNodeId getZkNodeId();
+	// public ZkNodeId getZkNodeId();
+	//
+	// public NodeId getNodeIdFromZk(ZkNodeId zkNodeId);
 
-    public NodeId getNodeIdFromZk(ZkNodeId zkNodeId);
+	public ZkClient getZkClient();
 
-    public ZkClient getZkClient();
+	public PathScheme getPathScheme();
 
-    public PathScheme getPathScheme();
+	public List<ACL> getDefaultZkAclList();
 
-    public List<ACL> getDefaultZkAclList();
+	public ObserverManager getObserverManager();
 
-    public ObserverManager getObserverManager();
-
-    // public PathCache getPathCache();
+	// public PathCache getPathCache();
 }

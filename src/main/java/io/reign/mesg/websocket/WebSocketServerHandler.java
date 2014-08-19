@@ -9,12 +9,13 @@ import static org.jboss.netty.handler.codec.http.HttpMethod.POST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import io.reign.DefaultNodeId;
-import io.reign.NodeId;
+import io.reign.DefaultNodeIdProvider.DefaultNodeId;
+import io.reign.NodeInfo;
 import io.reign.PathScheme;
 import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
+import io.reign.StaticNodeInfo;
 import io.reign.mesg.MessageProtocol;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
@@ -412,7 +413,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 		PresenceService presenceService = context.getService("presence");
 		PathScheme pathScheme = context.getPathScheme();
 
-		NodeId nodeId = getNodeId(ctx);
+		String nodeId = getNodeId(ctx);
 		String nodeIdString = nodeId.toString();
 
 		presenceService.announce(pathScheme.getFrameworkClusterId(), Reign.CLIENT_SERVICE_ID, nodeIdString, true);
@@ -424,11 +425,16 @@ public class WebSocketServerHandler extends ExecutionHandler {
 		        Reign.CLIENT_SERVICE_ID, nodeIdString, ctx.getChannel(), this.requestMonitoringExecutor));
 	}
 
-	private NodeId getNodeId(ChannelHandlerContext ctx) {
+	private String getNodeId(ChannelHandlerContext ctx) {
 		SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
-		NodeId nodeId = new DefaultNodeId(null, IdUtil.getClientIpAddress(socketAddress),
+		DefaultNodeId nodeId = new DefaultNodeId(null, IdUtil.getClientIpAddress(socketAddress),
 		        IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress));
-		return nodeId;
+		return nodeId.toString();
+	}
+
+	private NodeInfo getNodeInfo(ChannelHandlerContext ctx) {
+		NodeInfo nodeInfo = new StaticNodeInfo(getNodeId(ctx));
+		return nodeInfo;
 	}
 
 	private void handleWebSocketFrame(final ChannelHandlerContext ctx, WebSocketFrame frame) {
@@ -450,7 +456,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 				public void run() {
 					String requestText = ((TextWebSocketFrame) finalFrame).getText();
 					RequestMessage requestMessage = getMessageProtocol().fromTextRequest(requestText);
-					requestMessage.setSenderId(getNodeId(ctx));
+					requestMessage.setSenderInfo(getNodeInfo(ctx));
 					if (requestMessage != null) {
 						Service targetService = getServiceDirectory().getService(requestMessage.getTargetService());
 

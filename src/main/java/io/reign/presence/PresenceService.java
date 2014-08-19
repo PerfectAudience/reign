@@ -16,11 +16,12 @@ package io.reign.presence;
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
-import io.reign.NodeId;
+import io.reign.NodeInfo;
 import io.reign.PathType;
 import io.reign.Reign;
 import io.reign.ReignException;
-import io.reign.ZkNodeId;
+import io.reign.ServiceNodeInfo;
+import io.reign.StaticServiceNodeInfo;
 import io.reign.coord.CoordinationService;
 import io.reign.coord.DistributedLock;
 import io.reign.mesg.MessagingService;
@@ -121,7 +122,7 @@ public class PresenceService extends AbstractService {
 	}
 
 	public boolean isMemberOf(String clusterId, String serviceId) {
-		String nodePath = getPathScheme().joinTokens(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
+		String nodePath = getPathScheme().joinTokens(clusterId, serviceId, getContext().getNodeId());
 		Announcement announcement = this.getAnnouncement(nodePath, null);
 		return announcement != null;
 	}
@@ -195,13 +196,13 @@ public class PresenceService extends AbstractService {
 		getObserverManager().put(path, observer);
 	}
 
-	public void observe(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer) {
+	public void observe(String clusterId, String serviceId, String nodeId, PresenceObserver<? extends NodeInfo> observer) {
 		String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
 		String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
 
 		observer.setClusterId(clusterId);
 		observer.setServiceId(serviceId);
-		observer.setNodeId(getContext().getNodeIdFromZk(new ZkNodeId(nodeId, null)));
+		observer.setNodeId(nodeId);
 
 		getObserverManager().put(path, observer);
 	}
@@ -356,13 +357,13 @@ public class PresenceService extends AbstractService {
 
 	}
 
-	public NodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId, long timeoutMillis) {
+	public ServiceNodeInfo waitUntilAvailable(String clusterId, String serviceId, String nodeId, long timeoutMillis) {
 
 		String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
 		String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
 
-		PresenceObserver<NodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
-		NodeInfo result = null;
+		PresenceObserver<ServiceNodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
+		ServiceNodeInfo result = null;
 
 		synchronized (notifyObserver) {
 			try {
@@ -389,16 +390,17 @@ public class PresenceService extends AbstractService {
 		return result;
 	}
 
-	public NodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId) {
+	public ServiceNodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId) {
 		return getNodeInfo(clusterId, serviceId, nodeId, null, nodeAttributeSerializer);
 	}
 
-	public NodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer) {
+	public ServiceNodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId,
+	        PresenceObserver<ServiceNodeInfo> observer) {
 		return getNodeInfo(clusterId, serviceId, nodeId, observer, nodeAttributeSerializer);
 	}
 
-	NodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId, PresenceObserver<NodeInfo> observer,
-	        DataSerializer<Map<String, String>> nodeAttributeSerializer) {
+	ServiceNodeInfo getNodeInfo(String clusterId, String serviceId, String nodeId,
+	        PresenceObserver<ServiceNodeInfo> observer, DataSerializer<Map<String, String>> nodeAttributeSerializer) {
 		/** get node data from zk **/
 		String nodePath = getPathScheme().joinTokens(clusterId, serviceId, nodeId);
 		String path = getPathScheme().getAbsolutePath(PathType.PRESENCE, nodePath);
@@ -437,12 +439,11 @@ public class PresenceService extends AbstractService {
 		}
 
 		/** build node info **/
-		NodeInfo result = null;
+		ServiceNodeInfo result = null;
 		if (!error) {
 			try {
-				result = new StaticNodeInfo(clusterId, serviceId, getContext().getNodeIdFromZk(
-				        new ZkNodeId(nodeId, null)), bytes != null ? nodeAttributeSerializer.deserialize(bytes)
-				        : Collections.EMPTY_MAP);
+				result = new StaticServiceNodeInfo(clusterId, serviceId, nodeId,
+				        bytes != null ? nodeAttributeSerializer.deserialize(bytes) : Collections.EMPTY_MAP);
 			} catch (Exception e) {
 				throw new IllegalStateException("lookupNodeInfo():  error trying to fetch node info:  path=" + path
 				        + ":  " + e, e);
@@ -457,11 +458,11 @@ public class PresenceService extends AbstractService {
 	}
 
 	public void announce(String clusterId, String serviceId, boolean visible) {
-		announce(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), visible, null);
+		announce(clusterId, serviceId, getContext().getNodeId(), visible, null);
 	}
 
 	public void announce(String clusterId, String serviceId, boolean visible, Map<String, String> attributeMap) {
-		announce(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), visible, attributeMap);
+		announce(clusterId, serviceId, getContext().getNodeId(), visible, attributeMap);
 	}
 
 	/**
@@ -479,12 +480,9 @@ public class PresenceService extends AbstractService {
 		announcement.setNodeAttributeSerializer(nodeAttributeSerializer);
 
 		// update announcement if node data is different
-		NodeInfo nodeInfo = new StaticNodeInfo(clusterId, serviceId, getContext().getNodeIdFromZk(
-		        new ZkNodeId(nodeId, null)), attributeMap);
-		// if (!nodeInfo.equals(announcement.getNodeInfo())) {
+		ServiceNodeInfo nodeInfo = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, attributeMap);
 		announcement.setNodeInfo(nodeInfo);
 		announcement.setLastUpdated(-1);
-		// }
 
 		// mark as visible based on flag
 		announcement.setHidden(!visible);
@@ -495,11 +493,11 @@ public class PresenceService extends AbstractService {
 	}
 
 	public void hide(String clusterId, String serviceId) {
-		hide(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
+		hide(clusterId, serviceId, getContext().getNodeId());
 	}
 
 	public void show(String clusterId, String serviceId) {
-		show(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
+		show(clusterId, serviceId, getContext().getNodeId());
 	}
 
 	void hide(String clusterId, String serviceId, String nodeId) {
@@ -546,7 +544,7 @@ public class PresenceService extends AbstractService {
 	}
 
 	public void dead(String clusterId, String serviceId) {
-		dead(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
+		dead(clusterId, serviceId, getContext().getNodeId());
 	}
 
 	void show(String clusterId, String serviceId, String nodeId) {
@@ -596,7 +594,7 @@ public class PresenceService extends AbstractService {
 	public ResponseMessage handleMessage(RequestMessage requestMessage) {
 		try {
 			if (logger.isTraceEnabled()) {
-				logger.trace("Received message:  nodeId={}; request='{}:{}'", requestMessage.getSenderId(),
+				logger.trace("Received message:  senderInfo={}; request='{}:{}'", requestMessage.getSenderInfo(),
 				        requestMessage.getTargetService(), requestMessage.getBody());
 			}
 
@@ -665,21 +663,21 @@ public class PresenceService extends AbstractService {
 				responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
 				String[] tokens = getPathScheme().tokenizePath(resource);
 				if (tokens.length == 1) {
-					this.observe(tokens[0], this.<List<String>> getClientObserver(parsedRequestMessage.getSenderId(),
+					this.observe(tokens[0], this.<List<String>> getClientObserver(parsedRequestMessage.getSenderInfo(),
 					        tokens[0], null, null));
 				} else if (tokens.length == 2) {
 					this.observe(tokens[0], tokens[1], this.<ServiceInfo> getClientObserver(
-					        parsedRequestMessage.getSenderId(), tokens[0], tokens[1], null));
+					        parsedRequestMessage.getSenderInfo(), tokens[0], tokens[1], null));
 				} else if (tokens.length == 3) {
 					this.observe(tokens[0], tokens[1], tokens[2], this.<NodeInfo> getClientObserver(
-					        parsedRequestMessage.getSenderId(), tokens[0], tokens[1], tokens[2]));
+					        parsedRequestMessage.getSenderInfo(), tokens[0], tokens[1], tokens[2]));
 				} else {
 					responseMessage.setComment("Observing not supported:  " + resource);
 				}
 			} else if ("observe-stop".equals(parsedRequestMessage.getMeta())) {
 				responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
 				String absolutePath = getPathScheme().getAbsolutePath(PathType.PRESENCE, resource);
-				getContext().getObserverManager().removeByOwnerId(parsedRequestMessage.getSenderId().toString(),
+				getContext().getObserverManager().removeByOwnerId(parsedRequestMessage.getSenderInfo().toString(),
 				        absolutePath);
 			}
 
@@ -697,7 +695,7 @@ public class PresenceService extends AbstractService {
 
 	}
 
-	<T> PresenceObserver<T> getClientObserver(final NodeId clientNodeId, final String clusterId,
+	<T> PresenceObserver<T> getClientObserver(final NodeInfo clientNodeInfo, final String clusterId,
 	        final String serviceId, final String nodeId) {
 		PresenceObserver<T> observer = new PresenceObserver<T>() {
 			@Override
@@ -714,7 +712,7 @@ public class PresenceService extends AbstractService {
 
 					MessagingService messagingService = getContext().getService("mesg");
 					messagingService.sendMessageFF(getContext().getPathScheme().getFrameworkClusterId(),
-					        Reign.CLIENT_SERVICE_ID, clientNodeId, eventMessage);
+					        Reign.CLIENT_SERVICE_ID, clientNodeInfo, eventMessage);
 				} catch (Exception e) {
 					logger.warn("Trouble notifying client observer:  " + e, e);
 				}
@@ -722,7 +720,7 @@ public class PresenceService extends AbstractService {
 			}
 		};
 
-		observer.setOwnerId(clientNodeId.toString());
+		observer.setOwnerId(clientNodeInfo.getNodeId());
 
 		return observer;
 	}

@@ -14,7 +14,7 @@
 package io.reign.metrics;
 
 import io.reign.AbstractService;
-import io.reign.NodeId;
+import io.reign.NodeInfo;
 import io.reign.PathScheme;
 import io.reign.PathType;
 import io.reign.Reign;
@@ -99,7 +99,7 @@ public class MetricsService extends AbstractService {
 	}
 
 	public MetricRegistryManager getRegistered(String clusterId, String serviceId) {
-		String key = exportPathMapKey(clusterId, serviceId, getContext().getZkNodeId().getPathToken());
+		String key = exportPathMapKey(clusterId, serviceId, getContext().getNodeId());
 		synchronized (exportPathMap) {
 			ExportMeta exportMeta = exportPathMap.get(key);
 			if (exportMeta != null) {
@@ -115,8 +115,8 @@ public class MetricsService extends AbstractService {
 	 */
 	public void scheduleExport(final String clusterId, final String serviceId,
 	        final MetricRegistryManager registryManager, long updateInterval, TimeUnit updateIntervalTimeUnit) {
-		scheduleExport(clusterId, serviceId, getContext().getZkNodeId().getPathToken(), registryManager,
-		        updateInterval, updateIntervalTimeUnit);
+		scheduleExport(clusterId, serviceId, getContext().getNodeId(), registryManager, updateInterval,
+		        updateIntervalTimeUnit);
 	}
 
 	String exportPathMapKey(String clusterId, String serviceId, String nodeId) {
@@ -225,7 +225,7 @@ public class MetricsService extends AbstractService {
 	 * Get metrics data for this service node (self) for current interval.
 	 */
 	public MetricsData getMyMetrics(String clusterId, String serviceId) {
-		String key = clusterId + "/" + serviceId + "/" + getContext().getZkNodeId().getPathToken();
+		String key = clusterId + "/" + serviceId + "/" + getContext().getNodeId();
 		ExportMeta exportMeta = exportPathMap.get(key);
 		if (exportMeta == null) {
 			logger.trace(
@@ -418,7 +418,7 @@ public class MetricsService extends AbstractService {
 
 		try {
 			if (logger.isTraceEnabled()) {
-				logger.trace("Received message:  nodeId={}; request='{}:{}'", requestMessage.getSenderId(),
+				logger.trace("Received message:  nodeId={}; request='{}:{}'", requestMessage.getSenderInfo(),
 				        requestMessage.getTargetService(), requestMessage.getBody());
 			}
 
@@ -442,17 +442,17 @@ public class MetricsService extends AbstractService {
 				String[] tokens = getPathScheme().tokenizePath(resource);
 				if (tokens.length == 2) {
 					this.observe(tokens[0], tokens[1],
-					        this.getClientObserver(parsedRequestMessage.getSenderId(), tokens[0], tokens[1], null));
+					        this.getClientObserver(parsedRequestMessage.getSenderInfo(), tokens[0], tokens[1], null));
 				} else if (tokens.length == 3) {
-					this.observe(tokens[0], tokens[1],
-					        this.getClientObserver(parsedRequestMessage.getSenderId(), tokens[0], tokens[1], tokens[2]));
+					this.observe(tokens[0], tokens[1], this.getClientObserver(parsedRequestMessage.getSenderInfo(),
+					        tokens[0], tokens[1], tokens[2]));
 				} else {
 					responseMessage.setComment("Observing not supported:  " + resource);
 				}
 			} else if ("observe-stop".equals(parsedRequestMessage.getMeta())) {
 				responseMessage = new SimpleResponseMessage(ResponseStatus.OK);
 				String absolutePath = getPathScheme().getAbsolutePath(PathType.METRICS, resource);
-				getContext().getObserverManager().removeByOwnerId(parsedRequestMessage.getSenderId().toString(),
+				getContext().getObserverManager().removeByOwnerId(parsedRequestMessage.getSenderInfo().toString(),
 				        absolutePath);
 			} else {
 				if (resource.length() == 0) {
@@ -527,7 +527,7 @@ public class MetricsService extends AbstractService {
 
 	}
 
-	MetricsObserver getClientObserver(final NodeId clientNodeId, final String clusterId, final String serviceId,
+	MetricsObserver getClientObserver(final NodeInfo clientNodeInfo, final String clusterId, final String serviceId,
 	        final String nodeId) {
 		MetricsObserver observer = new MetricsObserver() {
 			@Override
@@ -544,7 +544,7 @@ public class MetricsService extends AbstractService {
 
 					MessagingService messagingService = getContext().getService("mesg");
 					messagingService.sendMessageFF(getContext().getPathScheme().getFrameworkClusterId(),
-					        Reign.CLIENT_SERVICE_ID, clientNodeId, eventMessage);
+					        Reign.CLIENT_SERVICE_ID, clientNodeInfo, eventMessage);
 				} catch (Exception e) {
 					logger.warn("Trouble notifying client observer:  " + e, e);
 				}
@@ -552,7 +552,7 @@ public class MetricsService extends AbstractService {
 			}
 		};
 
-		observer.setOwnerId(clientNodeId.toString());
+		observer.setOwnerId(clientNodeInfo.getNodeId());
 
 		return observer;
 	}

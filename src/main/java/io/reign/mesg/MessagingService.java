@@ -16,7 +16,7 @@
 
 package io.reign.mesg;
 
-import io.reign.NodeId;
+import io.reign.NodeAddress;
 import io.reign.Service;
 
 import java.util.Map;
@@ -28,28 +28,29 @@ import java.util.Map;
  */
 public interface MessagingService extends Service {
 
-    public ResponseMessage sendMessage(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage);
+	public ResponseMessage sendMessage(String clusterId, String serviceId, NodeAddress nodeAddress,
+	        RequestMessage requestMessage);
 
-    public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage);
+	public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage);
 
-    public void sendMessageAsync(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage,
-            MessagingCallback callback);
+	public void sendMessageAsync(String clusterId, String serviceId, NodeAddress nodeAddress,
+	        RequestMessage requestMessage, MessagingCallback callback);
 
-    public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
-            MessagingCallback callback);
+	public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
+	        MessagingCallback callback);
 
-    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, EventMessage eventMessage);
+	public void sendMessageFF(String clusterId, String serviceId, NodeAddress nodeAddress, EventMessage eventMessage);
 
-    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage);
+	public void sendMessageFF(String clusterId, String serviceId, NodeAddress nodeAddress, RequestMessage requestMessage);
 
-    public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage);
+	public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage);
 
-    public Integer getPort();
+	public Integer getPort();
 
-    /**
-     * 
-     * @param port
-     *            cannot be null
-     */
-    public void setPort(Integer port);
+	/**
+	 * 
+	 * @param port
+	 *            cannot be null
+	 */
+	public void setPort(Integer port);
 }

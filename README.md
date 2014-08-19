@@ -390,23 +390,7 @@ By default, services in the framework can receive and respond to messages via We
 `presence:/my_cluster/foo_service` - this message would get information on the `foo_service`.  More information is available in the Web UI available on any node running the framework at port 33033 (default port).
 
 
-Upcoming in 0.2.x
------------------
 
-* Web Socket API support for coordination service 
-* Web Socket API support for metrics service
-* Dashboard UI that allows navigation and viewing of service and node level metrics
-
-
-Upcoming in 0.3.x
------------------
-
-* Consistent hash service
-* Migration of UI to AngularJS?
-* Clarification of data service API
-* Clarification of request/response protocol
-* Clarification/cleaning up of String nodeId vs. node ID as a data structure
-* Formalization of client concept
 
 
 

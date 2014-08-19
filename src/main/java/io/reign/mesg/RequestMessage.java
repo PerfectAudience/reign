@@ -1,6 +1,6 @@
 package io.reign.mesg;
 
-import io.reign.NodeId;
+import io.reign.NodeInfo;
 
 /**
  * 
@@ -9,14 +9,14 @@ import io.reign.NodeId;
  */
 public interface RequestMessage extends Message {
 
-    public String getTargetService();
+	public String getTargetService();
 
-    public RequestMessage setTargetService(String targetService);
+	public RequestMessage setTargetService(String targetService);
 
-    /**
-     * @return the sender of the request
-     */
-    public NodeId getSenderId();
+	/**
+	 * @return the sender of the request
+	 */
+	public NodeInfo getSenderInfo();
 
-    public RequestMessage setSenderId(NodeId senderId);
+	public RequestMessage setSenderInfo(NodeInfo senderInfo);
 }
