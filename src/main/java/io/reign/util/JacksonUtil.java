@@ -12,10 +12,11 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 package io.reign.util;
 
+import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
@@ -26,18 +27,19 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
  * 
  */
 public class JacksonUtil {
-    /**
-     * Reusable Jackson JSON mapper
-     */
-    private static ObjectMapper DEFAULT_OBJECT_MAPPER = new ObjectMapper();
-    static {
-        DEFAULT_OBJECT_MAPPER.getDeserializationConfig().without(
-                DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES);
-        DEFAULT_OBJECT_MAPPER.setSerializationInclusion(Inclusion.NON_NULL);
+	/**
+	 * Reusable Jackson JSON mapper
+	 */
+	private static ObjectMapper DEFAULT_OBJECT_MAPPER = new ObjectMapper();
+	static {
+		DEFAULT_OBJECT_MAPPER.getDeserializationConfig().without(
+		        DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES);
+		DEFAULT_OBJECT_MAPPER.setSerializationInclusion(Inclusion.NON_NULL);
+		DEFAULT_OBJECT_MAPPER.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
 
-    }
+	}
 
-    public static ObjectMapper getObjectMapper() {
-        return DEFAULT_OBJECT_MAPPER;
-    }
+	public static ObjectMapper getObjectMapper() {
+		return DEFAULT_OBJECT_MAPPER;
+	}
 }
