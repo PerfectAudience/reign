@@ -220,17 +220,15 @@ public class PresenceService extends AbstractService {
 		synchronized (notifyObserver) {
 			try {
 				while ((result == null || result.getNodeIdList().size() < 1)
-				        && System.currentTimeMillis() - startTimestamp < timeoutMillis) {
+				        && (timeoutMillis < 0 || System.currentTimeMillis() - startTimestamp < timeoutMillis)) {
+					logger.info("Waiting until service is available:  path={}", path);
 					if (timeoutMillis < 0) {
 						result = getServiceInfo(clusterId, serviceId, notifyObserver);
 						while (true && (result == null || result.getNodeIdList().size() < 1)) {
-							logger.info("Waiting until service is available:  path={}", path);
 							notifyObserver.wait(5000);
-
 							result = getServiceInfo(clusterId, serviceId, notifyObserver);
 						}
 					} else {
-						logger.info("Waiting until service is available:  path={}", path);
 						long minWait = timeoutMillis / 4;
 						if (minWait < 1000) {
 							minWait = 1000;
@@ -377,17 +375,16 @@ public class PresenceService extends AbstractService {
 		long startTimestamp = System.currentTimeMillis();
 		synchronized (notifyObserver) {
 			try {
-				while (result == null && System.currentTimeMillis() - startTimestamp < timeoutMillis) {
+				while (result == null
+				        && (timeoutMillis < 0 || System.currentTimeMillis() - startTimestamp < timeoutMillis)) {
+					logger.info("Waiting until node is available:  path={}", path);
 					if (timeoutMillis < 0) {
 						result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
 						while (true && result == null) {
-							logger.info("Waiting until node is available:  path={}", path);
 							notifyObserver.wait(5000);
-
 							result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
 						}
 					} else {
-						logger.info("Waiting until node is available:  path={}", path);
 						long minWait = timeoutMillis / 4;
 						if (minWait < 1000) {
 							minWait = 1000;
