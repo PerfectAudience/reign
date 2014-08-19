@@ -28,10 +28,24 @@ import java.util.Map;
  */
 public interface MessagingService extends Service {
 
+	/**
+	 * Send message to single node in service, picked at discretion of specific MessagingService implementation.
+	 */
+	public ResponseMessage sendMessageSingleNode(String clusterId, String serviceId, RequestMessage requestMessage);
+
+	/**
+	 * Send message to specific node in service.
+	 */
 	public ResponseMessage sendMessage(String clusterId, String serviceId, NodeAddress nodeAddress,
 	        RequestMessage requestMessage);
 
+	/**
+	 * Send message to all nodes in service.
+	 */
 	public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage);
+
+	public void sendMessageSingleNodeAsync(String clusterId, String serviceId, RequestMessage requestMessage,
+	        MessagingCallback callback);
 
 	public void sendMessageAsync(String clusterId, String serviceId, NodeAddress nodeAddress,
 	        RequestMessage requestMessage, MessagingCallback callback);
@@ -42,6 +56,8 @@ public interface MessagingService extends Service {
 	public void sendMessageFF(String clusterId, String serviceId, NodeAddress nodeAddress, EventMessage eventMessage);
 
 	public void sendMessageFF(String clusterId, String serviceId, NodeAddress nodeAddress, RequestMessage requestMessage);
+
+	public void sendMessageSingleNodeFF(String clusterId, String serviceId, RequestMessage requestMessage);
 
 	public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage);
 

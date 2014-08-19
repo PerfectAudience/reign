@@ -19,6 +19,7 @@ package io.reign.mesg;
 import io.reign.AbstractService;
 import io.reign.NodeAddress;
 import io.reign.Reign;
+import io.reign.ReignException;
 import io.reign.StaticNodeInfo;
 import io.reign.mesg.websocket.WebSocketMessagingProvider;
 import io.reign.presence.PresenceService;
@@ -27,13 +28,18 @@ import io.reign.util.JacksonUtil;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 /**
  * Makes messaging capabilities available to other services via context.
@@ -54,6 +60,10 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 	private MessageProtocol messageProtocol = new DefaultMessageProtocol();
 
 	private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
+
+	private Cache<String, ServiceInfo> serviceInfoCache;
+
+	private int serviceInfoCacheTimeoutSeconds = (int) (120 + Math.random() * 60);
 
 	/**
 	 * Send message to a single node.
@@ -88,6 +98,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 					this.notifyAll();
 				}
 			}
+
 		};
 		sendMessageAsync(clusterId, serviceId, nodeAddress, requestMessage, messagingCallback);
 		synchronized (messagingCallback) {
@@ -110,13 +121,14 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 	 */
 	@Override
 	public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage) {
-		PresenceService presenceService = getContext().getService("presence");
-		ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
+		ServiceInfo serviceInfo = serviceInfo(clusterId, serviceId);
 		if (serviceInfo == null) {
 			return Collections.EMPTY_MAP;
 		}
+
 		Map<String, ResponseMessage> responseMap = new HashMap<String, ResponseMessage>(serviceInfo.getNodeIdList()
 		        .size());
+
 		for (String nodeId : serviceInfo.getNodeIdList()) {
 			if (logger.isTraceEnabled()) {
 				logger.trace("Sending message:  clusterId={}; serviceId={}; nodeId={}; requestMessage={}",
@@ -128,6 +140,20 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 		}
 
 		return responseMap;
+	}
+
+	@Override
+	public ResponseMessage sendMessageSingleNode(String clusterId, String serviceId, RequestMessage requestMessage) {
+		ServiceInfo serviceInfo = serviceInfo(clusterId, serviceId);
+		if (serviceInfo == null) {
+			throw new ReignException("Service unavailable:  clusterId=" + clusterId + "; serviceId=" + serviceId);
+		}
+
+		String nodeId = selectNode(serviceInfo.getNodeIdList());
+
+		NodeAddress nodeInfo = new StaticNodeInfo(clusterId, serviceId, nodeId, null);
+		ResponseMessage responseMessage = sendMessage(clusterId, serviceId, nodeInfo, requestMessage);
+		return responseMessage;
 	}
 
 	@Override
@@ -194,10 +220,9 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 	@Override
 	public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
 	        MessagingCallback callback) {
-		PresenceService presenceService = getContext().getService("presence");
-		ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
+		ServiceInfo serviceInfo = serviceInfo(clusterId, serviceId);
 		if (serviceInfo == null) {
-			return;
+			throw new ReignException("Service unavailable:  clusterId=" + clusterId + "; serviceId=" + serviceId);
 		}
 
 		for (String nodeId : serviceInfo.getNodeIdList()) {
@@ -210,6 +235,20 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 			sendMessageAsync(clusterId, serviceId, nodeInfo, requestMessage, callback);
 
 		}
+	}
+
+	@Override
+	public void sendMessageSingleNodeAsync(String clusterId, String serviceId, RequestMessage requestMessage,
+	        MessagingCallback callback) {
+		ServiceInfo serviceInfo = serviceInfo(clusterId, serviceId);
+		if (serviceInfo == null) {
+			throw new ReignException("Service unavailable:  clusterId=" + clusterId + "; serviceId=" + serviceId);
+		}
+
+		String nodeId = selectNode(serviceInfo.getNodeIdList());
+
+		NodeAddress nodeInfo = new StaticNodeInfo(clusterId, serviceId, nodeId, null);
+		sendMessageAsync(clusterId, serviceId, nodeInfo, requestMessage, callback);
 	}
 
 	@Override
@@ -257,8 +296,7 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
 	@Override
 	public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage) {
-		PresenceService presenceService = getContext().getService("presence");
-		ServiceInfo serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
+		ServiceInfo serviceInfo = serviceInfo(clusterId, serviceId);
 		if (serviceInfo == null) {
 			return;
 		}
@@ -271,8 +309,19 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
 			NodeAddress nodeInfo = new StaticNodeInfo(clusterId, serviceId, nodeId, null);
 			sendMessageFF(clusterId, serviceId, nodeInfo, requestMessage);
-
 		}
+	}
+
+	@Override
+	public void sendMessageSingleNodeFF(String clusterId, String serviceId, RequestMessage requestMessage) {
+		ServiceInfo serviceInfo = serviceInfo(clusterId, serviceId);
+		if (serviceInfo == null) {
+			return;
+		}
+
+		String nodeId = selectNode(serviceInfo.getNodeIdList());
+		NodeAddress nodeInfo = new StaticNodeInfo(clusterId, serviceId, nodeId, null);
+		sendMessageFF(clusterId, serviceId, nodeInfo, requestMessage);
 	}
 
 	public MessagingProvider getMessagingProvider() {
@@ -312,6 +361,9 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 		this.messagingProvider.setServiceDirectory(getContext());
 		this.messagingProvider.setPort(port);
 		this.messagingProvider.init();
+
+		this.serviceInfoCache = CacheBuilder.newBuilder().concurrencyLevel(8).maximumSize(64)
+		        .expireAfterWrite(serviceInfoCacheTimeoutSeconds, TimeUnit.SECONDS).build();
 	}
 
 	@Override
@@ -400,6 +452,14 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 
 	}
 
+	public int getServiceInfoCacheTimeoutSeconds() {
+		return serviceInfoCacheTimeoutSeconds;
+	}
+
+	public void setServiceInfoCacheTimeoutSeconds(int serviceInfoCacheTimeoutSeconds) {
+		this.serviceInfoCacheTimeoutSeconds = serviceInfoCacheTimeoutSeconds;
+	}
+
 	String hostOrIpAddress(String host, String ipAddress) {
 		// prefer ip, then use hostname if not available
 		if (ipAddress != null) {
@@ -409,4 +469,26 @@ public class DefaultMessagingService extends AbstractService implements Messagin
 		}
 	}
 
+	String selectNode(List<String> nodeList) {
+		int index = (int) (nodeList.size() * Math.random());
+		return nodeList.get(index);
+	}
+
+	ServiceInfo serviceInfo(String clusterId, String serviceId) {
+		String cacheKey = clusterId + "/" + serviceId;
+		ServiceInfo serviceInfo = this.serviceInfoCache.getIfPresent(cacheKey);
+		if (serviceInfo == null) {
+			synchronized (serviceInfoCache) {
+				serviceInfo = this.serviceInfoCache.getIfPresent(cacheKey);
+				if (serviceInfo == null) {
+					PresenceService presenceService = getContext().getService("presence");
+					serviceInfo = presenceService.getServiceInfo(clusterId, serviceId);
+					if (serviceInfo != null) {
+						this.serviceInfoCache.put(cacheKey, serviceInfo);
+					}
+				}
+			}
+		}
+		return serviceInfo;
+	}
 }
