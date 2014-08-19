@@ -2,12 +2,18 @@ package io.reign.mesg;
 
 import io.reign.util.JacksonUtil;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 
 /**
  * 
@@ -16,124 +22,161 @@ import org.slf4j.LoggerFactory;
  */
 public class DefaultMessageProtocol implements MessageProtocol {
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultMessageProtocol.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultMessageProtocol.class);
 
-    private final AtomicInteger messageIdSequence = new AtomicInteger(0);
+	private final AtomicInteger messageIdSequence = new AtomicInteger(0);
 
-    public static final String MESSAGE_ID_DELIMITER = ">";
+	public static final String MESSAGE_ID_DELIMITER = ">";
 
-    /**
-     * Reusable Jackson JSON mapper
-     */
-    private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
+	/**
+	 * Kryo is not thread-safe.
+	 */
+	private static final ThreadLocal<Kryo> KRYO_THREAD_LOCAL = new ThreadLocal<Kryo>() {
+		@Override
+		protected Kryo initialValue() {
+			Kryo kryo = new Kryo();
+			kryo.register(SimpleRequestMessage.class);
+			return kryo;
+		}
 
-    /**
-     * Simple ASCII protocol: [SERVICE_NAME][COLON][MESSAGE_PAYLOAD]
-     */
-    @Override
-    public RequestMessage fromTextRequest(String textRequest) {
-        try {
-            String[] requestTokens = null;
-            int serviceDelimiterIndex = textRequest.indexOf(':');
-            if (serviceDelimiterIndex == -1) {
-                serviceDelimiterIndex = textRequest.indexOf('/');
-            }
-            if (serviceDelimiterIndex != -1) {
-                requestTokens = new String[2];
-                requestTokens[0] = textRequest.substring(0, serviceDelimiterIndex);
-                requestTokens[1] = textRequest.substring(serviceDelimiterIndex + 1);
+	};
 
-            }
-            if (requestTokens != null) {
-                RequestMessage requestMessage = new SimpleRequestMessage();
-                requestMessage.setTargetService(requestTokens[0]);
+	/**
+	 * Reusable Jackson JSON mapper
+	 */
+	private static ObjectMapper OBJECT_MAPPER = JacksonUtil.getObjectMapper();
 
-                int messageIdDelimiterIndex = requestTokens[1].lastIndexOf(MESSAGE_ID_DELIMITER);
-                if (messageIdDelimiterIndex == -1) {
-                    requestMessage.setBody(requestTokens[1]);
-                } else {
-                    int newlineIndex = requestTokens[1].indexOf("\n", messageIdDelimiterIndex + 1);
-                    if (newlineIndex == -1) {
-                        newlineIndex = requestTokens[1].length();
-                    }
-                    requestMessage.setBody(requestTokens[1].substring(0, messageIdDelimiterIndex).trim()
-                            + requestTokens[1].substring(newlineIndex));
-                    requestMessage.setId(Integer.parseInt(requestTokens[1].substring(messageIdDelimiterIndex + 1,
-                            newlineIndex).trim()));
-                }
-                return requestMessage;
-            } else {
-                logger.warn("Poorly formatted message:  message='{}'", textRequest);
-            }
-        } catch (Exception e) {
-            logger.error("Error trying to parse request message:  " + e, e);
-        }
-        return null;
-    }
+	/**
+	 * Simple ASCII protocol: [SERVICE_NAME][COLON][MESSAGE_PAYLOAD]
+	 */
+	@Override
+	public RequestMessage fromTextRequest(String textRequest) {
+		try {
+			String[] requestTokens = null;
+			int serviceDelimiterIndex = textRequest.indexOf(':');
+			if (serviceDelimiterIndex == -1) {
+				serviceDelimiterIndex = textRequest.indexOf('/');
+			}
+			if (serviceDelimiterIndex != -1) {
+				requestTokens = new String[2];
+				requestTokens[0] = textRequest.substring(0, serviceDelimiterIndex);
+				requestTokens[1] = textRequest.substring(serviceDelimiterIndex + 1);
 
-    @Override
-    public RequestMessage fromBinaryRequest(byte[] bytes) {
-        throw new UnsupportedOperationException("Not yet supported.");
-    }
+			}
+			if (requestTokens != null) {
+				RequestMessage requestMessage = new SimpleRequestMessage();
+				requestMessage.setTargetService(requestTokens[0]);
 
-    @Override
-    public String toTextResponse(ResponseMessage responseMessage) {
-        try {
-            // Map<String, Object> responseMap = new HashMap<String, Object>(2);
-            // responseMap.put("status", getResponseStatusCode(responseMessage.getStatus()));
-            // responseMap.put("body", responseMessage.getBody());
-            return OBJECT_MAPPER.writeValueAsString(responseMessage);
-        } catch (Exception e) {
-            logger.error("Error trying to encode response message:  " + e, e);
-        }
-        return null;
-    }
+				int messageIdDelimiterIndex = requestTokens[1].lastIndexOf(MESSAGE_ID_DELIMITER);
+				if (messageIdDelimiterIndex == -1) {
+					requestMessage.setBody(requestTokens[1]);
+				} else {
+					int newlineIndex = requestTokens[1].indexOf("\n", messageIdDelimiterIndex + 1);
+					if (newlineIndex == -1) {
+						newlineIndex = requestTokens[1].length();
+					}
+					requestMessage.setBody(requestTokens[1].substring(0, messageIdDelimiterIndex).trim()
+					        + requestTokens[1].substring(newlineIndex));
+					requestMessage.setId(Integer.parseInt(requestTokens[1].substring(messageIdDelimiterIndex + 1,
+					        newlineIndex).trim()));
+				}
+				return requestMessage;
+			} else {
+				logger.warn("Poorly formatted message:  message='{}'", textRequest);
+			}
+		} catch (Exception e) {
+			logger.error("Error trying to parse request message:  " + e, e);
+		}
+		return null;
+	}
 
-    @Override
-    public byte[] toBinaryResponse(ResponseMessage responseMessage) {
-        throw new UnsupportedOperationException("Not yet supported.");
-    }
+	@Override
+	public RequestMessage fromBinaryRequest(byte[] bytes) {
+		throw new UnsupportedOperationException("Not yet supported.");
+	}
 
-    @Override
-    public ResponseMessage fromTextResponse(String textResponse) {
-        try {
-            return OBJECT_MAPPER.readValue(textResponse, new TypeReference<SimpleResponseMessage>() {
-            });
-        } catch (Exception e) {
-            logger.error("" + e, e);
-            ResponseMessage responseMessage = new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED);
-            responseMessage.setComment("" + e);
-            return responseMessage;
-        }
-    }
+	@Override
+	public String toTextResponse(ResponseMessage responseMessage) {
+		try {
+			// Map<String, Object> responseMap = new HashMap<String, Object>(2);
+			// responseMap.put("status", getResponseStatusCode(responseMessage.getStatus()));
+			// responseMap.put("body", responseMessage.getBody());
+			return OBJECT_MAPPER.writeValueAsString(responseMessage);
+		} catch (Exception e) {
+			logger.error("Error trying to encode response message:  " + e, e);
+		}
+		return null;
+	}
 
-    @Override
-    public ResponseMessage fromBinaryResponse(byte[] bytes) {
-        throw new UnsupportedOperationException("Not yet supported.");
-    }
+	@Override
+	public byte[] toBinaryResponse(ResponseMessage responseMessage) {
+		throw new UnsupportedOperationException("Not yet supported.");
+	}
 
-    @Override
-    public String toTextRequest(RequestMessage requestMessage) {
-        return requestMessage.getTargetService() + ":" + requestMessage.getBody();
-    }
+	@Override
+	public ResponseMessage fromTextResponse(String textResponse) {
+		try {
+			return OBJECT_MAPPER.readValue(textResponse, new TypeReference<SimpleResponseMessage>() {
+			});
+		} catch (Exception e) {
+			logger.error("" + e + ":  textResponse=" + textResponse, e);
+			ResponseMessage responseMessage = new SimpleResponseMessage(ResponseStatus.ERROR_UNEXPECTED);
+			responseMessage.setComment("" + e);
+			return responseMessage;
+		}
+	}
 
-    @Override
-    public byte[] toBinaryRequest(RequestMessage requestMessage) {
-        throw new UnsupportedOperationException("Not yet supported.");
-    }
+	@Override
+	public ResponseMessage fromBinaryResponse(byte[] bytes) {
+		return fromBytes(bytes, ResponseMessage.class);
+	}
 
-    @Override
-    public String toTextEvent(EventMessage eventMessage) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(eventMessage);
-        } catch (Exception e) {
-            logger.error("Error trying to encode event message:  " + e, e);
-        }
-        return null;
-    }
+	@Override
+	public String toTextRequest(RequestMessage requestMessage) {
+		return requestMessage.getTargetService() + ":" + requestMessage.getBody();
+	}
 
-    @Override
-    public byte[] toBinaryEvent(EventMessage eventMessage) {
-        throw new UnsupportedOperationException("Not yet supported.");
-    }
+	@Override
+	public byte[] toBinaryRequest(RequestMessage requestMessage) {
+		return toBytes(requestMessage);
+	}
+
+	@Override
+	public String toTextEvent(EventMessage eventMessage) {
+		try {
+			return OBJECT_MAPPER.writeValueAsString(eventMessage);
+		} catch (Exception e) {
+			logger.error("Error trying to encode event message:  " + e, e);
+		}
+		return null;
+	}
+
+	@Override
+	public byte[] toBinaryEvent(EventMessage eventMessage) {
+		throw new UnsupportedOperationException("Not yet supported.");
+	}
+
+	public byte[] toBytes(Object value) {
+		if (value == null) {
+			return null;
+		}
+
+		Kryo kryo = KRYO_THREAD_LOCAL.get();
+		Output out = new Output(new ByteArrayOutputStream());
+		kryo.writeObject(out, value);
+		byte[] bytes = out.toBytes();
+		out.close();
+		return bytes;
+	}
+
+	public <T> T fromBytes(byte[] bytes, Class clazz) {
+		if (bytes == null || bytes.length == 0) {
+			return null;
+		}
+		Kryo kryo = KRYO_THREAD_LOCAL.get();
+		Input input = new Input(new ByteArrayInputStream(bytes));
+		T value = (T) kryo.readObject(input, clazz);
+		input.close();
+		return value;
+	}
 }
