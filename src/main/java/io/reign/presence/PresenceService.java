@@ -216,20 +216,28 @@ public class PresenceService extends AbstractService {
 		PresenceObserver<ServiceInfo> notifyObserver = getNotifyObserver(clusterId, serviceId);
 
 		ServiceInfo result = null;
+		long startTimestamp = System.currentTimeMillis();
 		synchronized (notifyObserver) {
 			try {
-				if (timeoutMillis < 0) {
-					result = getServiceInfo(clusterId, serviceId, notifyObserver);
-					while (true && (result == null || result.getNodeIdList().size() < 1)) {
-						logger.info("Waiting until service is available:  path={}", path);
-						notifyObserver.wait(5000);
+				while ((result == null || result.getNodeIdList().size() < 1)
+				        && System.currentTimeMillis() - startTimestamp < timeoutMillis) {
+					if (timeoutMillis < 0) {
+						result = getServiceInfo(clusterId, serviceId, notifyObserver);
+						while (true && (result == null || result.getNodeIdList().size() < 1)) {
+							logger.info("Waiting until service is available:  path={}", path);
+							notifyObserver.wait(5000);
 
+							result = getServiceInfo(clusterId, serviceId, notifyObserver);
+						}
+					} else {
+						logger.info("Waiting until service is available:  path={}", path);
+						long minWait = timeoutMillis / 4;
+						if (minWait < 1000) {
+							minWait = 1000;
+						}
+						notifyObserver.wait(Math.min(minWait, 5000));
 						result = getServiceInfo(clusterId, serviceId, notifyObserver);
 					}
-				} else {
-					logger.info("Waiting until service is available:  path={}", path);
-					notifyObserver.wait(timeoutMillis);
-					result = getServiceInfo(clusterId, serviceId, notifyObserver);
 				}
 			} catch (InterruptedException e) {
 				logger.warn("Interrupted in waitUntilAvailable():  " + e, e);
@@ -366,20 +374,27 @@ public class PresenceService extends AbstractService {
 		PresenceObserver<ServiceNodeInfo> notifyObserver = getNotifyObserver(clusterId, serviceId, nodeId);
 		ServiceNodeInfo result = null;
 
+		long startTimestamp = System.currentTimeMillis();
 		synchronized (notifyObserver) {
 			try {
-				if (timeoutMillis < 0) {
-					result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
-					while (true && result == null) {
-						logger.info("Waiting until node is available:  path={}", path);
-						notifyObserver.wait(5000);
-
+				while (result == null && System.currentTimeMillis() - startTimestamp < timeoutMillis) {
+					if (timeoutMillis < 0) {
 						result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+						while (true && result == null) {
+							logger.info("Waiting until node is available:  path={}", path);
+							notifyObserver.wait(5000);
+
+							result = getNodeInfo(clusterId, serviceId, nodeId, notifyObserver);
+						}
+					} else {
+						logger.info("Waiting until node is available:  path={}", path);
+						long minWait = timeoutMillis / 4;
+						if (minWait < 1000) {
+							minWait = 1000;
+						}
+						notifyObserver.wait(Math.min(minWait, 5000));
+						result = getNodeInfo(clusterId, serviceId, nodeId);
 					}
-				} else {
-					logger.info("Waiting until node is available:  path={}", path);
-					notifyObserver.wait(timeoutMillis);
-					result = getNodeInfo(clusterId, serviceId, nodeId);
 				}
 			} catch (InterruptedException e) {
 				logger.warn("Interrupted while waiting for NodeInfo:  " + e, e);
