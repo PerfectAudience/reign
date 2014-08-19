@@ -16,6 +16,7 @@ package io.reign.presence;
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
 import io.reign.JsonDataSerializer;
+import io.reign.NodeAddress;
 import io.reign.NodeInfo;
 import io.reign.PathType;
 import io.reign.Reign;
@@ -695,7 +696,7 @@ public class PresenceService extends AbstractService {
 
 	}
 
-	<T> PresenceObserver<T> getClientObserver(final NodeInfo clientNodeInfo, final String clusterId,
+	<T> PresenceObserver<T> getClientObserver(final NodeAddress clientNodeInfo, final String clusterId,
 	        final String serviceId, final String nodeId) {
 		PresenceObserver<T> observer = new PresenceObserver<T>() {
 			@Override

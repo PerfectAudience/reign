@@ -1,6 +1,6 @@
 package io.reign.mesg;
 
-import io.reign.NodeInfo;
+import io.reign.NodeAddress;
 
 /**
  * 
@@ -16,7 +16,7 @@ public interface RequestMessage extends Message {
 	/**
 	 * @return the sender of the request
 	 */
-	public NodeInfo getSenderInfo();
+	public NodeAddress getSenderInfo();
 
-	public RequestMessage setSenderInfo(NodeInfo senderInfo);
+	public RequestMessage setSenderInfo(NodeAddress senderInfo);
 }

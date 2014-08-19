@@ -1,6 +1,6 @@
 package io.reign.mesg;
 
-import io.reign.NodeInfo;
+import io.reign.NodeAddress;
 import io.reign.util.JacksonUtil;
 
 import org.slf4j.Logger;
@@ -17,7 +17,7 @@ public class SimpleRequestMessage extends AbstractMessage implements RequestMess
 
 	private String targetService;
 
-	private NodeInfo senderInfo;
+	private NodeAddress senderInfo;
 
 	public SimpleRequestMessage() {
 
@@ -29,12 +29,12 @@ public class SimpleRequestMessage extends AbstractMessage implements RequestMess
 	}
 
 	@Override
-	public NodeInfo getSenderInfo() {
+	public NodeAddress getSenderInfo() {
 		return senderInfo;
 	}
 
 	@Override
-	public RequestMessage setSenderInfo(NodeInfo senderInfo) {
+	public RequestMessage setSenderInfo(NodeAddress senderInfo) {
 		this.senderInfo = senderInfo;
 		return this;
 	}

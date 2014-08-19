@@ -14,7 +14,7 @@
 package io.reign.metrics;
 
 import io.reign.AbstractService;
-import io.reign.NodeInfo;
+import io.reign.NodeAddress;
 import io.reign.PathScheme;
 import io.reign.PathType;
 import io.reign.Reign;
@@ -527,7 +527,7 @@ public class MetricsService extends AbstractService {
 
 	}
 
-	MetricsObserver getClientObserver(final NodeInfo clientNodeInfo, final String clusterId, final String serviceId,
+	MetricsObserver getClientObserver(final NodeAddress clientNodeInfo, final String clusterId, final String serviceId,
 	        final String nodeId) {
 		MetricsObserver observer = new MetricsObserver() {
 			@Override

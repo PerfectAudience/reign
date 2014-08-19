@@ -1,6 +1,6 @@
 package io.reign.mesg;
 
-import io.reign.NodeInfo;
+import io.reign.NodeAddress;
 import io.reign.util.JacksonUtil;
 
 import java.util.List;
@@ -105,12 +105,12 @@ public class ParsedRequestMessage implements RequestMessage {
 	}
 
 	@Override
-	public NodeInfo getSenderInfo() {
+	public NodeAddress getSenderInfo() {
 		return mesg.getSenderInfo();
 	}
 
 	@Override
-	public RequestMessage setSenderInfo(NodeInfo senderInfo) {
+	public RequestMessage setSenderInfo(NodeAddress senderInfo) {
 		throw new UnsupportedOperationException();
 	}
 
