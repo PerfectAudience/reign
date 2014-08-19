@@ -149,7 +149,7 @@ public class DefaultNodeIdProvider implements NodeIdProvider {
 		@Override
 		public String toString() {
 			try {
-				return JacksonUtil.getObjectMapper().writeValueAsString(this);
+				return JacksonUtil.getObjectMapper().writeValueAsString(this).replace('"', '\'');
 			} catch (Exception e) {
 				throw new IllegalArgumentException(e);
 			}
