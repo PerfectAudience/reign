@@ -43,7 +43,8 @@ public class PresenceServiceExample {
 
 	public static void main(String[] args) throws Exception {
 		/** init and start reign using builder **/
-		Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).get();
+		Reign reign = Reign.maker().zkClient("localhost:12181", 30000).findPortAutomatically(true).pathCache(1024, 8)
+		        .get();
 		reign.start();
 
 		/** presence service example **/
