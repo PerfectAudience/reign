@@ -20,6 +20,7 @@ import io.reign.mesg.DefaultMessagingService;
 import io.reign.mesg.MessagingService;
 import io.reign.metrics.MetricsService;
 import io.reign.presence.PresenceService;
+import io.reign.util.PortUtil;
 import io.reign.zk.PathCache;
 import io.reign.zk.ResilientZkClient;
 import io.reign.zk.SimplePathCache;
@@ -69,6 +70,8 @@ public class ReignMaker {
 
 	private Runnable startHook;
 	private Runnable stopHook;
+
+	private boolean findPortAutomatically = false;
 
 	public ReignMaker startHook(Runnable startHook) {
 		this.startHook = startHook;
@@ -158,15 +161,31 @@ public class ReignMaker {
 		MessagingService messagingService = new DefaultMessagingService();
 
 		serviceMap.put("mesg", messagingService);
+
+		if (findPortAutomatically) {
+			messagingPort = Reign.DEFAULT_MESSAGING_PORT;
+			while (!PortUtil.available(messagingPort)) {
+				messagingPort++;
+			}
+		}
+
 		if (messagingPort == null) {
-			messagingService.setPort(Reign.DEFAULT_MESSAGING_PORT);
+			messagingPort = Reign.DEFAULT_MESSAGING_PORT;
+			messagingService.setPort(messagingPort);
 		} else {
 			messagingService.setPort(messagingPort);
 		}
 
+		logger.info("Configuring messaging service:  port={}", messagingPort);
+
 		// alternate route for more concise messaging
 		serviceMap.put("M", messagingService);
 
+		return this;
+	}
+
+	public ReignMaker findPortAutomatically(boolean findPortAutomatically) {
+		this.findPortAutomatically = findPortAutomatically;
 		return this;
 	}
 
