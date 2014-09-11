@@ -311,7 +311,10 @@ $(function() {
      
     	if( nodeIdList.length && nodeIdList.length>0 ) {
             for (var i = 0; i < nodeIdList.length; i++) { 
-              var nodeInfo = eval('(' + nodeIdList[i] + ')');
+              var nodeInfo = nodeIdList[i];
+              if( !(nodeInfo instanceof Object) ) {
+                nodeInfo = eval('(' + nodeIdList[i] + ')');
+              }
               var pid = nodeInfo.pid ? nodeInfo.pid : '--';
               serviceNodeHtml += '<tr><td>'+pid+'</td><td>'+nodeInfo.h+'</td><td>'+nodeInfo.ip+'</td><td>'+nodeInfo.mp+'</td></tr>';
             }
