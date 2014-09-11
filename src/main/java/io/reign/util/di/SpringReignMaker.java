@@ -14,7 +14,6 @@
 package io.reign.util.di;
 
 import io.reign.Reign;
-import io.reign.ReignException;
 import io.reign.ReignMaker;
 
 import java.util.Collections;
@@ -34,8 +33,6 @@ public class SpringReignMaker extends ReignMaker {
 	private static final Logger logger = LoggerFactory.getLogger(SpringReignMaker.class);
 
 	private volatile Reign reign;
-
-	private boolean testMode = false;
 
 	private Map<String, Object> attributeMap = Collections.EMPTY_MAP;
 
@@ -75,10 +72,6 @@ public class SpringReignMaker extends ReignMaker {
 		this.frameworkClusterId(frameworkClusterId);
 	}
 
-	public void setTestMode(boolean testMode) {
-		this.testMode = testMode;
-	}
-
 	public void setZkConnectString(String zkConnectString) {
 		this.zkConnectString(zkConnectString);
 	}
@@ -89,6 +82,14 @@ public class SpringReignMaker extends ReignMaker {
 
 	public void setMessagingPort(Integer messagingPort) {
 		this.messagingPort(messagingPort);
+	}
+
+	public void setZkTestServerPort(Integer zkTestServerPort) {
+		this.zkTestServerPort(zkTestServerPort);
+	}
+
+	public void setStartTestZkServer(boolean startZkTestServer) {
+		this.startZkTestServer(startZkTestServer);
 	}
 
 	@Override
@@ -112,12 +113,6 @@ public class SpringReignMaker extends ReignMaker {
 	 * Call using Spring "init-method" when initializing bean. Creates Reign object but does not start.
 	 */
 	public void init() {
-		if (this.testMode) {
-			if (!this.zkConnectString().startsWith("localhost:")) {
-				throw new ReignException("When running in test mode, zkConnectString must reference localhost!");
-			}
-			this.zkClientTestMode(zkPort(this.zkConnectString()), this.zkSessionTimeout());
-		}
 		reign = super.get();
 		synchronized (this) {
 			logger.info("Initialized:  notifying all waiters...");

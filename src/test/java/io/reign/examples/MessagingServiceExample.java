@@ -39,7 +39,8 @@ public class MessagingServiceExample {
 
 	public static void main(String[] args) throws Exception {
 		/** init and start reign using builder **/
-		Reign reign = Reign.maker().zkClientTestMode(2181, 30000).get();
+		Reign reign = Reign.maker().zkConnectString("localhost:22181").zkTestServerPort(22181).startZkTestServer(true)
+		        .get();
 		reign.start();
 
 		/** init and start using Spring convenience builder **/

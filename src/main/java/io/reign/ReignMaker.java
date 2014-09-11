@@ -66,7 +66,8 @@ public class ReignMaker {
 
 	private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
-	private TestingServer zkTestServer;
+	private boolean startZkTestServer = false;
+	private int zkTestServerPort = 22181;
 
 	private Runnable startHook;
 	private Runnable stopHook;
@@ -234,7 +235,18 @@ public class ReignMaker {
 		return this.zkSessionTimeout;
 	}
 
-	public ReignMaker zkClientTestMode(int zkPort, int zkSessionTimeout) {
+	public ReignMaker startZkTestServer(boolean startZkTestServer) {
+		this.startZkTestServer = startZkTestServer;
+		return this;
+	}
+
+	public ReignMaker zkTestServerPort(int zkTestServerPort) {
+		this.zkTestServerPort = zkTestServerPort;
+		return this;
+	}
+
+	public TestingServer startZkTestServer(int zkPort) {
+
 		logger.debug("Starting in-process ZooKeeper server on port {} -- meant for testing only!", zkPort);
 		try {
 			String dataDirectory = System.getProperty("java.io.tmpdir");
@@ -242,17 +254,19 @@ public class ReignMaker {
 				dataDirectory += File.separator;
 			}
 			dataDirectory += UUID.randomUUID().toString();
-			logger.debug("ZK dataDirectory={}", dataDirectory);
-			File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
-			zkTestServer = new TestingServer(zkPort, dir);
 
-			this.zkConnectString = "localhost:" + zkPort;
-			this.zkSessionTimeout = 30000;
+			logger.debug("ZK dataDirectory={}", dataDirectory);
+
+			File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
+
+			return new TestingServer(zkPort, dir);
+
 		} catch (Exception e) {
 			logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
 		}
 
-		return this;
+		return null;
+
 	}
 
 	public ReignMaker registerService(String serviceName, Service service) {
@@ -287,6 +301,12 @@ public class ReignMaker {
 	}
 
 	public Reign get() {
+
+		// start test zk server if configured
+		TestingServer zkTestServer = null;
+		if (this.startZkTestServer) {
+			zkTestServer = this.startZkTestServer(this.zkTestServerPort);
+		}
 
 		Reign s = null;
 

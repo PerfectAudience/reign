@@ -25,7 +25,8 @@ public class MetricsServiceExample {
 		ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(1);
 
 		/** init and start reign using builder **/
-		Reign reign = Reign.maker().zkClientTestMode(2181, 30000).pathCache(1024, 8).get();
+		Reign reign = Reign.maker().zkConnectString("localhost:22181").zkTestServerPort(22181).startZkTestServer(true)
+		        .get();
 		reign.start();
 
 		PresenceService presenceService = reign.getService("presence");
