@@ -29,93 +29,97 @@ import java.util.Set;
  */
 public class UpdatingConf<K, V> implements Map<K, V> {
 
-    private String clusterId;
-    private String relativePath;
-    private ReignContext context;
-    private ConfObserver<Map<K, V>> observer;
-    private volatile Map<K, V> conf;
+	private String clusterId;
+	private String relativePath;
+	private ReignContext context;
+	private ConfObserver<Map<K, V>> observer;
+	private volatile Map<K, V> conf;
 
-    public UpdatingConf(String clusterId, String relativePath, ReignContext context) {
-        this.clusterId = clusterId;
-        this.relativePath = relativePath;
-        this.context = context;
-        this.observer = new ConfObserver<Map<K, V>>() {
-            @Override
-            public void updated(Map<K, V> updated, Map<K, V> existing) {
-                conf = updated;
-            }
-        };
+	public UpdatingConf(String clusterId, String serviceId, String confName, ReignContext context) {
+		this(clusterId, context.getPathScheme().joinTokens(serviceId, confName), context);
+	}
 
-        ConfService confService = context.getService("conf");
-        conf = confService.getConf(clusterId, relativePath, observer);
-        if (conf == null) {
-            conf = Collections.EMPTY_MAP;
-        }
-    }
+	public UpdatingConf(String clusterId, String relativePath, ReignContext context) {
+		this.clusterId = clusterId;
+		this.relativePath = relativePath;
+		this.context = context;
+		this.observer = new ConfObserver<Map<K, V>>() {
+			@Override
+			public void updated(Map<K, V> updated, Map<K, V> existing) {
+				conf = updated;
+			}
+		};
 
-    public void destroy() {
-        String path = context.getPathScheme().getAbsolutePath(PathType.CONF, clusterId, relativePath);
-        context.getObserverManager().remove(path, observer);
-    }
+		ConfService confService = context.getService("conf");
+		conf = confService.getConf(clusterId, relativePath, observer);
+		if (conf == null) {
+			conf = Collections.EMPTY_MAP;
+		}
+	}
 
-    @Override
-    public void clear() {
-        throw new UnsupportedOperationException("Not supported!");
-    }
+	public void destroy() {
+		String path = context.getPathScheme().getAbsolutePath(PathType.CONF, clusterId, relativePath);
+		context.getObserverManager().remove(path, observer);
+	}
 
-    @Override
-    public boolean containsKey(Object arg0) {
-        return conf.containsKey(arg0);
-    }
+	@Override
+	public void clear() {
+		throw new UnsupportedOperationException("Not supported!");
+	}
 
-    @Override
-    public boolean containsValue(Object arg0) {
-        return conf.containsValue(arg0);
-    }
+	@Override
+	public boolean containsKey(Object arg0) {
+		return conf.containsKey(arg0);
+	}
 
-    @Override
-    public Set<java.util.Map.Entry<K, V>> entrySet() {
-        return conf.entrySet();
-    }
+	@Override
+	public boolean containsValue(Object arg0) {
+		return conf.containsValue(arg0);
+	}
 
-    @Override
-    public V get(Object arg0) {
-        return conf.get(arg0);
-    }
+	@Override
+	public Set<java.util.Map.Entry<K, V>> entrySet() {
+		return conf.entrySet();
+	}
 
-    @Override
-    public boolean isEmpty() {
-        return conf.isEmpty();
-    }
+	@Override
+	public V get(Object arg0) {
+		return conf.get(arg0);
+	}
 
-    @Override
-    public Set<K> keySet() {
-        return conf.keySet();
-    }
+	@Override
+	public boolean isEmpty() {
+		return conf.isEmpty();
+	}
 
-    @Override
-    public V put(K arg0, V arg1) {
-        throw new UnsupportedOperationException("Not supported!");
-    }
+	@Override
+	public Set<K> keySet() {
+		return conf.keySet();
+	}
 
-    @Override
-    public void putAll(Map<? extends K, ? extends V> arg0) {
-        throw new UnsupportedOperationException("Not supported!");
-    }
+	@Override
+	public V put(K arg0, V arg1) {
+		throw new UnsupportedOperationException("Not supported!");
+	}
 
-    @Override
-    public V remove(Object arg0) {
-        throw new UnsupportedOperationException("Not supported!");
-    }
+	@Override
+	public void putAll(Map<? extends K, ? extends V> arg0) {
+		throw new UnsupportedOperationException("Not supported!");
+	}
 
-    @Override
-    public int size() {
-        return conf.size();
-    }
+	@Override
+	public V remove(Object arg0) {
+		throw new UnsupportedOperationException("Not supported!");
+	}
 
-    @Override
-    public Collection<V> values() {
-        return conf.values();
-    }
+	@Override
+	public int size() {
+		return conf.size();
+	}
+
+	@Override
+	public Collection<V> values() {
+		return conf.values();
+	}
 
 }
