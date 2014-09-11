@@ -54,8 +54,8 @@ Reign can be included in a Maven project with the following POM file snippet.  U
         </dependency>        
 
 ### Initialize and start up examples
-        /** init and start using in-process ZooKeeper on port 12181 **/
-        Reign reign = Reign.maker().zkClientTestMode(12181, 30000).get();
+        /** init and start using in-process ZooKeeper on port 22181 **/
+        Reign reign = Reign.maker().zkTestServerPort(22181).startZkTestServer(true).zkConnectString("localhost:22181").get();
         reign.start()
 
         /**
@@ -192,7 +192,7 @@ List nodes comprising "service2":
         // Use read-only utility class that self updates using an internal observer:  
         // eventually consistent with latest configuration values in ZooKeeper
         ReignContext context = reign.getContext();
-        UpdatingConf<String,String> updatingConf = new UpdatingConf<String,String>("test", "service1/test1.conf", context);
+        UpdatingConf<String,String> updatingConf = new UpdatingConf<String,String>("test", "service1", "test1.conf", context);
         
         // will be null initially
         String value1 = updatingConf.get("key1");
