@@ -189,7 +189,7 @@ $(function() {
 	} // connectWebSocket
 
 	function handleResponse(html) {
-		//console.log(html);
+		console.log("RESPONSE:  " + html);
 
 		var response = eval('(' + html + ')');
 		if( response.body ) {
@@ -296,7 +296,7 @@ $(function() {
 			return;
 		}
 		
-    	        // service node list
+    	// service node list
 		var serviceNodeHtml = '';
 		
 		// sort node list
@@ -311,7 +311,7 @@ $(function() {
      
     	if( nodeIdList.length && nodeIdList.length>0 ) {
             for (var i = 0; i < nodeIdList.length; i++) { 
-              var nodeInfo = nodeIdList[i];
+              var nodeInfo = eval('(' + nodeIdList[i] + ')');
               var pid = nodeInfo.pid ? nodeInfo.pid : '--';
               serviceNodeHtml += '<tr><td>'+pid+'</td><td>'+nodeInfo.h+'</td><td>'+nodeInfo.ip+'</td><td>'+nodeInfo.mp+'</td></tr>';
             }
@@ -544,8 +544,6 @@ $(function() {
 	}
 	
 	connectWebSocket($('#connectHost').val());
-	
-
 	
 	
 });
