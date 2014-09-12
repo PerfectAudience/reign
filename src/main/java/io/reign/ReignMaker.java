@@ -45,6 +45,8 @@ public class ReignMaker {
 
 	private static final Logger logger = LoggerFactory.getLogger(ReignMaker.class);
 
+	public static int DEFAULT_MESSAGING_PORT_MAX = 39999;
+
 	private String zkConnectString;
 	private int zkSessionTimeout = 30000;
 
@@ -61,6 +63,9 @@ public class ReignMaker {
 	private String frameworkBasePath;
 
 	private Integer messagingPort = Reign.DEFAULT_MESSAGING_PORT;
+
+	private int messagingPortMin = Reign.DEFAULT_MESSAGING_PORT;
+	private int messagingPortMax = DEFAULT_MESSAGING_PORT_MAX;
 
 	private NodeIdProvider canonicalIdMaker = null;
 
@@ -164,10 +169,7 @@ public class ReignMaker {
 		serviceMap.put("mesg", messagingService);
 
 		if (findPortAutomatically) {
-			messagingPort = Reign.DEFAULT_MESSAGING_PORT;
-			while (!PortUtil.available(messagingPort)) {
-				messagingPort++;
-			}
+			messagingPort = PortUtil.getAvailablePort(messagingPortMin, messagingPortMax);
 		}
 
 		if (messagingPort == null) {
@@ -182,6 +184,13 @@ public class ReignMaker {
 		// alternate route for more concise messaging
 		serviceMap.put("M", messagingService);
 
+		return this;
+	}
+
+	public ReignMaker findPortAutomatically(int portMin, int portMax) {
+		this.findPortAutomatically = true;
+		this.messagingPortMin = portMin;
+		this.messagingPortMax = portMax;
 		return this;
 	}
 

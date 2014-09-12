@@ -17,17 +17,23 @@ public class PortUtil {
 
 	private static final Logger logger = LoggerFactory.getLogger(PortUtil.class);
 
+	public static int getAvailablePort(int lowerPortInclusive, int upperPortInclusive) {
+		for (int i = lowerPortInclusive; i <= upperPortInclusive; i++) {
+			if (isAvailable(i)) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
 	/**
 	 * Checks to see if a specific port is available.
 	 *
 	 * @param port
 	 *            the port to check for availability
 	 */
-	public static boolean available(int port) {
-		// if (port < MIN_PORT_NUMBER || port > MAX_PORT_NUMBER) {
-		// throw new IllegalArgumentException("Invalid start port: " + port);
-		// }
-
+	public static boolean isAvailable(int port) {
 		ServerSocket ss = null;
 		DatagramSocket ds = null;
 		try {
