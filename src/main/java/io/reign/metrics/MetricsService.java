@@ -851,8 +851,8 @@ public class MetricsService extends AbstractService {
                                     sleepIntervalMillis = updateIntervalMillis;
                                 }
                                 logger.debug(
-                                        "AggregationRunnable SLEEPING btw. services:  sleepIntervalMillis={}; memberServiceIds.size={}",
-                                        sleepIntervalMillis, memberServiceIds.size());
+                                        "AggregationRunnable SLEEPING btw. services:  sleepIntervalMillis={}; memberServiceIds.size={}; updateIntervalMillis={}",
+                                        sleepIntervalMillis, memberServiceIds.size(), updateIntervalMillis);
                                 Thread.sleep(sleepIntervalMillis);
 
                             } catch (InterruptedException e) {
@@ -939,7 +939,7 @@ public class MetricsService extends AbstractService {
                                         pathScheme.joinTokens(clusterId, serviceId, dataNode));
                                 MetricsData metricsData = getMetricsFromDataNode(clusterId, serviceId, dataNode);
                                 if (metricsData == null) {
-                                    logger.warn("Removing unrecognized/corrupted/deprecated data node:  path={}",
+                                    logger.warn("REMOVING unrecognized/corrupted/deprecated data node:  path={}",
                                             dataPath);
                                     zkClient.delete(dataPath, -1);
                                     continue;
@@ -953,7 +953,7 @@ public class MetricsService extends AbstractService {
 
                                 // delete old and expired data
                                 if (millisToExpiry <= 0 || dataTooOld) {
-                                    logger.info("Removing expired data node:  path={}; millisToExpiry={}", dataPath,
+                                    logger.info("REMOVING expired data node:  path={}; millisToExpiry={}", dataPath,
                                             millisToExpiry);
                                     zkClient.delete(dataPath, -1);
                                 } else {
