@@ -34,27 +34,29 @@ public class MetricsServiceTest {
         metricsService.setUpdateIntervalMillis(2000);
 
         presenceService = MasterTestSuite.getReign().getService("presence");
-        presenceService.announce("clusterA", "serviceA", true);
-        presenceService.announce("clusterA", "serviceB", true);
-        presenceService.announce("clusterA", "serviceC", true);
-        presenceService.announce("clusterA", "serviceD", true);
+        presenceService.announce("clusterMetrics", "serviceA", true);
+        presenceService.announce("clusterMetrics", "serviceB", true);
+        presenceService.announce("clusterMetrics", "serviceC", true);
+        presenceService.announce("clusterMetrics", "serviceD", true);
     }
 
     @Test
     public void testObserver() throws Exception {
+        presenceService.waitUntilAvailable("clusterMetrics", "serviceC", 30000);
+
         MetricRegistryManager registryManager = getMetricRegistryManager(new RotatingMetricRegistryManager(300,
                 TimeUnit.SECONDS));
         Counter observerTestCounter = registryManager.get().counter("observerTestCounter");
 
         final AtomicInteger calledCount = new AtomicInteger(0);
         final AtomicReference<MetricsData> latest = new AtomicReference<MetricsData>();
-        metricsService.observe("clusterA", "serviceC", new MetricsObserver() {
+        metricsService.observe("clusterMetrics", "serviceC", new MetricsObserver() {
             @Override
             public void updated(MetricsData updated, MetricsData previous) {
                 calledCount.incrementAndGet();
 
                 logger.debug(
-                        "*** OBSERVER:  calledCount={}; updated.observerTestCounter={}; previous.observerTestCounter={}",
+                        "*** OBSERVER (testObserver):  calledCount={}; updated.observerTestCounter={}; previous.observerTestCounter={}",
                         calledCount.get(), updated != null ? updated.getCounter("observerTestCounter") : null,
                         previous != null ? previous.getCounter("observerTestCounter") : null);
 
@@ -65,7 +67,7 @@ public class MetricsServiceTest {
             }
         });
 
-        metricsService.scheduleExport("clusterA", "serviceC", registryManager, 1, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterMetrics", "serviceC", registryManager, 1, TimeUnit.SECONDS);
 
         // has not been updated yet
         assertTrue("calledCount should be 0, but is " + calledCount.get(), calledCount.get() == 0);
@@ -93,6 +95,8 @@ public class MetricsServiceTest {
 
     @Test
     public void testIntervalNodes() throws Exception {
+        presenceService.waitUntilAvailable("clusterMetrics", "serviceD", 30000);
+
         // test that each interval creates its own data node
         final MetricRegistryManager registryManager = new RotatingMetricRegistryManager(5, TimeUnit.SECONDS);
         registryManager.registerCallback(new MetricRegistryManagerCallback() {
@@ -103,42 +107,69 @@ public class MetricsServiceTest {
                 }
             }
         });
-        metricsService.scheduleExport("clusterA", "serviceD", registryManager, 1, TimeUnit.SECONDS);
 
         Counter counter1 = registryManager.counter("c1");
         counter1.inc();
+
+        metricsService.scheduleExport("clusterMetrics", "serviceD", registryManager, 1, TimeUnit.SECONDS);
+
+        synchronized (registryManager) {
+            registryManager.wait(10000);
+        }
+
+        MetricsData metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceD");
+
+        // wait for metrics to be updated
+        for (int i = 0; i < 10; i++) {
+            metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceD");
+            if (metricsData != null && metricsData.getCounter("c1").getCount() == 1) {
+                break;
+            }
+            Thread.sleep(1000);
+        }
+
+        logger.debug("metricsData={}", JacksonUtil.getObjectMapper().writeValueAsString(metricsData));
+
+        assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() >= 1);
+        assertTrue("Unexpected value:  " + metricsData.getDataNodeInWindowCount(),
+                metricsData.getDataNodeInWindowCount() <= 1);
+        assertTrue("Unexpected value:  " + metricsData.getCounter("c1").getCount(), metricsData.getCounter("c1")
+                .getCount() == 1);
 
         synchronized (registryManager) {
             registryManager.wait(10000);
         }
 
         counter1 = registryManager.counter("c1");
-        counter1.inc();
+        counter1.inc(2);
 
-        synchronized (registryManager) {
-            registryManager.wait(10000);
+        // wait for metrics to be updated
+        for (int i = 0; i < 10; i++) {
+            metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceD");
+            if (metricsData != null && metricsData.getCounter("c1").getCount() == 2) {
+                break;
+            }
+            Thread.sleep(1000);
         }
-
-        MetricsData metricsData = metricsService.getServiceMetrics("clusterA", "serviceD");
 
         logger.debug("metricsData={}", JacksonUtil.getObjectMapper().writeValueAsString(metricsData));
 
-        assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() == 2);
+        assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() >= 2);
         assertTrue("Unexpected value:  " + metricsData.getDataNodeInWindowCount(),
                 metricsData.getDataNodeInWindowCount() <= 2);
         assertTrue("Unexpected value:  " + metricsData.getCounter("c1").getCount(), metricsData.getCounter("c1")
-                .getCount() == 1);
+                .getCount() == 2);
     }
 
     @Test
     public void testExportSelfMetrics() throws Exception {
         MetricRegistryManager registryManager = getMetricRegistryManager(new RotatingMetricRegistryManager(300,
                 TimeUnit.SECONDS));
-        metricsService.scheduleExport("clusterA", "serviceA", registryManager, 5, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterMetrics", "serviceA", registryManager, 5, TimeUnit.SECONDS);
 
-        MetricsData metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
+        MetricsData metricsData = metricsService.getMyMetrics("clusterMetrics", "serviceA");
         while (metricsData == null) {
-            metricsData = metricsService.getMyMetrics("clusterA", "serviceA");
+            metricsData = metricsService.getMyMetrics("clusterMetrics", "serviceA");
             Thread.sleep(1000);
         }
 
@@ -186,15 +217,15 @@ public class MetricsServiceTest {
     @Test
     public void testExportServiceMetrics() throws Exception {
         MetricRegistryManager registryManager1 = getMetricRegistryManager(new StaticMetricRegistryManager());
-        metricsService.scheduleExport("clusterA", "serviceB", "node1", registryManager1, 1, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterMetrics", "serviceB", "node1", registryManager1, 1, TimeUnit.SECONDS);
 
         MetricRegistryManager registryManager2 = getMetricRegistryManager(new StaticMetricRegistryManager());
-        metricsService.scheduleExport("clusterA", "serviceB", "node2", registryManager2, 1, TimeUnit.SECONDS);
+        metricsService.scheduleExport("clusterMetrics", "serviceB", "node2", registryManager2, 1, TimeUnit.SECONDS);
 
         // get service metrics, but wait for both service nodes to be there
         // before checking values
         MetricsData metricsData = null;
-        while ((metricsData = metricsService.getServiceMetrics("clusterA", "serviceB")) == null
+        while ((metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceB")) == null
                 || metricsData.getDataNodeCount() < 2) {
             // wait for aggregation to happen
             Thread.sleep(metricsService.getUpdateIntervalMillis() / 2);
