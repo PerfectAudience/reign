@@ -42,10 +42,10 @@ Reign can also be started in bootstrap mode where it will spin up an in-process 
 
 ### Inclusion in Maven projects
 
-Reign can be included in a Maven project with the following POM file snippet.  Using classifier "shaded" will use a jar that hides most of Reign's dependencies from your project:  this may help with dependency conflicts in more complex projects and is the preferred way of integrating Reign.
+Reign is not yet in a central repository, but if built and uploaded to a private repository, it can be included in a Maven project with the following POM file snippet.  Using classifier "shaded" will use a jar that hides most of Reign's dependencies from your project:  this may help with dependency conflicts in more complex projects and is the preferred way of integrating Reign.
 
         <dependency>
-            <groupId>io</groupId>
+            <groupId>io.reign</groupId>
             <artifactId>reign</artifactId>
             <version>REIGN_VERSION</version>
             
