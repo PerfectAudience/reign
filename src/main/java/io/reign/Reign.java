@@ -241,6 +241,10 @@ public class Reign implements Watcher {
         return (MetricsService) getService("metrics");
     }
 
+    public LeaseService lease() {
+        return (LeaseService) getService("lease");
+    }
+
     public ReignContext context() {
         if (!started) {
             throw new IllegalStateException("Cannot get context before framework is started!");
