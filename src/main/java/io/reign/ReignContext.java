@@ -16,6 +16,11 @@
 
 package io.reign;
 
+import io.reign.lease.LeaseService;
+import io.reign.mesg.MessagingService;
+import io.reign.metrics.MetricsService;
+import io.reign.presence.PresenceService;
+
 import java.util.List;
 
 import org.apache.zookeeper.data.ACL;
@@ -28,31 +33,24 @@ import org.apache.zookeeper.data.ACL;
  */
 public interface ReignContext {
 
-	public <T extends Service> T getService(String serviceName);
+    public <T extends Service> T getService(String serviceName);
 
-	// /**
-	// *
-	// * @return NEW instance of CanonicalId
-	// */
-	// public CanonicalId getCanonicalId();
+    public String getNodeId();
 
-	// public String getCanonicalIdPathToken();
+    public ZkClient getZkClient();
 
-	// public NodeIdProvider getNodeIdProvider();
+    public PathScheme getPathScheme();
 
-	public String getNodeId();
+    public List<ACL> getDefaultZkAclList();
 
-	// public ZkNodeId getZkNodeId();
-	//
-	// public NodeId getNodeIdFromZk(ZkNodeId zkNodeId);
+    public ObserverManager getObserverManager();
 
-	public ZkClient getZkClient();
+    public PresenceService presence();
 
-	public PathScheme getPathScheme();
+    public MessagingService mesg();
 
-	public List<ACL> getDefaultZkAclList();
+    public MetricsService metrics();
 
-	public ObserverManager getObserverManager();
+    public LeaseService lease();
 
-	// public PathCache getPathCache();
 }
