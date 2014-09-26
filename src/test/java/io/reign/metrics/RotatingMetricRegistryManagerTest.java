@@ -35,7 +35,7 @@ public class RotatingMetricRegistryManagerTest {
     public void setUp() throws Exception {
 
         metricsService = MasterTestSuite.getReign().getService("metrics");
-        metricsService.setUpdateIntervalMillis(3000);
+        metricsService.setAggregationIntervalMillis(3000);
 
         presenceService = MasterTestSuite.getReign().getService("presence");
         presenceService.announce("clusterZ", "serviceZ", true);
