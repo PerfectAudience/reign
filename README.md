@@ -395,13 +395,13 @@ Upcoming in 0.2.x
 
 * Web Socket API support for coordination service 
 * Web Socket API support for metrics service
-* Dashboard UI that allows navigation and viewing of service and node level metrics
 
 
 Upcoming in 0.3.x
 -----------------
 
 * Consistent hash service
+* Leases instead of Locking
 * Migration of UI to AngularJS?
 * Clarification of data service API
 * Clarification of request/response protocol
