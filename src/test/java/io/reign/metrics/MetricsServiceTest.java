@@ -24,16 +24,16 @@ import com.codahale.metrics.Timer;
 public class MetricsServiceTest {
     private static final Logger logger = LoggerFactory.getLogger(MetricsServiceTest.class);
 
-    private MetricsService metricsService;
+    private DefaultMetricsService metricsService;
     private PresenceService presenceService;
 
     @Before
     public void setUp() throws Exception {
 
         metricsService = MasterTestSuite.getReign().getService("metrics");
-        metricsService.setUpdateIntervalMillis(2000);
+        metricsService.setAggregationIntervalMillis(1000);
 
-        presenceService = MasterTestSuite.getReign().getService("presence");
+        presenceService = MasterTestSuite.getReign().presence();
         presenceService.announce("clusterMetrics", "serviceA", true);
         presenceService.announce("clusterMetrics", "serviceB", true);
         presenceService.announce("clusterMetrics", "serviceC", true);
@@ -57,8 +57,9 @@ public class MetricsServiceTest {
 
                 logger.debug(
                         "*** OBSERVER (testObserver):  calledCount={}; updated.observerTestCounter={}; previous.observerTestCounter={}",
-                        calledCount.get(), updated != null ? updated.getCounter("observerTestCounter") : null,
-                        previous != null ? previous.getCounter("observerTestCounter") : null);
+                        calledCount.get(), updated != null ? updated.getCounter("observerTestCounter").getCount()
+                                : null,
+                        previous != null ? previous.getCounter("observerTestCounter").getCount() : null);
 
                 latest.set(updated);
                 synchronized (calledCount) {
@@ -74,9 +75,9 @@ public class MetricsServiceTest {
 
         // wait for update
         synchronized (calledCount) {
-            calledCount.wait(metricsService.getUpdateIntervalMillis() * 4 + 5000);
+            calledCount.wait(metricsService.getAggregationIntervalMillis() * 4 + 5000);
         }
-        assertTrue("Expected 1, got " + calledCount.get(), calledCount.get() == 1);
+        assertTrue("Expected 1, got " + calledCount.get(), calledCount.get() >= 1);
 
         // force a change so observer will be called again
         long previousValue = observerTestCounter.getCount();
@@ -84,7 +85,7 @@ public class MetricsServiceTest {
 
         // wait for update
         synchronized (calledCount) {
-            calledCount.wait(metricsService.getUpdateIntervalMillis() * 4 + 5000);
+            calledCount.wait(metricsService.getAggregationIntervalMillis() * 4 + 5000);
         }
         assertTrue("calledCount should be >1, but is " + calledCount.get(), calledCount.get() > 1);
         assertTrue("latest.observerTestCounter should be " + (previousValue + 1) + ", but is "
@@ -97,13 +98,32 @@ public class MetricsServiceTest {
     public void testIntervalNodes() throws Exception {
         presenceService.waitUntilAvailable("clusterMetrics", "serviceD", 30000);
 
+        int secondsToWait = metricsService.getAggregationIntervalMillis() / 1000 * 8;
+
         // test that each interval creates its own data node
-        final MetricRegistryManager registryManager = new RotatingMetricRegistryManager(5, TimeUnit.SECONDS);
+        final MetricRegistryManager registryManager = new RotatingMetricRegistryManager(secondsToWait,
+                TimeUnit.SECONDS);
+
+        // lock object for rotations
+        final Object rotationLockObject = new Object();
+
+        // lock object for service metrics updates
+        final Object serviceMetricsUpdatesLockObject = new Object();
+
         registryManager.registerCallback(new MetricRegistryManagerCallback() {
             @Override
             public void rotated(MetricRegistry current, MetricRegistry previous) {
-                synchronized (registryManager) {
-                    registryManager.notifyAll();
+                synchronized (rotationLockObject) {
+                    rotationLockObject.notifyAll();
+                }
+            }
+        });
+
+        metricsService.observe("clusterMetrics", "serviceD", new MetricsObserver() {
+            @Override
+            public void updated(MetricsData updated, MetricsData previous) {
+                synchronized (serviceMetricsUpdatesLockObject) {
+                    serviceMetricsUpdatesLockObject.notifyAll();
                 }
             }
         });
@@ -113,22 +133,24 @@ public class MetricsServiceTest {
 
         metricsService.scheduleExport("clusterMetrics", "serviceD", registryManager, 1, TimeUnit.SECONDS);
 
-        synchronized (registryManager) {
-            registryManager.wait(10000);
-        }
-
-        MetricsData metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceD");
-
         // wait for metrics to be updated
-        for (int i = 0; i < 10; i++) {
+        MetricsData metricsData = null;
+        for (int i = 0; i < secondsToWait; i++) {
+            synchronized (serviceMetricsUpdatesLockObject) {
+                serviceMetricsUpdatesLockObject.wait(metricsService.getAggregationIntervalMillis());
+            }
             metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceD");
-            if (metricsData != null && metricsData.getCounter("c1").getCount() == 1) {
+            if (metricsData != null && metricsData.getCounter("c1") != null
+                    && metricsData.getCounter("c1").getCount() == 1) {
                 break;
             }
-            Thread.sleep(1000);
         }
 
-        logger.debug("metricsData={}", JacksonUtil.getObjectMapper().writeValueAsString(metricsData));
+        logger.debug("testIntervalNodes():  1:  secondsToWait={};  metricsData={}", secondsToWait,
+                JacksonUtil.getObjectMapper().writeValueAsString(metricsData));
+        logger.debug("MY! metricsData.counter(c1)={}", metricsService.getMyMetrics("clusterMetrics", "serviceD")
+                .getCounter("c1")
+                .getCount());
 
         assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() >= 1);
         assertTrue("Unexpected value:  " + metricsData.getDataNodeInWindowCount(),
@@ -136,27 +158,31 @@ public class MetricsServiceTest {
         assertTrue("Unexpected value:  " + metricsData.getCounter("c1").getCount(), metricsData.getCounter("c1")
                 .getCount() == 1);
 
-        synchronized (registryManager) {
-            registryManager.wait(10000);
+        synchronized (rotationLockObject) {
+            rotationLockObject.wait(secondsToWait * 1000);
         }
 
         counter1 = registryManager.counter("c1");
         counter1.inc(2);
 
         // wait for metrics to be updated
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < secondsToWait; i++) {
+            synchronized (serviceMetricsUpdatesLockObject) {
+                serviceMetricsUpdatesLockObject.wait(metricsService.getAggregationIntervalMillis());
+            }
             metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceD");
-            if (metricsData != null && metricsData.getCounter("c1").getCount() == 2) {
+            if (metricsData != null && metricsData.getCounter("c1") != null
+                    && metricsData.getCounter("c1").getCount() == 2) {
                 break;
             }
-            Thread.sleep(1000);
         }
 
-        logger.debug("metricsData={}", JacksonUtil.getObjectMapper().writeValueAsString(metricsData));
+        logger.debug("testIntervalNodes():  2:  secondsToWait={}; metricsData={}", secondsToWait,
+                JacksonUtil.getObjectMapper().writeValueAsString(metricsData));
 
-        assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() >= 2);
+        assertTrue("Unexpected value:  " + metricsData.getDataNodeCount(), metricsData.getDataNodeCount() >= 1);
         assertTrue("Unexpected value:  " + metricsData.getDataNodeInWindowCount(),
-                metricsData.getDataNodeInWindowCount() <= 2);
+                metricsData.getDataNodeInWindowCount() <= 1);
         assertTrue("Unexpected value:  " + metricsData.getCounter("c1").getCount(), metricsData.getCounter("c1")
                 .getCount() == 2);
     }
@@ -228,7 +254,7 @@ public class MetricsServiceTest {
         while ((metricsData = metricsService.getServiceMetrics("clusterMetrics", "serviceB")) == null
                 || metricsData.getDataNodeCount() < 2) {
             // wait for aggregation to happen
-            Thread.sleep(metricsService.getUpdateIntervalMillis() / 2);
+            Thread.sleep(metricsService.getAggregationIntervalMillis() / 2);
         }
 
         // counters
