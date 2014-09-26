@@ -862,16 +862,18 @@ public class DefaultMetricsService extends AbstractService implements MetricsSer
                         if (i == memberServiceIds.size() - 1) {
                             try {
                                 long elapsedMillis = (System.nanoTime() - startTimeNanos) / 1000000;
-                                long sleepIntervalMillis = (aggregationIntervalMillis - elapsedMillis) / 2;
-                                if (sleepIntervalMillis < 0) {
-                                    sleepIntervalMillis = aggregationIntervalMillis;
+                                long sleepIntervalMillis = (aggregationIntervalMillis - elapsedMillis)
+                                        / Math.max(memberServiceIds.size() - 1, 1);
+                                if (sleepIntervalMillis > 0) {
+                                    if (logger.isDebugEnabled()) {
+                                        logger.debug(
+                                                "AggregationRunnable SLEEPING btw. services:  elapsedMillis={}; sleepIntervalMillis={}; memberServiceIds.size={}; aggregationIntervalMillis={}; clusterId={}; serviceId={}; Math.max(memberServiceIds.size() - 1, 1)={}",
+                                                elapsedMillis, sleepIntervalMillis, memberServiceIds.size(),
+                                                aggregationIntervalMillis,
+                                                clusterId, serviceId, Math.max(memberServiceIds.size() - 1, 1));
+                                    }
+                                    Thread.sleep(sleepIntervalMillis);
                                 }
-                                logger.debug(
-                                        "AggregationRunnable SLEEPING btw. services:  elapsedMillis={}; sleepIntervalMillis={}; memberServiceIds.size={}; aggregationIntervalMillis={}; clusterId={}; serviceId={}",
-                                        elapsedMillis, sleepIntervalMillis, memberServiceIds.size(),
-                                        aggregationIntervalMillis,
-                                        clusterId, serviceId);
-                                Thread.sleep(sleepIntervalMillis);
 
                             } catch (InterruptedException e) {
                                 logger.warn("Interrupted while sleeping at end of aggregation:  " + e, e);
