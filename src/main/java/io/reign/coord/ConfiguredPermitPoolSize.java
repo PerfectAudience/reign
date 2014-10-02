@@ -16,8 +16,6 @@
 
 package io.reign.coord;
 
-import io.reign.DataSerializer;
-import io.reign.JsonDataSerializer;
 import io.reign.conf.ConfObserver;
 import io.reign.conf.ConfService;
 
@@ -122,7 +120,6 @@ public class ConfiguredPermitPoolSize extends ConfObserver<Map<String, String>> 
         semaphoreConf.put("permitPoolSize", Integer.toString(permitPoolSize));
 
         // write out to ZK
-        DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         confService.putConf(clusterId,
                 confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName) + ".json",
                 semaphoreConf);
@@ -141,7 +138,6 @@ public class ConfiguredPermitPoolSize extends ConfObserver<Map<String, String>> 
     public static Map<String, String> getSemaphoreConf(ConfService confService, String clusterId, String semaphoreName,
             ConfObserver<Map<String, String>> confObserver) {
         // read configuration
-        DataSerializer<Map<String, String>> confSerializer = new JsonDataSerializer<Map<String, String>>();
         Map<String, String> semaphoreConf = confService.getConf(clusterId,
                 confService.getPathScheme().joinPaths(ReservationType.SEMAPHORE.category(), semaphoreName) + ".json",
                 confObserver);

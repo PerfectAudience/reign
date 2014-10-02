@@ -18,8 +18,8 @@ package io.reign.presence;
 
 import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
-import io.reign.JsonDataSerializer;
 import io.reign.NodeId;
+import io.reign.data.MapDataSerializer;
 
 import java.util.List;
 import java.util.Map;
@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public abstract class PresenceObserver<T> extends AbstractObserver {
 
-    private static final DataSerializer<Map<String, String>> nodeAttributeSerializer = new JsonDataSerializer<Map<String, String>>();
+    private static final DataSerializer<Map<String, String>> nodeAttributeSerializer = new MapDataSerializer<Map<String, String>>();
 
     private String clusterId = null;
     private String serviceId = null;

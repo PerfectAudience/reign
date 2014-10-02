@@ -15,8 +15,8 @@ package io.reign.conf;
 
 import io.reign.AbstractService;
 import io.reign.DataSerializer;
-import io.reign.JsonDataSerializer;
 import io.reign.PathType;
+import io.reign.data.MapDataSerializer;
 import io.reign.mesg.ParsedRequestMessage;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ConfService extends AbstractService {
 
-    static final DataSerializer DEFAULT_CONF_SERIALIZER = new JsonDataSerializer();
+    static final DataSerializer DEFAULT_CONF_SERIALIZER = new MapDataSerializer();
 
     private static final Logger logger = LoggerFactory.getLogger(ConfService.class);
 
