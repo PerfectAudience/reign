@@ -9,15 +9,15 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
  */
 @JsonSerialize(using = ResponseStatusSerializer.class)
 public enum ResponseStatus {
-    OK((byte) 0), ERROR_UNEXPECTED((byte) -1);
+	OK((byte) 0), ERROR_UNEXPECTED((byte) -1), ERROR_TIMED_OUT((byte) -2);
 
-    private int code;
+	private int code;
 
-    ResponseStatus(int code) {
-        this.code = code;
-    }
+	ResponseStatus(int code) {
+		this.code = code;
+	}
 
-    public int code() {
-        return this.code;
-    }
+	public int code() {
+		return this.code;
+	}
 }

@@ -311,7 +311,7 @@ public class CoordinationService extends AbstractService {
 
 		try {
 			if (logger.isTraceEnabled()) {
-				logger.trace("Received message:  nodeId={}; request='{}:{}'", requestMessage.getSenderId(),
+				logger.trace("Received message:  nodeId={}; request='{}:{}'", requestMessage.getSenderInfo(),
 				        requestMessage.getTargetService(), requestMessage.getBody());
 			}
 

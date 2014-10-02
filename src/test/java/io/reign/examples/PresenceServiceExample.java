@@ -16,8 +16,9 @@
 
 package io.reign.examples;
 
+import io.reign.NodeInfo;
 import io.reign.Reign;
-import io.reign.presence.NodeInfo;
+import io.reign.ServiceNodeInfo;
 import io.reign.presence.PresenceObserver;
 import io.reign.presence.PresenceService;
 import io.reign.presence.ServiceInfo;
@@ -38,164 +39,165 @@ import org.slf4j.LoggerFactory;
  */
 public class PresenceServiceExample {
 
-    private static final Logger logger = LoggerFactory.getLogger(PresenceServiceExample.class);
+	private static final Logger logger = LoggerFactory.getLogger(PresenceServiceExample.class);
 
-    public static void main(String[] args) throws Exception {
-        /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).pathCache(1024, 8).get();
-        reign.start();
+	public static void main(String[] args) throws Exception {
+		/** init and start reign using builder **/
+		Reign reign = Reign.maker().zkClient("localhost:12181", 30000).findPortAutomatically(true).pathCache(1024, 8)
+		        .get();
+		reign.start();
 
-        /** presence service example **/
-        presenceServiceExample(reign);
+		/** presence service example **/
+		presenceServiceExample(reign);
 
-        /** sleep to allow examples to run for a bit **/
-        Thread.sleep(600000);
+		/** sleep to allow examples to run for a bit **/
+		Thread.sleep(600000);
 
-        /** shutdown reign **/
-        reign.stop();
+		/** shutdown reign **/
+		reign.stop();
 
-        /** sleep a bit to observe observer callbacks **/
-        Thread.sleep(10000);
-    }
+		/** sleep a bit to observe observer callbacks **/
+		Thread.sleep(10000);
+	}
 
-    public static void presenceServiceExample(Reign reign) throws Exception {
-        // get presence service
-        final PresenceService presenceService = reign.getService("presence");
+	public static void presenceServiceExample(Reign reign) throws Exception {
+		// get presence service
+		final PresenceService presenceService = reign.getService("presence");
 
-        // separate thread to exercise waitUntilAvailable for ServiceInfo
-        Thread t1 = new Thread() {
-            @Override
-            public void run() {
-                ServiceInfo serviceInfo = presenceService.waitUntilAvailable("examples", "service1", -1);
-                presenceService.observe("examples", "service1", new PresenceObserver<ServiceInfo>() {
-                    @Override
-                    public void updated(ServiceInfo updated, ServiceInfo previous) {
-                        if (updated != null) {
-                            logger.info("***** T1:  Observer:  serviceInfo={}",
-                                    ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
-                        } else {
-                            logger.info("***** T1:  Observer:  serviceInfo deleted");
-                        }
-                    }
-                });
-                logger.info("T1:  serviceInfo={}",
-                        ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
-            }
-        };
-        t1.start();
+		// separate thread to exercise waitUntilAvailable for ServiceInfo
+		Thread t1 = new Thread() {
+			@Override
+			public void run() {
+				ServiceInfo serviceInfo = presenceService.waitUntilAvailable("examples", "service1", -1);
+				presenceService.observe("examples", "service1", new PresenceObserver<ServiceInfo>() {
+					@Override
+					public void updated(ServiceInfo updated, ServiceInfo previous) {
+						if (updated != null) {
+							logger.info("***** T1:  Observer:  serviceInfo={}",
+							        ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
+						} else {
+							logger.info("***** T1:  Observer:  serviceInfo deleted");
+						}
+					}
+				});
+				logger.info("T1:  serviceInfo={}",
+				        ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
+			}
+		};
+		t1.start();
 
-        // separate thread to exercise waitUntilAvailable for NodeInfo
-        Thread t2 = new Thread() {
-            @Override
-            public void run() {
-                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1", -1);
-                presenceService.observe("examples", "service1", "node1", new PresenceObserver<NodeInfo>() {
-                    @Override
-                    public void updated(NodeInfo updated, NodeInfo previous) {
-                        if (updated != null) {
-                            logger.info("***** T2:  Observer:  nodeInfo={}",
-                                    ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
-                        } else {
-                            logger.info("***** T2:  Observer:  nodeInfo deleted");
-                        }
-                    }
-                });
-                logger.info("T2:  nodeInfo={}",
-                        ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
-            }
-        };
-        t2.start();
+		// separate thread to exercise waitUntilAvailable for NodeInfo
+		Thread t2 = new Thread() {
+			@Override
+			public void run() {
+				NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1", -1);
+				presenceService.observe("examples", "service1", "node1", new PresenceObserver<NodeInfo>() {
+					@Override
+					public void updated(NodeInfo updated, NodeInfo previous) {
+						if (updated != null) {
+							logger.info("***** T2:  Observer:  nodeInfo={}",
+							        ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
+						} else {
+							logger.info("***** T2:  Observer:  nodeInfo deleted");
+						}
+					}
+				});
+				logger.info("T2:  nodeInfo={}",
+				        ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
+			}
+		};
+		t2.start();
 
-        Thread t3 = new Thread() {
-            @Override
-            public void run() {
-                NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1", 1);
-                presenceService.observe("examples", "service1", "node1", new PresenceObserver<NodeInfo>() {
-                    @Override
-                    public void updated(NodeInfo updated, NodeInfo previous) {
-                        if (updated != null) {
-                            logger.info("***** T3:  Observer:  nodeInfo={}",
-                                    ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
-                        } else {
-                            logger.info("***** T3:  Observer:  nodeInfo deleted");
-                        }
-                    }
-                });
-                logger.info("T3:  nodeInfo={}",
-                        ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
-            }
-        };
-        t3.start();
+		Thread t3 = new Thread() {
+			@Override
+			public void run() {
+				NodeInfo nodeInfo = presenceService.waitUntilAvailable("examples", "service1", "node1", 1);
+				presenceService.observe("examples", "service1", "node1", new PresenceObserver<NodeInfo>() {
+					@Override
+					public void updated(NodeInfo updated, NodeInfo previous) {
+						if (updated != null) {
+							logger.info("***** T3:  Observer:  nodeInfo={}",
+							        ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
+						} else {
+							logger.info("***** T3:  Observer:  nodeInfo deleted");
+						}
+					}
+				});
+				logger.info("T3:  nodeInfo={}",
+				        ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
+			}
+		};
+		t3.start();
 
-        Thread.sleep(3000);
+		Thread.sleep(3000);
 
-        // try to retrieve service info (which may not be immediately
-        // available); include observer to be notified of changes in service
-        // info
-        ServiceInfo serviceInfo = presenceService.getServiceInfo("examples", "service1",
-                new PresenceObserver<ServiceInfo>() {
-                    @Override
-                    public void updated(ServiceInfo updated, ServiceInfo previous) {
-                        if (updated != null) {
-                            logger.info("***** Observer:  serviceInfo={}",
-                                    ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
-                        } else {
-                            logger.info("***** Observer:  serviceInfo deleted");
-                        }
-                    }
-                });
-        logger.info("serviceInfo={}", ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
+		// try to retrieve service info (which may not be immediately
+		// available); include observer to be notified of changes in service
+		// info
+		ServiceInfo serviceInfo = presenceService.getServiceInfo("examples", "service1",
+		        new PresenceObserver<ServiceInfo>() {
+			        @Override
+			        public void updated(ServiceInfo updated, ServiceInfo previous) {
+				        if (updated != null) {
+					        logger.info("***** Observer:  serviceInfo={}",
+					                ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
+				        } else {
+					        logger.info("***** Observer:  serviceInfo deleted");
+				        }
+			        }
+		        });
+		logger.info("serviceInfo={}", ReflectionToStringBuilder.toString(serviceInfo, ToStringStyle.DEFAULT_STYLE));
 
-        // try to retrieve node info (which may not be immediately
-        // available); include observer to be notified of changes in node
-        // info
-        NodeInfo nodeInfo = presenceService.getNodeInfo("examples", "service2", "node1",
-                new PresenceObserver<NodeInfo>() {
-                    @Override
-                    public void updated(NodeInfo updated, NodeInfo previous) {
-                        if (updated != null) {
-                            logger.info("***** Observer:  nodeInfo={}",
-                                    ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
+		// try to retrieve node info (which may not be immediately
+		// available); include observer to be notified of changes in node
+		// info
+		ServiceNodeInfo nodeInfo = presenceService.getNodeInfo("examples", "service2", "node1",
+		        new PresenceObserver<ServiceNodeInfo>() {
+			        @Override
+			        public void updated(ServiceNodeInfo updated, ServiceNodeInfo previous) {
+				        if (updated != null) {
+					        logger.info("***** Observer:  nodeInfo={}",
+					                ReflectionToStringBuilder.toString(updated, ToStringStyle.DEFAULT_STYLE));
 
-                        } else {
-                            logger.info("***** Observer:  nodeInfo deleted");
-                        }
-                    }
-                });
-        logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
+				        } else {
+					        logger.info("***** Observer:  nodeInfo deleted");
+				        }
+			        }
+		        });
+		logger.info("nodeInfo={}", ReflectionToStringBuilder.toString(nodeInfo, ToStringStyle.DEFAULT_STYLE));
 
-        // basic service node announcement
-        presenceService.announce("examples", "service1", true);
+		// basic service node announcement
+		presenceService.announce("examples", "service1", true);
 
-        // service node announcement with some additional info
-        Map<String, String> nodeAttributes = new HashMap<String, String>();
-        nodeAttributes.put("port", "1234");
-        presenceService.announce("examples", "service2", true, nodeAttributes);
+		// service node announcement with some additional info
+		Map<String, String> nodeAttributes = new HashMap<String, String>();
+		nodeAttributes.put("port", "1234");
+		presenceService.announce("examples", "service2", true, nodeAttributes);
 
-        // sleep a bit
-        Thread.sleep(10000);
+		// sleep a bit
+		Thread.sleep(10000);
 
-        presenceService.hide("examples", "service2");
+		presenceService.hide("examples", "service2");
 
-        // sleep a bit
-        Thread.sleep(10000);
+		// sleep a bit
+		Thread.sleep(10000);
 
-        presenceService.show("examples", "service2");
+		presenceService.show("examples", "service2");
 
-        // new node available in service
-        presenceService.announce("examples", "service1", true);
+		// new node available in service
+		presenceService.announce("examples", "service1", true);
 
-        // sleep a bit
-        Thread.sleep(10000);
+		// sleep a bit
+		Thread.sleep(10000);
 
-        // new node available in service
-        presenceService.hide("examples", "service1");
+		// new node available in service
+		presenceService.hide("examples", "service1");
 
-        // reannounce service with changed attributes
-        // service node announcement with some additional info
-        nodeAttributes = new HashMap<String, String>();
-        nodeAttributes.put("port", "9999");
-        presenceService.announce("examples", "service2", true, nodeAttributes);
+		// reannounce service with changed attributes
+		// service node announcement with some additional info
+		nodeAttributes = new HashMap<String, String>();
+		nodeAttributes.put("port", "9999");
+		presenceService.announce("examples", "service2", true, nodeAttributes);
 
-    }
+	}
 }

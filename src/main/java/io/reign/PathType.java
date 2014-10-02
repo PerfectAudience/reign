@@ -52,6 +52,12 @@ public enum PathType {
         public String toString() {
             return "presence";
         }
+    },
+    LEASE {
+        @Override
+        public String toString() {
+            return "lease";
+        }
     };
 
 }

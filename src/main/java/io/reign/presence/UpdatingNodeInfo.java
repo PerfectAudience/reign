@@ -16,9 +16,9 @@
 
 package io.reign.presence;
 
-import io.reign.NodeId;
 import io.reign.PathType;
 import io.reign.ReignContext;
+import io.reign.ServiceNodeInfo;
 
 import java.util.Map;
 
@@ -27,42 +27,38 @@ import java.util.Map;
  * @author ypai
  * 
  */
-public class UpdatingNodeInfo implements NodeInfo {
+public class UpdatingNodeInfo implements ServiceNodeInfo {
 
-	private volatile NodeInfo nodeInfo;
+	private volatile ServiceNodeInfo nodeInfo;
 	private final String clusterId;
 	private final String serviceId;
-	private NodeId nodeId;
+	private final String nodeId;
 	private final ReignContext context;
-	private final PresenceObserver<NodeInfo> observer;
+	private final PresenceObserver<ServiceNodeInfo> observer;
 
-	public UpdatingNodeInfo(String clusterId, String serviceId, NodeId nodeId,
-			ReignContext context) {
+	public UpdatingNodeInfo(String clusterId, String serviceId, String nodeId, ReignContext context) {
 		if (clusterId == null && serviceId == null && nodeId == null) {
-			throw new IllegalArgumentException(
-					"clusterId, serviceId, nodeId cannot be null!");
+			throw new IllegalArgumentException("clusterId, serviceId, nodeId cannot be null!");
 		}
 
 		this.clusterId = clusterId;
 		this.serviceId = serviceId;
 		this.nodeId = nodeId;
+
 		this.context = context;
-		this.observer = new PresenceObserver<NodeInfo>() {
+		this.observer = new PresenceObserver<ServiceNodeInfo>() {
 			@Override
-			public void updated(NodeInfo updated, NodeInfo previous) {
+			public void updated(ServiceNodeInfo updated, ServiceNodeInfo previous) {
 				nodeInfo = updated;
 			}
 		};
 
 		PresenceService presenceService = context.getService("presence");
-		nodeInfo = presenceService.getNodeInfo(clusterId, serviceId, context
-				.getPathScheme().toPathToken(nodeId), observer);
+		nodeInfo = presenceService.getNodeInfo(clusterId, serviceId, nodeId, observer);
 	}
 
 	public void destroy() {
-		String path = context.getPathScheme().getAbsolutePath(
-				PathType.PRESENCE, clusterId, serviceId,
-				context.getPathScheme().toPathToken(nodeId));
+		String path = context.getPathScheme().getAbsolutePath(PathType.PRESENCE, clusterId, serviceId, nodeId);
 		context.getObserverManager().remove(path, observer);
 	}
 
@@ -81,23 +77,48 @@ public class UpdatingNodeInfo implements NodeInfo {
 	}
 
 	public String getClusterId() {
-		if (nodeInfo == null) {
-			return null;
-		}
-		return nodeInfo.getClusterId();
+		return clusterId;
 	}
 
 	public String getServiceId() {
-		if (nodeInfo == null) {
-			return null;
-		}
-		return nodeInfo.getServiceId();
+		return serviceId;
 	}
 
-	public NodeId getNodeId() {
+	@Override
+	public String getNodeId() {
+		return nodeId;
+	}
+
+	@Override
+	public String getProcessId() {
 		if (nodeInfo == null) {
 			return null;
 		}
-		return nodeInfo.getNodeId();
+		return nodeInfo.getProcessId();
 	}
+
+	@Override
+	public String getIpAddress() {
+		if (nodeInfo == null) {
+			return null;
+		}
+		return nodeInfo.getIpAddress();
+	}
+
+	@Override
+	public String getHost() {
+		if (nodeInfo == null) {
+			return null;
+		}
+		return nodeInfo.getHost();
+	}
+
+	@Override
+	public Integer getMessagingPort() {
+		if (nodeInfo == null) {
+			return null;
+		}
+		return nodeInfo.getMessagingPort();
+	}
+
 }

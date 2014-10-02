@@ -14,26 +14,15 @@
  limitations under the License.
  */
 
-package io.reign.presence;
-
-import io.reign.NodeId;
-
-import java.util.Map;
+package io.reign;
 
 /**
  * 
  * @author ypai
  * 
  */
-public interface NodeInfo {
+public interface NodeInfo extends NodeAddress {
 
-    public Object getAttribute(String key);
+	public String getProcessId();
 
-    public Map<String, String> getAttributeMap();
-
-    public String getClusterId();
-
-    public String getServiceId();
-
-    public NodeId getNodeId();
 }

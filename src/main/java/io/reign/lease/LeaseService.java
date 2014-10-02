@@ -1,5 +1,5 @@
 /*
- Copyright 2013 Yen Pai ypai@reign.io
+ Copyright 2014 Yen Pai ypai@reign.io
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,21 +14,17 @@
  limitations under the License.
  */
 
-package io.reign.mesg;
+package io.reign.lease;
 
-import io.reign.NodeAddress;
+import io.reign.Service;
 
 /**
- * No-op callback for fire and forget scenarios.
  * 
  * @author ypai
  * 
  */
-public class NullMessagingCallback implements MessagingCallback {
+public interface LeaseService extends Service {
 
-	@Override
-	public void response(String clusterId, String serviceId, NodeAddress nodeInfo, ResponseMessage responseMessage) {
-
-	}
+    public void get(String clusterId, String leaseId, LeaseEventHandler leaseHandler);
 
 }

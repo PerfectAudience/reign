@@ -18,8 +18,11 @@ import io.reign.coord.CoordinationService;
 import io.reign.data.DataService;
 import io.reign.mesg.DefaultMessagingService;
 import io.reign.mesg.MessagingService;
+import io.reign.metrics.DefaultMetricsService;
 import io.reign.metrics.MetricsService;
+import io.reign.presence.DefaultPresenceService;
 import io.reign.presence.PresenceService;
+import io.reign.util.PortUtil;
 import io.reign.zk.PathCache;
 import io.reign.zk.ResilientZkClient;
 import io.reign.zk.SimplePathCache;
@@ -42,297 +45,356 @@ import org.slf4j.LoggerFactory;
  */
 public class ReignMaker {
 
-	private static final Logger logger = LoggerFactory.getLogger(ReignMaker.class);
+    private static final Logger logger = LoggerFactory.getLogger(ReignMaker.class);
 
-	private String zkConnectString;
-	private int zkSessionTimeout = 30000;
+    public static int DEFAULT_MESSAGING_PORT_MAX = 39999;
 
-	private int pathCacheMaxSize = 1024;
-	private int pathCacheMaxConcurrencyLevel = 2;
+    private String zkConnectString;
+    private int zkSessionTimeout = 30000;
 
-	private PathCache pathCache = null;
-	private ZkClient zkClient = null;
+    private int pathCacheMaxSize = 1024;
+    private int pathCacheMaxConcurrencyLevel = 2;
 
-	private PathScheme pathScheme = null;
+    private PathCache pathCache = null;
+    private ZkClient zkClient = null;
 
-	private String frameworkClusterId;
+    private PathScheme pathScheme = null;
 
-	private String frameworkBasePath;
+    private String frameworkClusterId;
 
-	private Integer messagingPort = Reign.DEFAULT_MESSAGING_PORT;
+    private String frameworkBasePath;
 
-	private NodeIdProvider canonicalIdMaker = null;
+    private Integer messagingPort = Reign.DEFAULT_MESSAGING_PORT;
 
-	private final Map<String, Service> serviceMap = new HashMap<String, Service>();
+    private int messagingPortMin = Reign.DEFAULT_MESSAGING_PORT;
+    private int messagingPortMax = DEFAULT_MESSAGING_PORT_MAX;
 
-	private TestingServer zkTestServer;
+    private NodeIdProvider canonicalIdMaker = null;
 
-	private Runnable startHook;
-	private Runnable stopHook;
+    private final Map<String, Service> serviceMap = new HashMap<String, Service>();
 
-	public ReignMaker startHook(Runnable startHook) {
-		this.startHook = startHook;
-		return this;
-	}
+    private boolean startZkTestServer = false;
+    private int zkTestServerPort = 22181;
 
-	public ReignMaker stopHook(Runnable stopHook) {
-		this.stopHook = stopHook;
-		return this;
-	}
+    private Runnable startHook;
+    private Runnable stopHook;
 
-	private ReignMaker core() {
-		// configure Reign with all core services
+    private boolean findPortAutomatically = false;
 
-		presence();
+    @Deprecated
+    public ReignMaker startHook(Runnable startHook) {
+        onStart(startHook);
+        return this;
+    }
 
-		conf();
+    @Deprecated
+    public ReignMaker stopHook(Runnable stopHook) {
+        onStop(stopHook);
+        return this;
+    }
 
-		coord();
+    public ReignMaker onStart(Runnable startHook) {
+        this.startHook = startHook;
+        return this;
+    }
 
-		data();
+    public ReignMaker onStop(Runnable stopHook) {
+        this.stopHook = stopHook;
+        return this;
+    }
 
-		mesg();
+    private ReignMaker core() {
+        // configure Reign with all core services
 
-		metrics();
+        presence();
 
-		nullService();
+        conf();
 
-		return this;
-	}
+        coord();
 
-	private ReignMaker metrics() {
-		MetricsService metricsService = new MetricsService();
-		serviceMap.put("metrics", metricsService);
+        data();
 
-		return this;
-	}
+        mesg();
 
-	private ReignMaker presence() {
-		PresenceService presenceService = new PresenceService();
-		serviceMap.put("presence", presenceService);
+        metrics();
 
-		// alternate route for more concise messaging
-		serviceMap.put("P", presenceService);
+        nullService();
 
-		return this;
-	}
+        return this;
+    }
 
-	private ReignMaker nullService() {
-		NullService nullService = new NullService();
-		serviceMap.put("null", nullService);
+    private ReignMaker metrics() {
+        MetricsService metricsService = new DefaultMetricsService();
+        serviceMap.put("metrics", metricsService);
 
-		return this;
-	}
+        return this;
+    }
 
-	private ReignMaker conf() {
-		ConfService confService = new ConfService();
-		serviceMap.put("conf", confService);
+    private ReignMaker presence() {
+        PresenceService presenceService = new DefaultPresenceService();
+        serviceMap.put("presence", presenceService);
 
-		// alternate route for more concise messaging
-		serviceMap.put("F", confService);
+        // alternate route for more concise messaging
+        serviceMap.put("P", presenceService);
 
-		return this;
-	}
+        return this;
+    }
 
-	private ReignMaker coord() {
-		CoordinationService coordService = new CoordinationService();
-		serviceMap.put("coord", coordService);
+    private ReignMaker nullService() {
+        NullService nullService = new NullService();
+        serviceMap.put("null", nullService);
 
-		// alternate route for more concise messaging
-		serviceMap.put("C", coordService);
+        return this;
+    }
 
-		return this;
-	}
-
-	private ReignMaker data() {
-		DataService dataService = new DataService();
-		serviceMap.put("data", dataService);
-
-		// alternate route for more concise messaging
-		serviceMap.put("D", dataService);
-
-		return this;
-	}
-
-	private ReignMaker mesg() {
-		MessagingService messagingService = new DefaultMessagingService();
-
-		serviceMap.put("mesg", messagingService);
-		if (messagingPort == null) {
-			messagingService.setPort(Reign.DEFAULT_MESSAGING_PORT);
-		} else {
-			messagingService.setPort(messagingPort);
-		}
-
-		// alternate route for more concise messaging
-		serviceMap.put("M", messagingService);
-
-		return this;
-	}
-
-	public ReignMaker messagingPort(Integer messagingPort) {
-		if (messagingPort == null) {
-			throw new IllegalArgumentException("Invalid argument:  'messagingPort' cannot be null!");
-		}
-		this.messagingPort = messagingPort;
-
-		// set messaging port if message service has already been configured
-		MessagingService messagingService = (MessagingService) serviceMap.get("messaging");
-		if (messagingService != null) {
-			messagingService.setPort(messagingPort);
-		}
-
-		return this;
-	}
-
-	public ReignMaker canonicalIdMaker(NodeIdProvider canonicalIdMaker) {
-		this.canonicalIdMaker = canonicalIdMaker;
-		return this;
-	}
-
-	public ReignMaker zkClient(String zkConnectString, int zkSessionTimeout) {
-		this.zkConnectString = zkConnectString;
-		this.zkSessionTimeout = zkSessionTimeout;
-		return this;
-
-	}
-
-	public ReignMaker zkConnectString(String zkConnectString) {
-		this.zkConnectString = zkConnectString;
-		return this;
-	}
-
-	public ReignMaker zkSessionTimeout(int zkSessionTimeout) {
-		this.zkSessionTimeout = zkSessionTimeout;
-		return this;
-	}
-
-	public String zkConnectString() {
-		return this.zkConnectString;
-	}
-
-	public int zkSessionTimeout() {
-		return this.zkSessionTimeout;
-	}
-
-	public ReignMaker zkClientTestMode(int zkPort, int zkSessionTimeout) {
-		logger.debug("Starting in-process ZooKeeper server on port {} -- meant for testing only!", zkPort);
-		try {
-			String dataDirectory = System.getProperty("java.io.tmpdir");
-			if (!dataDirectory.endsWith("/")) {
-				dataDirectory += File.separator;
-			}
-			dataDirectory += UUID.randomUUID().toString();
-			logger.debug("ZK dataDirectory={}", dataDirectory);
-			File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
-			zkTestServer = new TestingServer(zkPort, dir);
-
-			this.zkConnectString = "localhost:" + zkPort;
-			this.zkSessionTimeout = 30000;
-		} catch (Exception e) {
-			logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
-		}
-
-		return this;
-	}
-
-	public ReignMaker registerService(String serviceName, Service service) {
-		serviceMap.put(serviceName, service);
-		return this;
-	}
-
-	public ReignMaker pathCache(int maxSize, int concurrencyLevel) {
-		this.pathCacheMaxSize = maxSize;
-		this.pathCacheMaxConcurrencyLevel = concurrencyLevel;
-		return this;
-	}
-
-	public ReignMaker pathCache(PathCache pathCache) {
-		this.pathCache = pathCache;
-		return this;
-	}
-
-	public ReignMaker zkClient(ZkClient zkClient) {
-		this.zkClient = zkClient;
-		return this;
-	}
-
-	public ReignMaker frameworkBasePath(String frameworkBasePath) {
-		this.frameworkBasePath = frameworkBasePath;
-		return this;
-	}
-
-	public ReignMaker frameworkClusterId(String frameworkClusterId) {
-		this.frameworkClusterId = frameworkClusterId;
-		return this;
-	}
-
-	public Reign get() {
-
-		Reign s = null;
-
-		// always add core services
-		core();
-
-		// see if we need to set defaults
-		if (frameworkClusterId == null) {
-			frameworkClusterId = Reign.DEFAULT_FRAMEWORK_CLUSTER_ID;
-		}
-		if (frameworkBasePath == null) {
-			frameworkBasePath = Reign.DEFAULT_FRAMEWORK_BASE_PATH;
-		}
-		if (pathCache == null) {
-			pathCache = defaultPathCache();
-		}
-		if (zkClient == null) {
-			zkClient = defaultZkClient(pathCache);
-		}
-		if (pathScheme == null) {
-			pathScheme = defaultPathScheme(frameworkBasePath, frameworkClusterId);
-		}
-		if (canonicalIdMaker == null) {
-			canonicalIdMaker = defaultCanonicalIdMaker();
-		}
-
-		// build
-		s = new Reign(zkClient, pathScheme, canonicalIdMaker, zkTestServer);
-		s.registerServices(serviceMap);
-		s.setStartHook(startHook);
-		s.setStopHook(stopHook);
-
-		return s;
-	}
-
-	ZkClient defaultZkClient(PathCache pathCache) {
-		if (zkConnectString == null || zkSessionTimeout <= 0) {
-			throw new ReignException("zkConnectString and zkSessionTimeout not configured!");
-		}
-
-		ZkClient zkClient = null;
-		try {
-			zkClient = new ResilientZkClient(zkConnectString, zkSessionTimeout);
-		} catch (IOException e) {
-			throw new ReignException("Fatal error:  could not initialize Zookeeper client!", e);
-		}
-		return zkClient;
-	}
-
-	PathCache defaultPathCache() {
-		if (pathCacheMaxSize < 1 || pathCacheMaxConcurrencyLevel < 1) {
-			throw new ReignException(
-			        "zkClient, pathCacheMaxSize, and pathCacheMaxConcurrencyLevel must be configured to create default path cache!");
-		}
-
-		return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel);
-	}
-
-	PathScheme defaultPathScheme(String basePath, String frameworkClusterId) {
-		return new DefaultPathScheme(basePath, frameworkClusterId);
-	}
-
-	NodeIdProvider defaultCanonicalIdMaker() {
-		DefaultNodeIdProvider idMaker = new DefaultNodeIdProvider(messagingPort);
-		return idMaker;
-	}
+    private ReignMaker conf() {
+        ConfService confService = new ConfService();
+        serviceMap.put("conf", confService);
+
+        // alternate route for more concise messaging
+        serviceMap.put("F", confService);
+
+        return this;
+    }
+
+    private ReignMaker coord() {
+        CoordinationService coordService = new CoordinationService();
+        serviceMap.put("coord", coordService);
+
+        // alternate route for more concise messaging
+        serviceMap.put("C", coordService);
+
+        return this;
+    }
+
+    private ReignMaker data() {
+        DataService dataService = new DataService();
+        serviceMap.put("data", dataService);
+
+        // alternate route for more concise messaging
+        serviceMap.put("D", dataService);
+
+        return this;
+    }
+
+    private ReignMaker mesg() {
+        MessagingService messagingService = new DefaultMessagingService();
+
+        serviceMap.put("mesg", messagingService);
+
+        if (findPortAutomatically) {
+            messagingPort = PortUtil.getAvailablePort(messagingPortMin, messagingPortMax);
+        }
+
+        if (messagingPort == null) {
+            messagingPort = Reign.DEFAULT_MESSAGING_PORT;
+            messagingService.setPort(messagingPort);
+        } else {
+            messagingService.setPort(messagingPort);
+        }
+
+        logger.info("Configuring messaging service:  port={}", messagingPort);
+
+        // alternate route for more concise messaging
+        serviceMap.put("M", messagingService);
+
+        return this;
+    }
+
+    public ReignMaker findPortAutomatically(int portMin, int portMax) {
+        this.findPortAutomatically = true;
+        this.messagingPortMin = portMin;
+        this.messagingPortMax = portMax;
+        return this;
+    }
+
+    public ReignMaker findPortAutomatically(boolean findPortAutomatically) {
+        this.findPortAutomatically = findPortAutomatically;
+        return this;
+    }
+
+    public ReignMaker messagingPort(Integer messagingPort) {
+        if (messagingPort == null) {
+            throw new IllegalArgumentException("Invalid argument:  'messagingPort' cannot be null!");
+        }
+        this.messagingPort = messagingPort;
+
+        // set messaging port if message service has already been configured
+        MessagingService messagingService = (MessagingService) serviceMap.get("messaging");
+        if (messagingService != null) {
+            messagingService.setPort(messagingPort);
+        }
+
+        return this;
+    }
+
+    public ReignMaker canonicalIdMaker(NodeIdProvider canonicalIdMaker) {
+        this.canonicalIdMaker = canonicalIdMaker;
+        return this;
+    }
+
+    public ReignMaker zkClient(String zkConnectString, int zkSessionTimeout) {
+        this.zkConnectString = zkConnectString;
+        this.zkSessionTimeout = zkSessionTimeout;
+        return this;
+
+    }
+
+    public ReignMaker zkConnectString(String zkConnectString) {
+        this.zkConnectString = zkConnectString;
+        return this;
+    }
+
+    public ReignMaker zkSessionTimeout(int zkSessionTimeout) {
+        this.zkSessionTimeout = zkSessionTimeout;
+        return this;
+    }
+
+    public String zkConnectString() {
+        return this.zkConnectString;
+    }
+
+    public int zkSessionTimeout() {
+        return this.zkSessionTimeout;
+    }
+
+    public ReignMaker startZkTestServer(boolean startZkTestServer) {
+        this.startZkTestServer = startZkTestServer;
+        return this;
+    }
+
+    public ReignMaker zkTestServerPort(int zkTestServerPort) {
+        this.zkTestServerPort = zkTestServerPort;
+        return this;
+    }
+
+    public TestingServer startZkTestServer(int zkPort) {
+
+        logger.debug("Starting in-process ZooKeeper server on port {} -- meant for testing only!", zkPort);
+        try {
+            String dataDirectory = System.getProperty("java.io.tmpdir");
+            if (!dataDirectory.endsWith("/")) {
+                dataDirectory += File.separator;
+            }
+            dataDirectory += UUID.randomUUID().toString();
+
+            logger.debug("ZK dataDirectory={}", dataDirectory);
+
+            File dir = new File(dataDirectory, "zookeeper").getAbsoluteFile();
+
+            return new TestingServer(zkPort, dir);
+
+        } catch (Exception e) {
+            logger.error("Trouble starting test ZooKeeper instance:  " + e, e);
+        }
+
+        return null;
+
+    }
+
+    public ReignMaker registerService(String serviceName, Service service) {
+        serviceMap.put(serviceName, service);
+        return this;
+    }
+
+    public ReignMaker pathCache(int maxSize, int concurrencyLevel) {
+        this.pathCacheMaxSize = maxSize;
+        this.pathCacheMaxConcurrencyLevel = concurrencyLevel;
+        return this;
+    }
+
+    public ReignMaker pathCache(PathCache pathCache) {
+        this.pathCache = pathCache;
+        return this;
+    }
+
+    public ReignMaker zkClient(ZkClient zkClient) {
+        this.zkClient = zkClient;
+        return this;
+    }
+
+    public ReignMaker frameworkBasePath(String frameworkBasePath) {
+        this.frameworkBasePath = frameworkBasePath;
+        return this;
+    }
+
+    public ReignMaker frameworkClusterId(String frameworkClusterId) {
+        this.frameworkClusterId = frameworkClusterId;
+        return this;
+    }
+
+    public Reign get() {
+
+        // start test zk server if configured
+        TestingServer zkTestServer = null;
+        if (this.startZkTestServer) {
+            zkTestServer = this.startZkTestServer(this.zkTestServerPort);
+        }
+
+        Reign s = null;
+
+        // always add core services
+        core();
+
+        // see if we need to set defaults
+        if (frameworkClusterId == null) {
+            frameworkClusterId = Reign.DEFAULT_FRAMEWORK_CLUSTER_ID;
+        }
+        if (frameworkBasePath == null) {
+            frameworkBasePath = Reign.DEFAULT_FRAMEWORK_BASE_PATH;
+        }
+        if (pathCache == null) {
+            pathCache = defaultPathCache();
+        }
+        if (zkClient == null) {
+            zkClient = defaultZkClient(pathCache);
+        }
+        if (pathScheme == null) {
+            pathScheme = defaultPathScheme(frameworkBasePath, frameworkClusterId);
+        }
+        if (canonicalIdMaker == null) {
+            canonicalIdMaker = defaultCanonicalIdMaker();
+        }
+
+        // build
+        s = new Reign(zkClient, pathScheme, canonicalIdMaker, zkTestServer);
+        s.registerServices(serviceMap);
+        s.setStartHook(startHook);
+        s.setStopHook(stopHook);
+
+        return s;
+    }
+
+    ZkClient defaultZkClient(PathCache pathCache) {
+        if (zkConnectString == null || zkSessionTimeout <= 0) {
+            throw new ReignException("zkConnectString and zkSessionTimeout not configured!");
+        }
+
+        ZkClient zkClient = null;
+        try {
+            zkClient = new ResilientZkClient(zkConnectString, zkSessionTimeout);
+        } catch (IOException e) {
+            throw new ReignException("Fatal error:  could not initialize Zookeeper client!", e);
+        }
+        return zkClient;
+    }
+
+    PathCache defaultPathCache() {
+        if (pathCacheMaxSize < 1 || pathCacheMaxConcurrencyLevel < 1) {
+            throw new ReignException(
+                    "zkClient, pathCacheMaxSize, and pathCacheMaxConcurrencyLevel must be configured to create default path cache!");
+        }
+
+        return new SimplePathCache(this.pathCacheMaxSize, this.pathCacheMaxConcurrencyLevel);
+    }
+
+    PathScheme defaultPathScheme(String basePath, String frameworkClusterId) {
+        return new DefaultPathScheme(basePath, frameworkClusterId);
+    }
+
+    NodeIdProvider defaultCanonicalIdMaker() {
+        DefaultNodeIdProvider idMaker = new DefaultNodeIdProvider(messagingPort);
+        return idMaker;
+    }
 
 }

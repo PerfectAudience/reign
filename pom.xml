@@ -4,14 +4,39 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.reign</groupId>
 	<artifactId>reign</artifactId>
+	<version>0.3.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
-	<name>Reign Framework</name>
-	<version>0.2.18</version>
+	<name>${project.groupId}:${project.artifactId}</name>
+	<description>A framework for building distributed applications, leveraging open source projects such as ZooKeeper, Netty, CodaHale Metrics.</description>
+	<url>http://github.com/ypai/reign</url>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Yen Pai</name>
+			<email>ypai@kompany.org</email>
+			<organization>kompany.org</organization>
+			<organizationUrl>http://github.com/ypai</organizationUrl>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:git@github.com:ypai/reign.git</connection>
+		<developerConnection>scm:git:git@github.com:ypai/reign.git</developerConnection>
+		<url>git@github.com:ypai/reign.git</url>
+	</scm>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<logback.version>1.0.13</logback.version>
-		<zookeeper.version>3.4.5</zookeeper.version>
+		<logback.version>1.1.2</logback.version>
+		<zookeeper.version>3.4.6</zookeeper.version>
 	</properties>
 
 	<dependencies>
@@ -36,7 +61,7 @@
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty</artifactId>
-			<version>3.6.6.Final</version>
+			<version>3.9.3.Final</version>
 			<optional>true</optional>
 		</dependency>
 
@@ -168,18 +193,18 @@
 						<phase>package</phase>
 						<goals>
 							<goal>shade</goal>
-						</goals>					
+						</goals>
 						<configuration>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>shaded</shadedClassifierName>						
+							<shadedArtifactAttached>true</shadedArtifactAttached>
+							<shadedClassifierName>shaded</shadedClassifierName>
 							<artifactSet>
 								<excludes>
 									<exclude>org.apache.zookeeper:zookeeper</exclude>
-									<exclude>jline:*</exclude>		
-									<exclude>ch.qos.logback:*</exclude>		
+									<exclude>jline:*</exclude>
+									<exclude>ch.qos.logback:*</exclude>
 									<exclude>org.slf4j:*</exclude>
 								</excludes>
-							</artifactSet>							
+							</artifactSet>
 							<relocations>
 								<relocation>
 									<pattern>org.apache.commons.lang</pattern>
@@ -227,6 +252,32 @@
 								</relocation>
 							</relocations>
 						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>2.3</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.9.1</version>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
 					</execution>
 				</executions>
 			</plugin>

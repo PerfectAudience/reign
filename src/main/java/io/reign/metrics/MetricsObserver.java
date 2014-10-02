@@ -35,7 +35,11 @@ public abstract class MetricsObserver extends AbstractObserver {
     public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
         MetricsData previous = toMetricsData(previousData);
         MetricsData updated = toMetricsData(updatedData);
-        updated(updated, previous);
+
+        // only update if one is not null
+        if (updated != null || previous != null) {
+            updated(updated, previous);
+        }
     }
 
     @Override
@@ -48,13 +52,16 @@ public abstract class MetricsObserver extends AbstractObserver {
     public void nodeCreated(byte[] data, List<String> childList) {
         if (data != null) {
             MetricsData updated = toMetricsData(data);
-            updated(updated, null);
+            if (updated != null) {
+                updated(updated, null);
+            }
         }
     }
 
     MetricsData toMetricsData(byte[] bytes) {
-        if (bytes == null)
+        if (bytes == null || bytes.length == 0) {
             return null;
+        }
         try {
             MetricsData metricsData = JacksonUtil.getObjectMapper().readValue(bytes, MetricsData.class);
             return metricsData;

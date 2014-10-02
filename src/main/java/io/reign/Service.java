@@ -43,8 +43,6 @@ public interface Service {
 
     public void setContext(ReignContext serviceDirectory);
 
-    // public void setPathCache(PathCache pathCache);
-
     public void setDefaultZkAclList(List<ACL> defaultZkAclList);
 
     public void setObserverManager(ObserverManager observerManager);

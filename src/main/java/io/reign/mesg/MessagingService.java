@@ -16,7 +16,7 @@
 
 package io.reign.mesg;
 
-import io.reign.NodeId;
+import io.reign.NodeAddress;
 import io.reign.Service;
 
 import java.util.Map;
@@ -28,28 +28,45 @@ import java.util.Map;
  */
 public interface MessagingService extends Service {
 
-    public ResponseMessage sendMessage(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage);
+	/**
+	 * Send message to single node in service, picked at discretion of specific MessagingService implementation.
+	 */
+	public ResponseMessage sendMessageSingleNode(String clusterId, String serviceId, RequestMessage requestMessage);
 
-    public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage);
+	/**
+	 * Send message to specific node in service.
+	 */
+	public ResponseMessage sendMessage(String clusterId, String serviceId, NodeAddress nodeAddress,
+	        RequestMessage requestMessage);
 
-    public void sendMessageAsync(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage,
-            MessagingCallback callback);
+	/**
+	 * Send message to all nodes in service.
+	 */
+	public Map<String, ResponseMessage> sendMessage(String clusterId, String serviceId, RequestMessage requestMessage);
 
-    public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
-            MessagingCallback callback);
+	public void sendMessageSingleNodeAsync(String clusterId, String serviceId, RequestMessage requestMessage,
+	        MessagingCallback callback);
 
-    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, EventMessage eventMessage);
+	public void sendMessageAsync(String clusterId, String serviceId, NodeAddress nodeAddress,
+	        RequestMessage requestMessage, MessagingCallback callback);
 
-    public void sendMessageFF(String clusterId, String serviceId, NodeId nodeId, RequestMessage requestMessage);
+	public void sendMessageAsync(String clusterId, String serviceId, RequestMessage requestMessage,
+	        MessagingCallback callback);
 
-    public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage);
+	public void sendMessageFF(String clusterId, String serviceId, NodeAddress nodeAddress, EventMessage eventMessage);
 
-    public Integer getPort();
+	public void sendMessageFF(String clusterId, String serviceId, NodeAddress nodeAddress, RequestMessage requestMessage);
 
-    /**
-     * 
-     * @param port
-     *            cannot be null
-     */
-    public void setPort(Integer port);
+	public void sendMessageSingleNodeFF(String clusterId, String serviceId, RequestMessage requestMessage);
+
+	public void sendMessageFF(String clusterId, String serviceId, RequestMessage requestMessage);
+
+	public Integer getPort();
+
+	/**
+	 * 
+	 * @param port
+	 *            cannot be null
+	 */
+	public void setPort(Integer port);
 }

@@ -35,58 +35,64 @@ import org.slf4j.LoggerFactory;
  */
 public class MessagingServiceExample {
 
-    private static final Logger logger = LoggerFactory.getLogger(MessagingServiceExample.class);
+	private static final Logger logger = LoggerFactory.getLogger(MessagingServiceExample.class);
 
-    public static void main(String[] args) throws Exception {
-        /** init and start reign using builder **/
-        Reign reign = Reign.maker().zkClient("localhost:2181", 30000).get();
-        reign.start();
+	public static void main(String[] args) throws Exception {
+		/** init and start reign using builder **/
+		Reign reign = Reign.maker().zkConnectString("localhost:22181").zkTestServerPort(22181).startZkTestServer(true)
+		        .get();
+		reign.start();
 
-        /** init and start using Spring convenience builder **/
-        // SpringReignMaker springReignMaker = new SpringReignMaker();
-        // springReignMaker.setZkConnectString("localhost:2181");
-        // springReignMaker.setZkSessionTimeout(30000);
-        // springReignMaker.setCore(true);
-        // springReignMaker.initializeAndStart();
-        // Reign reign = springReignMaker.get();
+		/** init and start using Spring convenience builder **/
+		// SpringReignMaker springReignMaker = new SpringReignMaker();
+		// springReignMaker.setZkConnectString("localhost:2181");
+		// springReignMaker.setZkSessionTimeout(30000);
+		// springReignMaker.setCore(true);
+		// springReignMaker.initializeAndStart();
+		// Reign reign = springReignMaker.get();
 
-        /** messaging example **/
-        messagingExample(reign);
+		/** messaging example **/
+		messagingExample(reign);
 
-        /** sleep to allow examples to run for a bit **/
-        Thread.sleep(60000);
+		/** sleep to allow examples to run for a bit **/
+		Thread.sleep(60000);
 
-        /** shutdown reign **/
-        reign.stop();
+		/** shutdown reign **/
+		reign.stop();
 
-        /** sleep a bit to observe observer callbacks **/
-        Thread.sleep(10000);
-    }
+		/** sleep a bit to observe observer callbacks **/
+		Thread.sleep(10000);
+	}
 
-    public static void messagingExample(Reign reign) throws Exception {
-        PresenceService presenceService = reign.getService("presence");
-        presenceService.announce("examples", "service1", true);
-        presenceService.announce("examples", "service2", true);
+	public static void messagingExample(Reign reign) throws Exception {
+		logger.info("Sending messages!");
 
-        presenceService.waitUntilAvailable("examples", "service1", 30000);
+		PresenceService presenceService = reign.getService("presence");
+		presenceService.announce("examples", "service1", true);
+		presenceService.announce("examples", "service2", true);
 
-        Thread.sleep(5000);
+		presenceService.waitUntilAvailable("examples", "service1", 30000);
 
-        MessagingService messagingService = reign.getService("mesg");
+		MessagingService messagingService = reign.getService("mesg");
 
-        Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
-                new SimpleRequestMessage("presence", "/"));
+		Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",
+		        new SimpleRequestMessage("presence", "/"));
 
-        logger.info("Broadcast#1:  responseMap={}", responseMap);
+		logger.info("Broadcast#1:  responseMap={}", responseMap);
 
-        responseMap = messagingService.sendMessage("examples", "service1", new SimpleRequestMessage("presence",
-                "/examples/service1"));
+		responseMap = messagingService.sendMessage("examples", "service1", new SimpleRequestMessage("presence",
+		        "/examples/service1"));
 
-        logger.info("Broadcast#2:  responseMap={}", responseMap);
+		logger.info("Broadcast#2:  responseMap={}", responseMap);
 
-        responseMap = messagingService.sendMessage("examples", "service1", new SimpleRequestMessage("presence",
-                "/examples"));
+		responseMap = messagingService.sendMessage("examples", "service1", new SimpleRequestMessage("presence",
+		        "/examples"));
 
-        logger.info("Broadcast#3:  responseMap={}", responseMap);
-    }
+		logger.info("Broadcast#3:  responseMap={}", responseMap);
+
+		responseMap = messagingService.sendMessage("examples", "service1",
+		        new SimpleRequestMessage("null", "/examples".getBytes()));
+
+		logger.info("BINARY Broadcast#1:  responseMap={}", responseMap);
+	}
 }

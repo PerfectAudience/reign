@@ -18,7 +18,8 @@ package io.reign.presence;
 
 import io.reign.AbstractObserver;
 import io.reign.DataSerializer;
-import io.reign.NodeId;
+import io.reign.NodeInfo;
+import io.reign.StaticServiceNodeInfo;
 import io.reign.data.MapDataSerializer;
 
 import java.util.List;
@@ -36,7 +37,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
 
     private String clusterId = null;
     private String serviceId = null;
-    private NodeId nodeId = null;
+    private String nodeId = null;
 
     public abstract void updated(T updated, T previous);
 
@@ -48,7 +49,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
         this.serviceId = serviceId;
     }
 
-    void setNodeId(NodeId nodeId) {
+    void setNodeId(String nodeId) {
         this.nodeId = nodeId;
     }
 
@@ -67,9 +68,9 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     public void nodeDataChanged(byte[] updatedData, byte[] previousData) {
         if (nodeId != null) {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(updatedData);
-            NodeInfo updated = new StaticNodeInfo(clusterId, serviceId, nodeId, attributeMap);
+            NodeInfo updated = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, attributeMap);
             Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
-            NodeInfo previous = new StaticNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
+            NodeInfo previous = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
             updated((T) updated, (T) previous);
         }
     }
@@ -78,7 +79,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     public void nodeDeleted(byte[] previousData, List<String> previousChildList) {
         if (nodeId != null) {
             Map<String, String> previousAttributeMap = nodeAttributeSerializer.deserialize(previousData);
-            NodeInfo previous = new StaticNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
+            NodeInfo previous = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, previousAttributeMap);
             updated(null, (T) previous);
 
         } else if (serviceId != null) {
@@ -92,7 +93,7 @@ public abstract class PresenceObserver<T> extends AbstractObserver {
     public void nodeCreated(byte[] data, List<String> childList) {
         if (nodeId != null) {
             Map<String, String> attributeMap = nodeAttributeSerializer.deserialize(data);
-            NodeInfo updated = new StaticNodeInfo(clusterId, serviceId, nodeId, attributeMap);
+            NodeInfo updated = new StaticServiceNodeInfo(clusterId, serviceId, nodeId, attributeMap);
             updated((T) updated, null);
 
         } else if (serviceId != null) {

@@ -27,8 +27,7 @@ public class UpdatingServiceInfoTest {
 			PathScheme pathScheme = context.getPathScheme();
 
 			// create self-updating Conf object, should be empty initially
-			serviceInfo = new UpdatingServiceInfo("clusterA", "serviceA",
-					context);
+			serviceInfo = new UpdatingServiceInfo("clusterA", "serviceA", context);
 			assertTrue("clusterA".equals(serviceInfo.getClusterId()));
 			assertTrue("serviceA".equals(serviceInfo.getServiceId()));
 			assertTrue(serviceInfo.getNodeIdList().size() == 0);
@@ -48,8 +47,7 @@ public class UpdatingServiceInfoTest {
 			assertTrue("clusterA".equals(serviceInfo.getClusterId()));
 			assertTrue("serviceA".equals(serviceInfo.getServiceId()));
 			assertTrue(serviceInfo.getNodeIdList().size() == 1);
-			assertTrue(serviceInfo.getNodeIdList().get(0)
-					.equals(pathScheme.toPathToken(context.getNodeId())));
+			assertTrue(serviceInfo.getNodeIdList().get(0).equals(context.getNodeId()));
 		} finally {
 			serviceInfo.destroy();
 		}
@@ -61,8 +59,7 @@ public class UpdatingServiceInfoTest {
 
 		ReignContext context = MasterTestSuite.getReign().getContext();
 		ObserverManager observerManager = context.getObserverManager();
-		String path = context.getPathScheme().getAbsolutePath(
-				PathType.PRESENCE, "clusterA", "serviceB");
+		String path = context.getPathScheme().getAbsolutePath(PathType.PRESENCE, "clusterA", "serviceB");
 
 		// create self-updating Conf object, observer should be registered
 		serviceInfo = new UpdatingServiceInfo("clusterA", "serviceB", context);

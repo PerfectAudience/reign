@@ -16,10 +16,10 @@
 
 package io.reign.mesg;
 
-import io.reign.NodeId;
+import io.reign.NodeAddress;
 
 public interface MessagingCallback {
 
-    public void response(String clusterId, String serviceId, NodeId nodeId, ResponseMessage responseMessage);
+	public void response(String clusterId, String serviceId, NodeAddress nodeAddress, ResponseMessage responseMessage);
 
 }

@@ -1,6 +1,6 @@
 Reign Framework
 ===============
-A toolkit for building distributed applications, leveraging open source projects such as [Apache ZooKeeper](http://zookeeper.apache.org/), [Netty](http://netty.io/), [Codahale Metrics](http://metrics.codahale.com/).
+A framework for building distributed applications, leveraging open source projects such as [Apache ZooKeeper](http://zookeeper.apache.org/), [Netty](http://netty.io/), [Codahale Metrics](http://metrics.codahale.com/).
 
 The Reign Framework is licensed under the Apache License, Version 2.0.  Specific details are available in LICENSE.txt.
 
@@ -54,8 +54,8 @@ Reign is not yet in a central repository, but if built and uploaded to a private
         </dependency>        
 
 ### Initialize and start up examples
-        /** init and start using in-process ZooKeeper on port 12181 **/
-        Reign reign = Reign.maker().zkClientTestMode(12181, 30000).get();
+        /** init and start using in-process ZooKeeper on port 22181 **/
+        Reign reign = Reign.maker().zkTestServerPort(22181).startZkTestServer(true).zkConnectString("localhost:22181").get();
         reign.start()
 
         /**
@@ -192,7 +192,7 @@ List nodes comprising "service2":
         // Use read-only utility class that self updates using an internal observer:  
         // eventually consistent with latest configuration values in ZooKeeper
         ReignContext context = reign.getContext();
-        UpdatingConf<String,String> updatingConf = new UpdatingConf<String,String>("test", "service1/test1.conf", context);
+        UpdatingConf<String,String> updatingConf = new UpdatingConf<String,String>("test", "service1", "test1.conf", context);
         
         // will be null initially
         String value1 = updatingConf.get("key1");
@@ -216,13 +216,6 @@ List nodes comprising "service2":
 
         // wait indefinitely for at least one node in "service1" to become available
         presenceService.waitUntilAvailable("examples", "service1", -1);
-
-        // send message to a single node in the "service1" service in the "examples" cluster;
-        // in this example, we are just messaging ourselves
-        CanonicalId canonicalId = reign.getCanonicalId();
-        String canonicalIdString = reign.getPathScheme().toPathToken(canonicalId);
-        ResponseMessage responseMessage = messagingService.sendMessage("examples", "service1", canonicalIdString,
-                new SimpleRequestMessage("presence", "/"));
 
         // broadcast a message to all nodes belonging to the "service1" service in the examples cluster
         Map<String, ResponseMessage> responseMap = messagingService.sendMessage("examples", "service1",

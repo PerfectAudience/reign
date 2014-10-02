@@ -40,7 +40,7 @@ public class MasterTestSuite {
 
 	private static Reign reign;
 
-	public static final int ZK_TEST_SERVER_PORT = 21810;
+	public static final int ZK_TEST_SERVER_PORT = 22181;
 
 	public static ExecutorService executorService = Executors.newFixedThreadPool(10);
 
@@ -77,8 +77,9 @@ public class MasterTestSuite {
 		}
 
 		/** init and start reign using builder **/
-		reign = Reign.maker().messagingPort(33133).zkClient("localhost:" + MasterTestSuite.ZK_TEST_SERVER_PORT, 30000)
-		        .pathCache(1024, 8).startHook(startHook()).stopHook(stopHook()).get();
+		reign = Reign.maker().findPortAutomatically(true)
+		        .zkClient("localhost:" + MasterTestSuite.ZK_TEST_SERVER_PORT, 30000).pathCache(1024, 8)
+		        .startHook(startHook()).stopHook(stopHook()).get();
 
 		// test started hook
 		assertFalse("Unexpected before start:  " + startedFlag.get(), startedFlag.get());
@@ -89,6 +90,7 @@ public class MasterTestSuite {
 
 	public static Runnable startHook() {
 		return new Runnable() {
+			@Override
 			public void run() {
 				startedFlag.set(true);
 			}
@@ -97,6 +99,7 @@ public class MasterTestSuite {
 
 	public static Runnable stopHook() {
 		return new Runnable() {
+			@Override
 			public void run() {
 				stoppedFlag.set(true);
 			}

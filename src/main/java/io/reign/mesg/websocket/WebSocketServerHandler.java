@@ -9,12 +9,13 @@ import static org.jboss.netty.handler.codec.http.HttpMethod.POST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import io.reign.DefaultNodeId;
-import io.reign.NodeId;
+import io.reign.DefaultNodeIdProvider.DefaultNodeId;
+import io.reign.NodeAddress;
 import io.reign.PathScheme;
 import io.reign.Reign;
 import io.reign.ReignContext;
 import io.reign.Service;
+import io.reign.StaticNodeAddress;
 import io.reign.mesg.MessageProtocol;
 import io.reign.mesg.RequestMessage;
 import io.reign.mesg.ResponseMessage;
@@ -412,23 +413,33 @@ public class WebSocketServerHandler extends ExecutionHandler {
 		PresenceService presenceService = context.getService("presence");
 		PathScheme pathScheme = context.getPathScheme();
 
-		NodeId nodeId = getNodeId(ctx);
-		String nodeIdString = nodeId.toString();
+		String nodeId = getNodeId(ctx);
 
-		presenceService.announce(pathScheme.getFrameworkClusterId(), Reign.CLIENT_SERVICE_ID, nodeIdString, true);
+		presenceService.announce(pathScheme.getFrameworkClusterId(), Reign.CLIENT_SERVICE_ID, nodeId, true);
 
 		// register connection
 		SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
 		connectionManager.addClientConnection(IdUtil.getClientIpAddress(socketAddress), IdUtil
 		        .getClientPort(socketAddress), new WebSocketClient(pathScheme.getFrameworkClusterId(),
-		        Reign.CLIENT_SERVICE_ID, nodeIdString, ctx.getChannel(), this.requestMonitoringExecutor));
+		        Reign.CLIENT_SERVICE_ID, nodeId, ctx.getChannel(), this.requestMonitoringExecutor));
 	}
 
-	private NodeId getNodeId(ChannelHandlerContext ctx) {
+	private String getNodeId(ChannelHandlerContext ctx) {
 		SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
-		NodeId nodeId = new DefaultNodeId(null, IdUtil.getClientIpAddress(socketAddress),
+		DefaultNodeId nodeId = new DefaultNodeId(null, IdUtil.getClientIpAddress(socketAddress),
 		        IdUtil.getClientHostname(socketAddress), IdUtil.getClientPort(socketAddress));
-		return nodeId;
+		return nodeId.toString();
+	}
+
+	private NodeAddress getNodeAddress(ChannelHandlerContext ctx) {
+		SocketAddress socketAddress = ctx.getChannel().getRemoteAddress();
+		String clientIpAddress = IdUtil.getClientIpAddress(socketAddress);
+		String clientHostname = IdUtil.getClientHostname(socketAddress);
+		Integer clientMessagingPort = IdUtil.getClientPort(socketAddress);
+		DefaultNodeId nodeId = new DefaultNodeId(null, clientIpAddress, clientHostname, clientMessagingPort);
+		NodeAddress nodeInfo = new StaticNodeAddress(nodeId.toString(), clientIpAddress, clientHostname,
+		        clientMessagingPort);
+		return nodeInfo;
 	}
 
 	private void handleWebSocketFrame(final ChannelHandlerContext ctx, WebSocketFrame frame) {
@@ -450,7 +461,7 @@ public class WebSocketServerHandler extends ExecutionHandler {
 				public void run() {
 					String requestText = ((TextWebSocketFrame) finalFrame).getText();
 					RequestMessage requestMessage = getMessageProtocol().fromTextRequest(requestText);
-					requestMessage.setSenderId(getNodeId(ctx));
+					requestMessage.setSenderInfo(getNodeAddress(ctx));
 					if (requestMessage != null) {
 						Service targetService = getServiceDirectory().getService(requestMessage.getTargetService());
 

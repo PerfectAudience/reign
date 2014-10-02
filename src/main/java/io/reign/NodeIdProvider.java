@@ -23,17 +23,17 @@ package io.reign;
  */
 public interface NodeIdProvider {
 
-    /**
-     * 
-     * @return NEW instance of id
-     */
-    public NodeId get();
+	/**
+	 * 
+	 * @return NEW instance of id
+	 */
+	public String get();
 
-    public ZkNodeId forZk();
-
-    /**
-     * 
-     * @return NEW instance of id
-     */
-    public NodeId fromZk(ZkNodeId zkNodeId);
+	// public ZkNodeId forZk();
+	//
+	// /**
+	// *
+	// * @return NEW instance of id
+	// */
+	// public NodeId fromZk(ZkNodeId zkNodeId);
 }

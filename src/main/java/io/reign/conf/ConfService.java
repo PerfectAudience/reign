@@ -51,14 +51,7 @@ public class ConfService extends AbstractService {
 
     private final ZkClientUtil zkUtil = new ZkClientUtil();
 
-    // private final Map<String, DataSerializer> dataSerializerMap = new ConcurrentHashMap<String, DataSerializer>(17,
-    // 0.9f, 1);
-
     public ConfService() {
-        // dataSerializerMap.put("json", new JsonDataSerializer());
-        // dataSerializerMap.put("js", dataSerializerMap.get("json"));
-        // dataSerializerMap.put("properties", dataSerializerMap.get("json"));
-        // dataSerializerMap.put("properties", new ConfPropertiesSerializer<ConfProperties>(false));
     }
 
     @Override
@@ -69,17 +62,6 @@ public class ConfService extends AbstractService {
     @Override
     public void destroy() {
     }
-
-    // /**
-    // *
-    // * @param extension
-    // * "file" extension of path: would be "properties" in the following path:
-    // * /my-cluster/my-config.properties
-    // * @param dataSerializer
-    // */
-    // public void registerSerializer(String extension, DataSerializer dataSerializer) {
-    // dataSerializerMap.put(extension, dataSerializer);
-    // }
 
     static DataSerializer getDataSerializer(String path, Map<String, DataSerializer> dataSerializerMap) {
         int lastDotIndex = path.lastIndexOf(".");
@@ -111,6 +93,10 @@ public class ConfService extends AbstractService {
         }
     }
 
+    public <T> void observeServiceConf(String clusterId, String serviceId, String confName, ConfObserver<T> observer) {
+        observe(clusterId, getPathScheme().joinTokens(serviceId, confName), observer);
+    }
+
     public <T> void observe(String clusterId, String relativeConfPath, ConfObserver<T> observer) {
         observe(PathType.CONF, clusterId, relativeConfPath, observer);
     }
@@ -125,6 +111,14 @@ public class ConfService extends AbstractService {
         // observer.setDataSerializerMap(dataSerializerMap);
 
         getObserverManager().put(absolutePath, observer);
+    }
+
+    public <T> T getServiceConf(String clusterId, String serviceId, String confName) {
+        return getConf(clusterId, getPathScheme().joinTokens(serviceId, confName));
+    }
+
+    public <T> T getServiceConf(String clusterId, String serviceId, String confName, ConfObserver<T> observer) {
+        return getConf(clusterId, getPathScheme().joinTokens(serviceId, confName), observer);
     }
 
     /**
@@ -155,6 +149,14 @@ public class ConfService extends AbstractService {
 
     }
 
+    public <T> void putServiceConf(String clusterId, String serviceId, String confName, T conf) {
+        putConf(clusterId, getPathScheme().joinTokens(serviceId, confName), conf);
+    }
+
+    public <T> void putServiceConf(String clusterId, String serviceId, String confName, T conf, ConfObserver<T> observer) {
+        putConf(clusterId, getPathScheme().joinTokens(serviceId, confName), conf, observer);
+    }
+
     public <T> void putConf(String clusterId, String relativeConfPath, T conf) {
         putConf(clusterId, relativeConfPath, conf, null);
     }
@@ -176,6 +178,10 @@ public class ConfService extends AbstractService {
         if (observer != null) {
             observe(clusterId, relativeConfPath, observer);
         }
+    }
+
+    public void removeServiceConf(String clusterId, String serviceId, String confName) {
+        removeConf(clusterId, getPathScheme().joinTokens(serviceId, confName));
     }
 
     /**
