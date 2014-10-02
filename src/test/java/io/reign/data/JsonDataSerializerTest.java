@@ -13,6 +13,13 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.junit.Assert;
 import org.junit.Before;
 
+/**
+ * Service discovery service.
+ * 
+ * @author francoislagier
+ * @author daphnehsu
+ * 
+ */
 public class JsonDataSerializerTest extends AbstractDataSerializerTest {
 
     private DataSerializer<SmallObject> serializer;

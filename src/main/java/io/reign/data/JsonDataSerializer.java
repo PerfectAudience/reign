@@ -24,6 +24,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 /**
  * 
  * @author ypai
+ * @author francoislagier
  * 
  * @param <T>
  */

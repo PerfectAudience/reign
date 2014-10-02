@@ -27,6 +27,7 @@ import org.codehaus.jackson.type.TypeReference;
 /**
  * 
  * @author ypai
+ * @author francoislagier
  * 
  * @param <T>
  */

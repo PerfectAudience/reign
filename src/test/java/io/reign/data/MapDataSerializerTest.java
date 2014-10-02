@@ -11,6 +11,12 @@ import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Before;
 
+/**
+ * Service discovery service.
+ * 
+ * @author francoislagier
+ * 
+ */
 public class MapDataSerializerTest extends AbstractDataSerializerTest {
 
     private DataSerializer<Map<String, String>> serializer;
